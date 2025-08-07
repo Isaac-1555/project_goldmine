@@ -1,0 +1,142 @@
+/* Graph View Styles */
+.graph-view {
+  height: 100%;
+  position: relative;
+  background: #f9fafb;
+}
+
+.graph-view-loading,
+.graph-view-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: #6b7280;
+}
+
+.loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-graph-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.graph-view-empty h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #374151;
+}
+
+/* Graph Controls */
+.graph-controls {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.graph-control-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.graph-control-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.graph-control-btn svg {
+  width: 1rem;
+  height: 1rem;
+  color: #6b7280;
+}
+
+/* Graph Container */
+.graph-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.graph-container:active {
+  cursor: grabbing;
+}
+
+.graph-svg {
+  width: 100%;
+  height: 100%;
+  background: white;
+}
+
+/* Graph Elements */
+.graph-node {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.graph-node:hover {
+  r: 25;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
+.node-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  fill: #374151;
+  cursor: pointer;
+  user-select: none;
+}
+
+.node-label:hover {
+  fill: #111827;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .graph-controls {
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+  
+  .graph-control-btn {
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  .graph-control-btn svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+  
+  .node-label {
+    font-size: 0.625rem;
+  }
+}

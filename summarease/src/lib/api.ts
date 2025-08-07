@@ -1,13 +1,18 @@
 import { supabase } from './supabase'
+import { processDocumentClientSide } from './documentProcessor'
 
 export interface FileWithMetadata {
   id: string
+  file_id?: string // From RPC function
   title: string
+  filename?: string // Optional - might be derived from storage_path
   file_type: 'audio' | 'pdf' | 'docx'
   status: 'processing' | 'completed' | 'failed'
   created_at: string
+  storage_path?: string
   folder_name?: string
   summary_text?: string
+  summary?: string
   tags?: string[]
 }
 
@@ -60,7 +65,19 @@ export async function getUserFiles(): Promise<FileWithMetadata[]> {
       throw error
     }
 
-    return data || []
+    // Map the RPC results to our interface
+    return (data || []).map((file: any) => ({
+      id: file.file_id,
+      title: file.title,
+      file_type: file.file_type,
+      status: file.status,
+      created_at: file.created_at,
+      folder_name: file.folder_name,
+      summary_text: file.summary_text,
+      summary: file.summary_text, // Alias for compatibility
+      tags: file.tags || [],
+      filename: file.title // Use title as filename fallback
+    }))
   } catch (error: any) {
     console.error('Error fetching user files:', error)
     return []
@@ -81,15 +98,15 @@ export async function getFileDetails(fileId: string) {
 
     if (fileError) throw fileError
 
-    // Get transcript
-    const { data: transcript, error: transcriptError } = await supabase
+    // Get transcript (might not exist)
+    const { data: transcript } = await supabase
       .from('transcripts')
       .select('*')
       .eq('file_id', fileId)
-      .single()
+      .maybeSingle()
 
-    // Get summary with tags
-    const { data: summary, error: summaryError } = await supabase
+    // Get summary with tags (might not exist)
+    const { data: summary } = await supabase
       .from('summaries')
       .select(`
         *,
@@ -101,7 +118,7 @@ export async function getFileDetails(fileId: string) {
         )
       `)
       .eq('file_id', fileId)
-      .single()
+      .maybeSingle()
 
     return {
       file,
@@ -152,5 +169,203 @@ export async function getKnowledgeGraphData() {
   } catch (error: any) {
     console.error('Error fetching knowledge graph data:', error)
     return []
+  }
+}
+
+/**
+ * Upload a file and create a file record
+ */
+export async function uploadFile(file: File, title?: string): Promise<string | null> {
+  try {
+    const { data: user } = await supabase.auth.getUser()
+    if (!user.user) {
+      throw new Error('User not authenticated')
+    }
+
+    // Determine file type based on file extension
+    const fileExtension = file.name.split('.').pop()?.toLowerCase()
+    let fileType: 'pdf' | 'docx' | 'audio'
+    
+    if (fileExtension === 'pdf') {
+      fileType = 'pdf'
+    } else if (fileExtension === 'docx' || fileExtension === 'doc') {
+      fileType = 'docx'
+    } else {
+      throw new Error('Unsupported file type. Please upload PDF or DOCX files.')
+    }
+
+    // Process document client-side as temporary workaround
+    console.log('Processing document client-side...')
+    const { extractedText, summary, tags } = await processDocumentClientSide(file)
+
+    // Upload file to Supabase Storage
+    const fileName = `${user.user.id}/${Date.now()}_${file.name}`
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('files')
+      .upload(fileName, file)
+
+    if (uploadError) throw uploadError
+
+    // Create file record in database
+    const { data: fileData, error: fileError } = await supabase
+      .from('files')
+      .insert([
+        {
+          title: title || file.name.replace(/\.[^/.]+$/, ''), // Remove extension if no title provided
+          file_type: fileType,
+          status: 'completed', // Set as completed since we processed it
+          user_id: user.user.id,
+          storage_path: uploadData.path
+        }
+      ])
+      .select()
+      .single()
+
+    if (fileError) throw fileError
+
+    // Save transcript (extracted text)
+    await supabase.from('transcripts').insert([
+      {
+        file_id: fileData.id,
+        content: extractedText,
+        created_at: new Date().toISOString()
+      }
+    ])
+
+    // Save summary
+    const { data: summaryData, error: summaryError } = await supabase
+      .from('summaries')
+      .insert([
+        {
+          file_id: fileData.id,
+          summary_text: summary,
+          created_at: new Date().toISOString()
+        }
+      ])
+      .select()
+      .single()
+
+    if (summaryError) {
+      console.error('Error saving summary:', summaryError)
+    } else {
+      // Save tags
+      await saveTags(summaryData.id, tags)
+    }
+
+    return fileData.id
+  } catch (error: any) {
+    console.error('Error uploading file:', error)
+    return null
+  }
+}
+
+/**
+ * Create a new file record for a recording
+ */
+export async function createRecording(title: string, transcriptText: string = ''): Promise<string | null> {
+  try {
+    const { data: user } = await supabase.auth.getUser()
+    if (!user.user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { data, error } = await supabase
+      .from('files')
+      .insert([
+        {
+          title,
+          file_type: 'audio',
+          status: 'processing',
+          user_id: user.user.id,
+          storage_path: `audio/${user.user.id}/${title.replace(/[^a-zA-Z0-9]/g, '_')}.audio`
+        }
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+
+    // If there's transcript text, create a transcript record
+    if (transcriptText.trim()) {
+      await supabase.from('transcripts').insert([
+        {
+          file_id: data.id,
+          content: transcriptText,
+          created_at: new Date().toISOString()
+        }
+      ])
+    }
+
+    return data.id
+  } catch (error: any) {
+    console.error('Error creating recording:', error)
+    return null
+  }
+}
+
+/**
+ * Save tags for a summary
+ */
+async function saveTags(summaryId: string, tags: string[]): Promise<void> {
+  for (const tagName of tags) {
+    try {
+      // Check if tag exists, create if not
+      let { data: existingTag, error: tagSelectError } = await supabase
+        .from('tags')
+        .select('id')
+        .eq('name', tagName)
+        .single()
+
+      if (tagSelectError && tagSelectError.code !== 'PGRST116') {
+        console.error('Error checking tag:', tagSelectError)
+        continue
+      }
+
+      let tagId: string
+
+      if (existingTag) {
+        tagId = existingTag.id
+      } else {
+        const { data: newTag, error: tagInsertError } = await supabase
+          .from('tags')
+          .insert({ name: tagName })
+          .select('id')
+          .single()
+
+        if (tagInsertError) {
+          console.error('Error creating tag:', tagInsertError)
+          continue
+        }
+        tagId = newTag.id
+      }
+
+      // Link tag to summary
+      await supabase
+        .from('summary_tags')
+        .insert({
+          summary_id: summaryId,
+          tag_id: tagId
+        })
+    } catch (error) {
+      console.error('Error saving tag:', tagName, error)
+    }
+  }
+}
+
+/**
+ * Delete a file and all its associated data
+ */
+export async function deleteFile(fileId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('files')
+      .delete()
+      .eq('id', fileId)
+
+    if (error) throw error
+    return true
+  } catch (error: any) {
+    console.error('Error deleting file:', error)
+    return false
   }
 }

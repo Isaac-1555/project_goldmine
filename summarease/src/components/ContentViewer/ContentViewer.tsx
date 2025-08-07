@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { Edit3, Save, X, FileText, MessageSquare, Tag, Clock } from 'lucide-react'
+import { Edit3, Save, X, FileText, MessageSquare, Tag, Clock, ArrowLeft, Trash2 } from 'lucide-react'
 import { StatusIndicator } from '../FileStatus/StatusIndicator'
-import { getFileDetails, updateSummary } from '../../lib/api'
+import { getFileDetails, updateSummary, deleteFile, type FileWithMetadata } from '../../lib/api'
 import './ContentViewer.css'
 
 interface ContentViewerProps {
-  fileId: string | null
+  file: FileWithMetadata
+  onBack?: () => void
+  onDelete?: (fileId: string) => void
 }
 
 interface FileDetails {
@@ -30,7 +32,7 @@ interface FileDetails {
   }>
 }
 
-export const ContentViewer: React.FC<ContentViewerProps> = ({ fileId }) => {
+export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDelete }) => {
   const [fileDetails, setFileDetails] = useState<FileDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -38,14 +40,16 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ fileId }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editedSummary, setEditedSummary] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
-    if (fileId) {
-      loadFileDetails(fileId)
+    if (file?.id) {
+      loadFileDetails(file.id)
     } else {
       setFileDetails(null)
     }
-  }, [fileId])
+  }, [file?.id])
 
   const loadFileDetails = async (id: string) => {
     try {
@@ -94,6 +98,28 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ fileId }) => {
     setIsEditing(false)
   }
 
+  const handleDelete = async () => {
+    if (!file?.id) return
+
+    try {
+      setDeleting(true)
+      const success = await deleteFile(file.id)
+      
+      if (success) {
+        setShowDeleteConfirm(false)
+        onDelete?.(file.id)
+        onBack?.()
+      } else {
+        setError('Failed to delete file')
+      }
+    } catch (err: any) {
+      setError('Failed to delete file')
+      console.error('Error deleting file:', err)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('en-US', {
@@ -118,7 +144,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ fileId }) => {
     }
   }
 
-  if (!fileId) {
+  if (!file) {
     return (
       <div className="content-viewer">
         <div className="empty-content">
@@ -146,7 +172,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ fileId }) => {
       <div className="content-viewer">
         <div className="error-content">
           <p>{error || 'Failed to load content'}</p>
-          <button onClick={() => fileId && loadFileDetails(fileId)} className="retry-button">
+          <button onClick={() => file?.id && loadFileDetails(file.id)} className="retry-button">
             Try Again
           </button>
         </div>
@@ -157,6 +183,12 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ fileId }) => {
   return (
     <div className="content-viewer">
       <div className="content-header">
+        {onBack && (
+          <button onClick={onBack} className="back-button">
+            <ArrowLeft className="back-icon" />
+            Back
+          </button>
+        )}
         <div className="file-info">
           <h1 className="file-title">{fileDetails.file.title}</h1>
           <div className="file-meta">
@@ -168,6 +200,13 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ fileId }) => {
             <StatusIndicator status={fileDetails.file.status as any} size="small" />
           </div>
         </div>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="delete-button"
+          title="Delete this file"
+        >
+          <Trash2 className="icon" />
+        </button>
       </div>
 
       <div className="content-tabs">
@@ -297,6 +336,33 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ fileId }) => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="modal-overlay">
+          <div className="delete-modal">
+            <h3>Delete File</h3>
+            <p>Are you sure you want to delete "{fileDetails?.file.title}"? This action cannot be undone.</p>
+            <div className="modal-actions">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="cancel-button"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="delete-confirm-button"
+                disabled={deleting}
+              >
+                <Trash2 className="icon" />
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

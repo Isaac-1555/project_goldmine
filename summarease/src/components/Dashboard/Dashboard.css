@@ -1,0 +1,46 @@
+/* Dashboard Styles */
+.dashboard {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+}
+
+.dashboard-layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.dashboard-main {
+  flex: 1;
+  overflow-y: auto;
+  background: white;
+}
+
+.dashboard-sidebar {
+  width: 350px;
+  border-left: 1px solid #e5e7eb;
+  background: white;
+  overflow: hidden;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .dashboard-sidebar {
+    width: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-layout {
+    flex-direction: column;
+  }
+  
+  .dashboard-sidebar {
+    width: 100%;
+    height: 300px;
+    border-left: none;
+    border-top: 1px solid #e5e7eb;
+  }
+}

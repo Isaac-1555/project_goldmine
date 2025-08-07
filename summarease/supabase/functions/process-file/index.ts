@@ -55,13 +55,15 @@ serve(async (req) => {
     if (fileRecord.file_type === 'audio') {
       extractedText = await transcribeAudio(fileData, genAI)
     } else if (fileRecord.file_type === 'pdf') {
-      extractedText = await extractTextFromPDF(fileData)
+      extractedText = await extractTextFromPDF(fileData, genAI)
     } else if (fileRecord.file_type === 'docx') {
-      extractedText = await extractTextFromDocx(fileData)
+      extractedText = await extractTextFromDocx(fileData, genAI)
     }
 
+    console.log(`Extracted text length: ${extractedText.length} characters`)
+    
     if (!extractedText.trim()) {
-      throw new Error('No text could be extracted from the file')
+      throw new Error(`No text could be extracted from the ${fileRecord.file_type} file`)
     }
 
     // Save transcript
@@ -166,15 +168,86 @@ async function transcribeAudio(audioData: Blob, genAI: GoogleGenerativeAI): Prom
   return response.text()
 }
 
-async function extractTextFromPDF(pdfData: Blob): Promise<string> {
-  // For now, return a placeholder. In production, you'd use a PDF parsing library
-  // like pdf-parse or similar that works in Deno
-  return "PDF text extraction not yet implemented. Please use the Gemini API with document parsing capabilities."
+async function extractTextFromPDF(pdfData: Blob, genAI: GoogleGenerativeAI): Promise<string> {
+  try {
+    console.log(`Processing PDF file, size: ${pdfData.size} bytes`)
+    
+    // Convert PDF blob to base64
+    const arrayBuffer = await pdfData.arrayBuffer()
+    const base64Data = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+    
+    console.log(`PDF converted to base64, length: ${base64Data.length}`)
+
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+
+    const prompt = `
+      Please extract all text content from this PDF document. 
+      Return only the extracted text without any formatting, headers, or additional commentary.
+      Preserve paragraph breaks but remove any special formatting.
+      Do not include any instructions or explanations, just the document content.
+    `
+
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          mimeType: 'application/pdf',
+          data: base64Data
+        }
+      }
+    ])
+    
+    const response = await result.response
+    const extractedText = response.text()
+    
+    console.log(`PDF text extracted, length: ${extractedText.length}`)
+    
+    return extractedText
+  } catch (error) {
+    console.error('Error extracting text from PDF:', error)
+    throw new Error(`Failed to extract text from PDF: ${error.message}`)
+  }
 }
 
-async function extractTextFromDocx(docxData: Blob): Promise<string> {
-  // For now, return a placeholder. In production, you'd use a DOCX parsing library
-  return "DOCX text extraction not yet implemented. Please use the Gemini API with document parsing capabilities."
+async function extractTextFromDocx(docxData: Blob, genAI: GoogleGenerativeAI): Promise<string> {
+  try {
+    console.log(`Processing DOCX file, size: ${docxData.size} bytes`)
+    
+    // Convert DOCX blob to base64
+    const arrayBuffer = await docxData.arrayBuffer()
+    const base64Data = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+    
+    console.log(`DOCX converted to base64, length: ${base64Data.length}`)
+
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+
+    const prompt = `
+      Please extract all text content from this DOCX document. 
+      Return only the extracted text without any formatting, headers, or additional commentary.
+      Preserve paragraph breaks but remove any special formatting.
+      Do not include any instructions or explanations, just the document content.
+    `
+
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          data: base64Data
+        }
+      }
+    ])
+    
+    const response = await result.response
+    const extractedText = response.text()
+    
+    console.log(`DOCX text extracted, length: ${extractedText.length}`)
+    
+    return extractedText
+  } catch (error) {
+    console.error('Error extracting text from DOCX:', error)
+    throw new Error(`Failed to extract text from DOCX: ${error.message}`)
+  }
 }
 
 async function generateSummary(text: string, genAI: GoogleGenerativeAI): Promise<string> {

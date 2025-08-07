@@ -1,0 +1,70 @@
+/* Tab Navigation Styles */
+.tab-navigation {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 2rem;
+}
+
+.tab-container {
+  display: flex;
+  gap: 0;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.tab-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab-button:hover {
+  color: #374151;
+  background: #f9fafb;
+}
+
+.tab-button.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.tab-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.tab-label {
+  font-weight: inherit;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .tab-navigation {
+    padding: 0 1rem;
+  }
+  
+  .tab-button {
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+  }
+  
+  .tab-label {
+    display: none;
+  }
+  
+  .tab-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}

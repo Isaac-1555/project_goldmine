@@ -1,0 +1,277 @@
+/* Settings Tab Styles */
+.settings-tab {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.settings-header {
+  margin-bottom: 2rem;
+}
+
+.settings-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.settings-header p {
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Settings Sections */
+.settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.settings-section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.section-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #3b82f6;
+}
+
+.section-header h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.section-content {
+  padding: 1.5rem;
+}
+
+/* Form Elements */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.form-group input,
+.prompt-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.prompt-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.disabled-input {
+  background: #f9fafb;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.prompt-textarea {
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+}
+
+.input-help {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+
+/* Theme Options */
+.theme-options {
+  display: flex;
+  gap: 1rem;
+}
+
+.theme-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 80px;
+}
+
+.theme-option:hover {
+  border-color: #3b82f6;
+}
+
+.theme-option.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.theme-preview {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.25rem;
+  border: 1px solid #d1d5db;
+}
+
+.light-preview {
+  background: linear-gradient(135deg, #ffffff 50%, #f3f4f6 50%);
+}
+
+.dark-preview {
+  background: linear-gradient(135deg, #1f2937 50%, #374151 50%);
+}
+
+/* Buttons */
+.save-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.save-button:hover {
+  background: #2563eb;
+}
+
+.button-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.danger-button {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.danger-button:hover {
+  background: #dc2626;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.save-success {
+  color: #059669;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Example Prompts */
+.example-prompts {
+  display: grid;
+  gap: 1rem;
+}
+
+.example-prompt {
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #f9fafb;
+}
+
+.example-prompt h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.example-prompt p {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+  font-style: italic;
+}
+
+.use-example-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.use-example-btn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .settings-tab {
+    padding: 1rem;
+  }
+  
+  .section-header {
+    padding: 1rem;
+  }
+  
+  .section-content {
+    padding: 1rem;
+  }
+  
+  .theme-options {
+    justify-content: center;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -1,0 +1,343 @@
+/* Record Tab Styles */
+.record-tab {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.record-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Initial Recording State */
+.record-initial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 3rem 0;
+}
+
+/* Action Options Layout */
+.action-options {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  width: 100%;
+  max-width: 800px;
+}
+
+.action-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.action-card h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.action-card p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.divider span {
+  padding: 0.5rem 1rem;
+  background: white;
+  border-radius: 1rem;
+  border: 1px solid #e5e7eb;
+}
+
+.record-button {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+}
+
+.record-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 35px rgba(239, 68, 68, 0.4);
+}
+
+.record-icon {
+  width: 3rem;
+  height: 3rem;
+  color: white;
+}
+
+.record-instruction {
+  font-size: 1.125rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* Upload Button */
+.upload-button {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+.upload-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 35px rgba(59, 130, 246, 0.4);
+}
+
+.upload-icon {
+  width: 3rem;
+  height: 3rem;
+  color: white;
+}
+
+/* Active Recording State */
+.record-active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem 0;
+}
+
+.record-controls {
+  display: flex;
+  gap: 1rem;
+}
+
+.control-button {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pause-button {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
+.pause-button:hover {
+  transform: scale(1.05);
+}
+
+.stop-button {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+}
+
+.stop-button:hover {
+  transform: scale(1.05);
+}
+
+.record-timer {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #ef4444;
+  font-family: 'Courier New', monospace;
+}
+
+.recording-status {
+  font-size: 1rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* Transcript Section */
+.transcript-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.transcript-label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.transcript-area {
+  min-height: 200px;
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: vertical;
+  background: #f9fafb;
+}
+
+.transcript-area:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+/* Save Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.save-modal {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+  margin: 1rem;
+}
+
+.save-modal h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #111827;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.cancel-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.cancel-button:hover {
+  background: #f9fafb;
+}
+
+.save-button {
+  padding: 0.5rem 1rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.save-button:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .record-tab {
+    padding: 1rem;
+  }
+  
+  .action-options {
+    flex-direction: column;
+    gap: 2rem;
+  }
+  
+  .divider {
+    transform: rotate(90deg);
+  }
+  
+  .record-button,
+  .upload-button {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .record-icon,
+  .upload-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  
+  .control-button {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .record-timer {
+    font-size: 1.5rem;
+  }
+}
