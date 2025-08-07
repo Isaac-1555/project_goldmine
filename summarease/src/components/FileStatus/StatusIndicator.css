@@ -1,0 +1,69 @@
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-icon {
+  flex-shrink: 0;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Size variants */
+.size-small .status-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.size-small .status-text {
+  font-size: 0.75rem;
+}
+
+.size-medium .status-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.size-medium .status-text {
+  font-size: 0.875rem;
+}
+
+.size-large .status-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.size-large .status-text {
+  font-size: 1rem;
+}
+
+/* Status colors */
+.status-processing {
+  color: var(--accent-color);
+}
+
+.status-completed {
+  color: var(--success-color);
+}
+
+.status-failed {
+  color: var(--error-color);
+}
+
+.status-unknown {
+  color: var(--text-muted);
+}
