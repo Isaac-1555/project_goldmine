@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Mic, Square, Play, Pause, X, AlertCircle } from 'lucide-react'
 import { useAuth } from '../Auth/AuthProvider'
 import { supabase } from '../../lib/supabase'
+import { processUploadedAudio } from '../../lib/audioProcessor'
 import './AudioRecorder.css'
 
 interface AudioRecorderProps {
@@ -162,15 +163,86 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
 
       if (dbError) throw dbError
 
-      // Trigger processing
-      console.log('Recording uploaded successfully, starting transcription:', fileData)
+      // Process the uploaded audio
+      console.log('Recording uploaded successfully, processing audio:', fileData)
       
-      // Start processing in background
-      import('../../lib/api').then(({ processFile }) => {
-        processFile(fileData.id).then(result => {
-          console.log('Processing result:', result)
-        })
-      })
+      try {
+        console.log('Processing uploaded audio...')
+        const { transcript, summary, tags } = await processUploadedAudio(audioBlob)
+        
+        // Save transcript if we have one
+        if (transcript && transcript !== "Audio file uploaded. Please use live transcription during recording for best results.") {
+          await supabase.from('transcripts').insert([
+            {
+              file_id: fileData.id,
+              content: transcript,
+              created_at: new Date().toISOString()
+            }
+          ])
+        }
+        
+        // Save summary
+        const { data: summaryData, error: summaryError } = await supabase
+          .from('summaries')
+          .insert({
+            file_id: fileData.id,
+            summary_text: summary,
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (!summaryError && summaryData) {
+          // Save tags
+          for (const tagName of tags) {
+            try {
+              let { data: existingTag } = await supabase
+                .from('tags')
+                .select('id')
+                .eq('name', tagName)
+                .maybeSingle()
+
+              let tagId: string
+              if (existingTag) {
+                tagId = existingTag.id
+              } else {
+                const { data: newTag } = await supabase
+                  .from('tags')
+                  .insert({ name: tagName })
+                  .select('id')
+                  .single()
+                if (newTag) tagId = newTag.id
+              }
+
+              if (tagId!) {
+                await supabase
+                  .from('summary_tags')
+                  .insert({
+                    summary_id: summaryData.id,
+                    tag_id: tagId
+                  })
+              }
+            } catch (error) {
+              console.error('Error saving tag:', tagName, error)
+            }
+          }
+        }
+        
+        // Update file status to completed
+        await supabase
+          .from('files')
+          .update({ status: 'completed' })
+          .eq('id', fileData.id)
+          
+        console.log('Audio processing completed successfully')
+      } catch (error) {
+        console.error('Audio processing failed:', error)
+        // Update file status to failed
+        await supabase
+          .from('files')
+          .update({ status: 'failed' })
+          .eq('id', fileData.id)
+      }
       
       onRecordingComplete?.(fileData.id)
       onClose?.()

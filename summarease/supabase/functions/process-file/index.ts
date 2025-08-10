@@ -151,21 +151,43 @@ serve(async (req) => {
 })
 
 async function transcribeAudio(audioData: Blob, genAI: GoogleGenerativeAI): Promise<string> {
-  // Convert audio blob to base64
-  const arrayBuffer = await audioData.arrayBuffer()
-  const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
-
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
-
-  const prompt = `
-    Please transcribe the following audio content. Provide only the transcribed text without any additional commentary or formatting.
+  try {
+    console.log(`Processing audio file, size: ${audioData.size} bytes`)
     
-    Audio data: ${base64Audio}
-  `
+    // Convert audio blob to base64
+    const arrayBuffer = await audioData.arrayBuffer()
+    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+    
+    console.log(`Audio converted to base64, length: ${base64Audio.length}`)
 
-  const result = await model.generateContent(prompt)
-  const response = await result.response
-  return response.text()
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+
+    const prompt = `
+      Please transcribe the audio content from this audio file. 
+      Return only the transcribed text without any formatting, headers, or additional commentary.
+      If no speech is detected, return "No speech detected in audio file."
+    `
+
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          mimeType: 'audio/webm',
+          data: base64Audio
+        }
+      }
+    ])
+    
+    const response = await result.response
+    const transcribedText = response.text()
+    
+    console.log(`Audio transcribed, length: ${transcribedText.length}`)
+    
+    return transcribedText
+  } catch (error) {
+    console.error('Error transcribing audio:', error)
+    throw new Error(`Failed to transcribe audio: ${error.message}`)
+  }
 }
 
 async function extractTextFromPDF(pdfData: Blob, genAI: GoogleGenerativeAI): Promise<string> {
@@ -295,40 +317,46 @@ async function extractTags(text: string, genAI: GoogleGenerativeAI): Promise<str
 
 async function saveTags(summaryId: string, tags: string[], supabase: any): Promise<void> {
   for (const tagName of tags) {
-    // Check if tag exists, create if not
-    let { data: existingTag, error: tagSelectError } = await supabase
-      .from('tags')
-      .select('id')
-      .eq('name', tagName)
-      .single()
-
-    if (tagSelectError && tagSelectError.code !== 'PGRST116') {
-      throw tagSelectError
-    }
-
-    let tagId: string
-
-    if (existingTag) {
-      tagId = existingTag.id
-    } else {
-      const { data: newTag, error: tagInsertError } = await supabase
+    try {
+      // Check if tag exists, create if not
+      let { data: existingTag, error: tagSelectError } = await supabase
         .from('tags')
-        .insert({ name: tagName })
         .select('id')
-        .single()
+        .eq('name', tagName)
+        .maybeSingle()
 
-      if (tagInsertError) {
-        throw tagInsertError
+      if (tagSelectError) {
+        console.error('Error checking tag:', tagSelectError)
+        continue
       }
-      tagId = newTag.id
-    }
 
-    // Link tag to summary
-    await supabase
-      .from('summary_tags')
-      .insert({
-        summary_id: summaryId,
-        tag_id: tagId
-      })
+      let tagId: string
+
+      if (existingTag) {
+        tagId = existingTag.id
+      } else {
+        const { data: newTag, error: tagInsertError } = await supabase
+          .from('tags')
+          .insert({ name: tagName })
+          .select('id')
+          .single()
+
+        if (tagInsertError) {
+          console.error('Error creating tag:', tagInsertError)
+          continue
+        }
+        tagId = newTag.id
+      }
+
+      // Link tag to summary
+      await supabase
+        .from('summary_tags')
+        .insert({
+          summary_id: summaryId,
+          tag_id: tagId
+        })
+    } catch (error) {
+      console.error('Error saving tag:', tagName, error)
+    }
   }
 }

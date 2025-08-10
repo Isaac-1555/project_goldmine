@@ -1,9 +1,80 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Mic, Square, Pause, Play, Upload } from 'lucide-react'
 import { AudioRecorder } from '../../Recording/AudioRecorder'
 import { FileUploadModal } from '../../Upload/FileUploadModal'
 import { createRecording } from '../../../lib/api'
+import { supabase } from '../../../lib/supabase'
+import { AudioTranscriber, processAudioTranscript } from '../../../lib/audioProcessor'
 import './RecordTab.css'
+
+// Helper function to save summary and tags
+async function saveProcessedAudio(fileId: string, summary: string, tags: string[]) {
+  // Save summary
+  const { data: summaryData, error: summaryError } = await supabase
+    .from('summaries')
+    .insert({
+      file_id: fileId,
+      summary_text: summary,
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single()
+
+  if (summaryError) {
+    throw new Error('Failed to save summary')
+  }
+
+  // Save tags
+  for (const tagName of tags) {
+    try {
+      // Check if tag exists, create if not
+      let { data: existingTag, error: tagSelectError } = await supabase
+        .from('tags')
+        .select('id')
+        .eq('name', tagName)
+        .maybeSingle()
+
+      if (tagSelectError) {
+        console.error('Error checking tag:', tagSelectError)
+        continue
+      }
+
+      let tagId: string
+
+      if (existingTag) {
+        tagId = existingTag.id
+      } else {
+        const { data: newTag, error: tagInsertError } = await supabase
+          .from('tags')
+          .insert({ name: tagName })
+          .select('id')
+          .single()
+
+        if (tagInsertError) {
+          console.error('Error creating tag:', tagInsertError)
+          continue
+        }
+        tagId = newTag.id
+      }
+
+      // Link tag to summary
+      await supabase
+        .from('summary_tags')
+        .insert({
+          summary_id: summaryData.id,
+          tag_id: tagId
+        })
+    } catch (error) {
+      console.error('Error saving tag:', tagName, error)
+    }
+  }
+
+  // Update file status to completed
+  await supabase
+    .from('files')
+    .update({ status: 'completed' })
+    .eq('id', fileId)
+}
 
 export const RecordTab: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false)
@@ -14,9 +85,16 @@ export const RecordTab: React.FC = () => {
   const [title, setTitle] = useState('')
   const [saving, setSaving] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [transcriber] = useState(() => new AudioTranscriber())
+  const [speechSupported, setSpeechSupported] = useState(false)
 
-  // Simulate recording timer
-  React.useEffect(() => {
+  // Check speech recognition support
+  useEffect(() => {
+    setSpeechSupported(transcriber.isSupported())
+  }, [transcriber])
+
+  // Recording timer
+  useEffect(() => {
     let interval: NodeJS.Timeout
     if (isRecording && !isPaused) {
       interval = setInterval(() => {
@@ -37,6 +115,17 @@ export const RecordTab: React.FC = () => {
     setIsPaused(false)
     setRecordingTime(0)
     setTranscript('')
+    
+    // Start live transcription if supported
+    if (speechSupported) {
+      try {
+        transcriber.startListening((newTranscript) => {
+          setTranscript(newTranscript)
+        })
+      } catch (error) {
+        console.error('Failed to start transcription:', error)
+      }
+    }
   }
 
   const handlePauseRecording = () => {
@@ -46,6 +135,13 @@ export const RecordTab: React.FC = () => {
   const handleStopRecording = () => {
     setIsRecording(false)
     setIsPaused(false)
+    
+    // Stop transcription and get final transcript
+    if (speechSupported) {
+      const finalTranscript = transcriber.stopListening()
+      setTranscript(finalTranscript)
+    }
+    
     setShowSaveModal(true)
   }
 
@@ -53,10 +149,28 @@ export const RecordTab: React.FC = () => {
     if (title.trim()) {
       try {
         setSaving(true)
+        
+        // First create the recording with transcript
         const fileId = await createRecording(title.trim(), transcript)
         
         if (fileId) {
           console.log('Recording saved successfully with ID:', fileId)
+          
+          // If we have transcript content, process it to generate summary
+          if (transcript.trim()) {
+            console.log('Processing transcript to generate summary...')
+            try {
+              const { summary, tags } = await processAudioTranscript(transcript)
+              
+              // Save the summary and tags to the database
+              await saveProcessedAudio(fileId, summary, tags)
+              console.log('Summary generated and saved successfully')
+            } catch (error) {
+              console.error('Failed to generate summary:', error)
+              // Don't fail the whole operation if summary generation fails
+            }
+          }
+          
           setShowSaveModal(false)
           setTitle('')
           setRecordingTime(0)
@@ -144,8 +258,15 @@ export const RecordTab: React.FC = () => {
             id="transcript"
             className="transcript-area"
             value={transcript}
-            placeholder={isRecording ? "Transcript will appear here as you speak..." : "Start recording to see live transcript"}
-            readOnly
+            placeholder={
+              !speechSupported 
+                ? "Live transcription not supported in this browser. You can manually enter transcript after recording."
+                : isRecording 
+                  ? "Transcript will appear here as you speak..." 
+                  : "Start recording to see live transcript"
+            }
+            readOnly={speechSupported}
+            onChange={!speechSupported ? (e) => setTranscript(e.target.value) : undefined}
           />
         </div>
       </div>

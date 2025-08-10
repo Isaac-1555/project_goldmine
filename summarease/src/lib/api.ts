@@ -314,9 +314,9 @@ async function saveTags(summaryId: string, tags: string[]): Promise<void> {
         .from('tags')
         .select('id')
         .eq('name', tagName)
-        .single()
+        .maybeSingle()
 
-      if (tagSelectError && tagSelectError.code !== 'PGRST116') {
+      if (tagSelectError) {
         console.error('Error checking tag:', tagSelectError)
         continue
       }

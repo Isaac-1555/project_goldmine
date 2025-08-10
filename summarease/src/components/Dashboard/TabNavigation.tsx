@@ -19,20 +19,26 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, onTabCh
 
   return (
     <nav className="tab-navigation">
-      <div className="tab-container">
-        {tabs.map((tab) => {
-          const Icon = tab.icon
-          return (
-            <button
-              key={tab.id}
-              className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => onTabChange(tab.id)}
-            >
-              <Icon className="tab-icon" />
-              <span className="tab-label">{tab.label}</span>
-            </button>
-          )
-        })}
+      <div className="navbar-content">
+        <div className="navbar-brand">
+          <div className="logo-placeholder"></div>
+          <h1 className="app-title">Summarease</h1>
+        </div>
+        <div className="tab-container">
+          {tabs.map((tab) => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.id}
+                className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => onTabChange(tab.id)}
+              >
+                <Icon className="tab-icon" />
+                <span className="tab-label">{tab.label}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
     </nav>
   )
