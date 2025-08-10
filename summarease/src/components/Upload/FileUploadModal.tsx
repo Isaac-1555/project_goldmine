@@ -7,9 +7,17 @@ interface FileUploadModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: (fileId: string) => void
+  onFilesSelected?: (files: File[]) => void // New prop for notebook use
+  mode?: 'upload' | 'select' // New prop to determine behavior
 }
 
-export const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const FileUploadModal: React.FC<FileUploadModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
+  onFilesSelected,
+  mode = 'upload' 
+}) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -67,6 +75,14 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClos
   const handleUpload = async () => {
     if (!selectedFile) return
 
+    // If in select mode, just return the files
+    if (mode === 'select' && onFilesSelected) {
+      onFilesSelected([selectedFile])
+      handleClose()
+      return
+    }
+
+    // Otherwise, upload normally
     try {
       setUploading(true)
       setError('')
@@ -160,17 +176,19 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClos
                 </button>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="file-title">Title</label>
-                <input
-                  id="file-title"
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Enter a title for your document"
-                  disabled={uploading}
-                />
-              </div>
+              {mode === 'upload' && (
+                <div className="form-group">
+                  <label htmlFor="file-title">Title</label>
+                  <input
+                    id="file-title"
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Enter a title for your document"
+                    disabled={uploading}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -186,9 +204,9 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClos
           <button 
             onClick={handleUpload}
             className="upload-button"
-            disabled={!selectedFile || !title.trim() || uploading}
+            disabled={!selectedFile || (mode === 'upload' && !title.trim()) || uploading}
           >
-            {uploading ? 'Uploading...' : 'Upload & Process'}
+            {uploading ? 'Uploading...' : mode === 'select' ? 'Add to Notebook' : 'Upload & Process'}
           </button>
         </div>
       </div>

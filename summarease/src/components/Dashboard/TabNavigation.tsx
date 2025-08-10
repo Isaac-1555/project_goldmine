@@ -1,8 +1,8 @@
 import React from 'react'
-import { Mic, Eye, BookOpen, Settings } from 'lucide-react'
+import { NotebookPen, Eye, BookOpen, Settings } from 'lucide-react'
 import './TabNavigation.css'
 
-export type TabType = 'record' | 'view' | 'study-tools' | 'settings'
+export type TabType = 'notebook' | 'view' | 'study-tools' | 'settings'
 
 interface TabNavigationProps {
   activeTab: TabType
@@ -11,7 +11,7 @@ interface TabNavigationProps {
 
 export const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, onTabChange }) => {
   const tabs = [
-    { id: 'record' as TabType, label: 'Record', icon: Mic },
+    { id: 'notebook' as TabType, label: 'Notebook', icon: NotebookPen },
     { id: 'view' as TabType, label: 'View', icon: Eye },
     { id: 'study-tools' as TabType, label: 'Study Tools', icon: BookOpen },
     { id: 'settings' as TabType, label: 'Settings', icon: Settings },

@@ -6,7 +6,7 @@ export interface FileWithMetadata {
   file_id?: string // From RPC function
   title: string
   filename?: string // Optional - might be derived from storage_path
-  file_type: 'audio' | 'pdf' | 'docx'
+  file_type: 'audio' | 'pdf' | 'docx' | 'mixed' | 'notebook'
   status: 'processing' | 'completed' | 'failed'
   created_at: string
   storage_path?: string
@@ -98,6 +98,12 @@ export async function getFileDetails(fileId: string) {
 
     if (fileError) throw fileError
 
+    // For notebook files, get separate content types
+    if (file.file_type === 'notebook') {
+      return getNotebookDetails(fileId)
+    }
+
+    // Legacy support for other file types
     // Get transcript (might not exist)
     const { data: transcript } = await supabase
       .from('transcripts')
@@ -128,6 +134,69 @@ export async function getFileDetails(fileId: string) {
     }
   } catch (error: any) {
     console.error('Error fetching file details:', error)
+    throw error
+  }
+}
+
+/**
+ * Get notebook details with separate content types
+ */
+export async function getNotebookDetails(fileId: string) {
+  try {
+    // Get file record
+    const { data: file, error: fileError } = await supabase
+      .from('files')
+      .select('*')
+      .eq('id', fileId)
+      .single()
+
+    if (fileError) throw fileError
+
+    // Get audio transcript
+    const { data: transcript } = await supabase
+      .from('transcripts')
+      .select('*')
+      .eq('file_id', fileId)
+      .maybeSingle()
+
+    // Get notes
+    const { data: notes } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('file_id', fileId)
+      .maybeSingle()
+
+    // Get documents
+    const { data: documents } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('file_id', fileId)
+
+    // Get summary with tags
+    const { data: summary } = await supabase
+      .from('summaries')
+      .select(`
+        *,
+        summary_tags (
+          tags (
+            id,
+            name
+          )
+        )
+      `)
+      .eq('file_id', fileId)
+      .maybeSingle()
+
+    return {
+      file,
+      transcript: transcript || null,
+      notes: notes || null,
+      documents: documents || [],
+      summary: summary || null,
+      tags: summary?.summary_tags?.map((st: any) => st.tags) || []
+    }
+  } catch (error: any) {
+    console.error('Error fetching notebook details:', error)
     throw error
   }
 }
@@ -260,47 +329,108 @@ export async function uploadFile(file: File, title?: string): Promise<string | n
 }
 
 /**
- * Create a new file record for a recording
+ * Create a unified content entry with multiple sources
  */
-export async function createRecording(title: string, transcriptText: string = ''): Promise<string | null> {
+export async function createUnifiedContent(
+  title: string, 
+  sources: {
+    audioTranscript?: string
+    uploadedFiles?: File[]
+    notes?: string
+    recordingDuration?: number
+  }
+): Promise<string | null> {
   try {
     const { data: user } = await supabase.auth.getUser()
     if (!user.user) {
       throw new Error('User not authenticated')
     }
 
-    const { data, error } = await supabase
+    // Create main file record
+    const { data: fileData, error: fileError } = await supabase
       .from('files')
       .insert([
         {
           title,
-          file_type: 'audio',
+          file_type: 'notebook', // Changed from 'mixed' to 'notebook'
           status: 'processing',
           user_id: user.user.id,
-          storage_path: `audio/${user.user.id}/${title.replace(/[^a-zA-Z0-9]/g, '_')}.audio`
+          storage_path: `notebooks/${user.user.id}/${title.replace(/[^a-zA-Z0-9]/g, '_')}`
         }
       ])
       .select()
       .single()
 
-    if (error) throw error
+    if (fileError) throw fileError
 
-    // If there's transcript text, create a transcript record
-    if (transcriptText.trim()) {
+    // Handle audio transcript
+    if (sources.audioTranscript?.trim()) {
       await supabase.from('transcripts').insert([
         {
-          file_id: data.id,
-          content: transcriptText,
+          file_id: fileData.id,
+          content: sources.audioTranscript,
+          duration: sources.recordingDuration || null,
           created_at: new Date().toISOString()
         }
       ])
     }
 
-    return data.id
+    // Handle uploaded files as separate documents
+    if (sources.uploadedFiles && sources.uploadedFiles.length > 0) {
+      for (const file of sources.uploadedFiles) {
+        try {
+          // Process document client-side
+          const { extractedText } = await processDocumentClientSide(file)
+          
+          // Upload file to storage
+          const fileName = `${user.user.id}/${Date.now()}_${file.name}`
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('files')
+            .upload(fileName, file)
+          
+          if (uploadError) throw uploadError
+          
+          // Save to documents table
+          await supabase.from('documents').insert([
+            {
+              file_id: fileData.id,
+              original_filename: file.name,
+              file_type: file.type,
+              storage_path: uploadData.path,
+              extracted_text: extractedText,
+              created_at: new Date().toISOString()
+            }
+          ])
+        } catch (error) {
+          console.error('Error processing uploaded file:', file.name, error)
+        }
+      }
+    }
+
+    // Handle notes
+    if (sources.notes?.trim()) {
+      await supabase.from('notes').insert([
+        {
+          file_id: fileData.id,
+          content: sources.notes.replace(/<[^>]*>/g, '').trim(), // Plain text
+          html_content: sources.notes, // Rich text HTML
+          created_at: new Date().toISOString()
+        }
+      ])
+    }
+
+    return fileData.id
   } catch (error: any) {
-    console.error('Error creating recording:', error)
+    console.error('Error creating unified content:', error)
     return null
   }
+}
+
+/**
+ * Create a new file record for a recording (legacy function)
+ */
+export async function createRecording(title: string, transcriptText: string = ''): Promise<string | null> {
+  return createUnifiedContent(title, { audioTranscript: transcriptText })
 }
 
 /**

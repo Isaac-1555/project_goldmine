@@ -45,7 +45,7 @@ export interface Database {
           user_id: string
           folder_id: string | null
           title: string
-          file_type: 'audio' | 'pdf' | 'docx'
+          file_type: 'audio' | 'pdf' | 'docx' | 'mixed' | 'notebook'
           storage_path: string
           status: 'processing' | 'completed' | 'failed'
           created_at: string
@@ -55,7 +55,7 @@ export interface Database {
           user_id: string
           folder_id?: string | null
           title: string
-          file_type: 'audio' | 'pdf' | 'docx'
+          file_type: 'audio' | 'pdf' | 'docx' | 'mixed' | 'notebook'
           storage_path: string
           status?: 'processing' | 'completed' | 'failed'
           created_at?: string
@@ -65,7 +65,7 @@ export interface Database {
           user_id?: string
           folder_id?: string | null
           title?: string
-          file_type?: 'audio' | 'pdf' | 'docx'
+          file_type?: 'audio' | 'pdf' | 'docx' | 'mixed' | 'notebook'
           storage_path?: string
           status?: 'processing' | 'completed' | 'failed'
           created_at?: string

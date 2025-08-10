@@ -18,13 +18,6 @@
   background: white;
 }
 
-.dashboard-sidebar {
-  width: 350px;
-  border-left: 1px solid #e5e7eb;
-  background: white;
-  overflow: hidden;
-}
-
 /* Responsive Design */
 @media (max-width: 1024px) {
   .dashboard-sidebar {

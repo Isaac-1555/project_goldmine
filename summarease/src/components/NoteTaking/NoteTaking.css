@@ -1,0 +1,151 @@
+.note-taking {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.note-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s;
+}
+
+.toolbar-button:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.toolbar-button:active {
+  background: #d1d5db;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: #d1d5db;
+  margin: 0 4px;
+}
+
+.note-editor {
+  flex: 1;
+  padding: 20px;
+  outline: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1f2937;
+  overflow-y: auto;
+  min-height: 200px;
+}
+
+.note-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.note-editor:focus {
+  outline: none;
+}
+
+/* Rich text formatting styles */
+.note-editor h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin: 1.5rem 0 1rem 0;
+  line-height: 1.2;
+}
+
+.note-editor h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.75rem 0;
+  line-height: 1.3;
+}
+
+.note-editor h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+.note-editor p {
+  margin: 0.75rem 0;
+}
+
+.note-editor ul,
+.note-editor ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.note-editor li {
+  margin: 0.25rem 0;
+}
+
+.note-editor strong {
+  font-weight: 600;
+}
+
+.note-editor em {
+  font-style: italic;
+}
+
+.note-editor u {
+  text-decoration: underline;
+}
+
+.note-editor blockquote {
+  border-left: 4px solid #e5e7eb;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .note-toolbar {
+    padding: 8px 12px;
+    gap: 4px;
+  }
+  
+  .toolbar-button {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .note-editor {
+    padding: 16px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+}
