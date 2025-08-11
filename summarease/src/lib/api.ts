@@ -14,6 +14,13 @@ export interface FileWithMetadata {
   summary_text?: string
   summary?: string
   tags?: string[]
+  // For local notebooks
+  localNotebookData?: {
+    notes: string
+    audioTranscript: string
+    uploadedFiles: any[]
+    recordingTime: number
+  }
 }
 
 export interface ProcessingResult {
@@ -99,7 +106,7 @@ export async function getFileDetails(fileId: string) {
     if (fileError) throw fileError
 
     // For notebook files, get separate content types
-    if (file.file_type === 'notebook') {
+    if (file.file_type === 'audio' || file.file_type === 'notebook') {
       return getNotebookDetails(fileId)
     }
 
@@ -352,10 +359,10 @@ export async function createUnifiedContent(
       .insert([
         {
           title,
-          file_type: 'notebook', // Changed from 'mixed' to 'notebook'
-          status: 'processing',
+          file_type: 'audio',
+          status: 'completed', // Set as completed since we're processing client-side
           user_id: user.user.id,
-          storage_path: `notebooks/${user.user.id}/${title.replace(/[^a-zA-Z0-9]/g, '_')}`
+          storage_path: `notebooks/${user.user.id}/${Date.now()}_${title.replace(/[^a-zA-Z0-9]/g, '_')}`
         }
       ])
       .select()
@@ -409,7 +416,8 @@ export async function createUnifiedContent(
 
     // Handle notes
     if (sources.notes?.trim()) {
-      await supabase.from('notes').insert([
+      console.log('Saving notes to database:', sources.notes)
+      const { error: notesError } = await supabase.from('notes').insert([
         {
           file_id: fileData.id,
           content: sources.notes.replace(/<[^>]*>/g, '').trim(), // Plain text
@@ -417,6 +425,12 @@ export async function createUnifiedContent(
           created_at: new Date().toISOString()
         }
       ])
+      
+      if (notesError) {
+        console.error('Error saving notes:', notesError)
+      } else {
+        console.log('Notes saved successfully')
+      }
     }
 
     return fileData.id

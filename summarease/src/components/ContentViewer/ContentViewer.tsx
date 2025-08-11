@@ -30,13 +30,19 @@ interface FileDetails {
     id: string
     name: string
   }>
+  notes?: {
+    id: string
+    content: string
+    html_content: string
+  } | null
+  documents?: any[]
 }
 
 export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDelete }) => {
   const [fileDetails, setFileDetails] = useState<FileDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'tags'>('summary')
+  const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'notes' | 'tags'>('summary')
   const [isEditing, setIsEditing] = useState(false)
   const [editedSummary, setEditedSummary] = useState('')
   const [saving, setSaving] = useState(false)
@@ -45,17 +51,47 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
 
   useEffect(() => {
     if (file?.id) {
-      loadFileDetails(file.id)
+      // If it's a local notebook, don't fetch from API
+      if (file.localNotebookData) {
+        console.log('Local notebook data:', file.localNotebookData)
+        console.log('Notes content:', file.localNotebookData.notes)
+        
+        setFileDetails({
+          file: {
+            id: file.id,
+            title: file.title,
+            file_type: file.file_type,
+            status: file.status,
+            created_at: file.created_at
+          },
+          transcript: file.localNotebookData.audioTranscript && file.localNotebookData.audioTranscript.trim() ? {
+            id: 'local',
+            content: file.localNotebookData.audioTranscript
+          } : null,
+          summary: null,
+          tags: [],
+          notes: file.localNotebookData.notes && file.localNotebookData.notes.trim() ? {
+            id: 'local',
+            content: file.localNotebookData.notes,
+            html_content: file.localNotebookData.notes
+          } : null,
+          documents: file.localNotebookData.uploadedFiles || []
+        })
+        setLoading(false)
+      } else {
+        loadFileDetails(file.id)
+      }
     } else {
       setFileDetails(null)
     }
-  }, [file?.id])
+  }, [file?.id, file?.localNotebookData])
 
   const loadFileDetails = async (id: string) => {
     try {
       setLoading(true)
       setError('')
       const details = await getFileDetails(id)
+      console.log('Loaded file details from database:', details)
       setFileDetails(details)
       setEditedSummary(details.summary?.summary_text || '')
     } catch (err: any) {
@@ -226,6 +262,14 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
           Transcript
         </button>
         <button
+          className={`tab ${activeTab === 'notes' ? 'active' : ''}`}
+          onClick={() => setActiveTab('notes')}
+          disabled={!fileDetails.notes}
+        >
+          <Edit3 className="tab-icon" />
+          Notes {fileDetails.notes ? '(has content)' : '(empty)'}
+        </button>
+        <button
           className={`tab ${activeTab === 'tags' ? 'active' : ''}`}
           onClick={() => setActiveTab('tags')}
         >
@@ -309,6 +353,26 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                 {fileDetails.file.status === 'processing' && (
                   <span>Transcript is being generated...</span>
                 )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'notes' && (
+          <div className="notes-content">
+            {fileDetails.notes ? (
+              <div className="notes-text">
+                {fileDetails.notes.html_content ? (
+                  <div dangerouslySetInnerHTML={{ __html: fileDetails.notes.html_content }} />
+                ) : (
+                  fileDetails.notes.content.split('\n').map((paragraph, index) => (
+                    <p key={`notes-p-${index}`}>{paragraph}</p>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="no-content">
+                <p>No notes available.</p>
               </div>
             )}
           </div>

@@ -29,7 +29,10 @@ export const Dashboard: React.FC = () => {
           isRecording: false, // Reset recording state
           isPaused: false, // Reset pause state
           leftPanelWidth: parsed.leftPanelWidth || 50,
-          saving: false
+          saving: false,
+          localSaving: false,
+          isLocalSave: false,
+          localSaveId: undefined
         }
       }
     } catch (error) {
@@ -45,7 +48,10 @@ export const Dashboard: React.FC = () => {
       isRecording: false,
       isPaused: false,
       leftPanelWidth: 50,
-      saving: false
+      saving: false,
+      localSaving: false,
+      isLocalSave: false,
+      localSaveId: undefined
     }
   })
 

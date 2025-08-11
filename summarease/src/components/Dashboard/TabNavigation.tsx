@@ -1,5 +1,5 @@
 import React from 'react'
-import { NotebookPen, Eye, BookOpen, Settings } from 'lucide-react'
+import { NotebookPen, Mic, Eye, BookOpen, Settings } from 'lucide-react'
 import './TabNavigation.css'
 
 export type TabType = 'notebook' | 'view' | 'study-tools' | 'settings'
