@@ -15,13 +15,33 @@ export const NoteTaking: React.FC<NoteTakingProps> = ({
 }) => {
   const [content, setContent] = useState(initialContent)
   const editorRef = useRef<HTMLDivElement>(null)
+  const isInitializedRef = useRef<boolean>(false)
 
+  console.log('NoteTaking render - initialContent:', initialContent, 'current content:', content) // Debug log
+
+  // Initialize content on mount and update only when necessary
   useEffect(() => {
-    if (editorRef.current && initialContent !== content) {
+    if (!isInitializedRef.current && editorRef.current) {
+      // First time initialization
+      console.log('NoteTaking first initialization with:', initialContent) // Debug log
       editorRef.current.innerHTML = initialContent
       setContent(initialContent)
+      isInitializedRef.current = true
     }
   }, [initialContent])
+
+  // Handle external content updates (like restoring from localStorage)
+  // Only update if the content is different and we're not currently focused
+  useEffect(() => {
+    if (isInitializedRef.current && initialContent !== content && editorRef.current) {
+      const isEditorFocused = document.activeElement === editorRef.current
+      if (!isEditorFocused) {
+        console.log('NoteTaking updating content from external source:', initialContent) // Debug log
+        editorRef.current.innerHTML = initialContent
+        setContent(initialContent)
+      }
+    }
+  }, [initialContent, content])
 
   const handleInput = () => {
     if (editorRef.current) {

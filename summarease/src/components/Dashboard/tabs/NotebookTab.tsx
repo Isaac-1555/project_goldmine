@@ -6,6 +6,7 @@ import { supabase } from '../../../lib/supabase'
 import { AudioTranscriber, processAudioTranscript } from '../../../lib/audioProcessor'
 import { ResizableDivider } from '../../ResizableDivider'
 import { NoteTaking } from '../../NoteTaking'
+import { useNotebookState, type NotebookState } from '../../../hooks/useNotebookState'
 import './RecordTab.css'
 
 // Helper function to save summary and tags
@@ -77,27 +78,40 @@ async function saveProcessedAudio(fileId: string, summary: string, tags: string[
     .eq('id', fileId)
 }
 
-interface NotebookState {
-  title: string
-  notes: string
-  audioTranscript: string
-  uploadedFiles: File[]
-  recordingTime: number
-  isRecording: boolean
-  isPaused: boolean
-  leftPanelWidth: number
-  saving: boolean
-  localSaving: boolean
-  isLocalSave: boolean
-  localSaveId?: string
-}
-
 interface NotebookTabProps {
-  state: NotebookState
-  updateState: (updates: Partial<NotebookState>) => void
+  // Optional props for external state management (for backward compatibility)
+  state?: NotebookState
+  updateState?: (updates: Partial<NotebookState>) => void
 }
 
-export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) => {
+export const NotebookTab: React.FC<NotebookTabProps> = ({ 
+  state: externalState, 
+  updateState: externalUpdateState 
+}) => {
+  // Use internal state management if no external state is provided
+  const [internalState, internalActions] = useNotebookState()
+  
+  // Use external state if provided, otherwise use internal state
+  const state = externalState || internalState
+  const {
+    setTitle,
+    setNotes,
+    setAudioTranscript,
+    addUploadedFiles,
+    removeUploadedFile,
+    startRecording,
+    pauseRecording,
+    stopRecording,
+    updateRecordingTime,
+    setLeftPanelWidth,
+    updateState: internalUpdateState,
+    saveLocally,
+    clearLocalStorage,
+    resetNotebook
+  } = internalActions
+  
+  // Use external updateState if provided, otherwise use internal
+  const updateState = externalUpdateState || internalUpdateState
   // Extract state values
   const {
     title,
@@ -124,27 +138,18 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
     setSpeechSupported(transcriber.isSupported())
   }, [transcriber])
 
-  // Auto-save every 5 seconds (only if title exists)
+  // Recording timer (only if using external state management)
   useEffect(() => {
-    const autoSaveInterval = setInterval(() => {
-      if (title.trim() && (notes.trim() || audioTranscript.trim())) {
-        handleLocalSave()
-      }
-    }, 5000)
-
-    return () => clearInterval(autoSaveInterval)
-  }, [title, notes, audioTranscript])
-
-  // Recording timer
-  useEffect(() => {
+    if (!externalState) return // Skip if using internal state management
+    
     let interval: NodeJS.Timeout
     if (isRecording && !isPaused) {
       interval = setInterval(() => {
-        updateState({ recordingTime: recordingTime + 1 })
+        updateRecordingTime(recordingTime + 1)
       }, 1000)
     }
     return () => clearInterval(interval)
-  }, [isRecording, isPaused, recordingTime, updateState])
+  }, [isRecording, isPaused, recordingTime, updateRecordingTime, externalState])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -158,18 +163,13 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
       return
     }
     
-    updateState({
-      isRecording: true,
-      isPaused: false,
-      recordingTime: 0,
-      audioTranscript: ''
-    })
+    startRecording()
     
     // Start live transcription if supported
     if (speechSupported) {
       try {
         transcriber.startListening((newTranscript) => {
-          updateState({ audioTranscript: newTranscript })
+          setAudioTranscript(newTranscript)
         })
       } catch (error) {
         console.error('Failed to start transcription:', error)
@@ -178,16 +178,16 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
   }
 
   const handlePauseRecording = () => {
-    updateState({ isPaused: !isPaused })
+    pauseRecording()
   }
 
   const handleStopRecording = () => {
-    updateState({ isRecording: false, isPaused: false })
+    stopRecording()
     
     // Stop transcription and get final transcript
     if (speechSupported) {
       const finalTranscript = transcriber.stopListening()
-      updateState({ audioTranscript: finalTranscript })
+      setAudioTranscript(finalTranscript)
     }
   }
 
@@ -196,16 +196,23 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
       alert('Please enter a notebook title before uploading files. The notebook won\'t start saving without a title.')
       return
     }
-    updateState({ uploadedFiles: [...uploadedFiles, ...files] })
+    addUploadedFiles(files)
   }
 
   const handleRemoveFile = (index: number) => {
-    updateState({ uploadedFiles: uploadedFiles.filter((_, i) => i !== index) })
+    removeUploadedFile(index)
   }
 
   const handleLocalSave = async () => {
     if (localSaving || !title.trim()) return
     
+    // Use the hook's saveLocally method if available, otherwise fallback to manual save
+    if (!externalState) {
+      await saveLocally()
+      return
+    }
+    
+    // Fallback for external state management
     try {
       updateState({ localSaving: true })
       
@@ -289,33 +296,39 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
           }
         }
         
-        // Remove from local storage if it was a local save
-        if (localSaveId) {
-          try {
-            const existingLocal = JSON.parse(localStorage.getItem('summarease-local-notebooks') || '[]')
-            const filtered = existingLocal.filter((item: any) => item.id !== localSaveId)
-            localStorage.setItem('summarease-local-notebooks', JSON.stringify(filtered))
-          } catch (error) {
-            console.error('Error removing local save:', error)
+        // Clear local storage and reset form
+        if (!externalState) {
+          clearLocalStorage()
+          resetNotebook()
+        } else {
+          // Fallback for external state management
+          if (localSaveId) {
+            try {
+              const existingLocal = JSON.parse(localStorage.getItem('summarease-local-notebooks') || '[]')
+              const filtered = existingLocal.filter((item: any) => item.id !== localSaveId)
+              localStorage.setItem('summarease-local-notebooks', JSON.stringify(filtered))
+            } catch (error) {
+              console.error('Error removing local save:', error)
+            }
           }
-        }
-        
-        // Reset form
-        updateState({
-          title: '',
-          audioTranscript: '',
-          notes: '',
-          uploadedFiles: [],
-          recordingTime: 0,
-          isLocalSave: false,
-          localSaveId: undefined
-        })
-        
-        // Clear localStorage
-        try {
-          localStorage.removeItem('summarease-notebook-state')
-        } catch (error) {
-          console.error('Error clearing notebook state:', error)
+          
+          // Reset form
+          updateState({
+            title: '',
+            audioTranscript: '',
+            notes: '',
+            uploadedFiles: [],
+            recordingTime: 0,
+            isLocalSave: false,
+            localSaveId: undefined
+          })
+          
+          // Clear localStorage
+          try {
+            localStorage.removeItem('summarease-notebook-state')
+          } catch (error) {
+            console.error('Error clearing notebook state:', error)
+          }
         }
         
         alert('Content saved successfully!')
@@ -331,7 +344,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
   }
 
   const handleUploadSuccess = (files: File[]) => {
-    updateState({ uploadedFiles: [...uploadedFiles, ...files] })
+    addUploadedFiles(files)
     setShowUploadModal(false)
   }
 
@@ -345,7 +358,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
             className="title-input"
             placeholder="Enter notebook title..."
             value={title}
-            onChange={(e) => updateState({ title: e.target.value })}
+            onChange={(e) => setTitle(e.target.value)}
           />
           <div className="save-buttons">
             <button 
@@ -385,9 +398,9 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
         {!isRecording ? (
           <div className="recording-controls">
             <button 
-              className="record-button" 
+              className="record-button icon-only" 
               onClick={handleStartRecording}
-              title="Start audio recording"
+              title="Start Recording"
             >
               <Mic className="record-icon" />
             </button>
@@ -404,12 +417,14 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
               <button 
                 className="control-button pause-button"
                 onClick={handlePauseRecording}
+                title={isPaused ? "Resume Recording" : "Pause Recording"}
               >
                 {isPaused ? <Play /> : <Pause />}
               </button>
               <button 
                 className="control-button stop-button"
                 onClick={handleStopRecording}
+                title="Stop Recording"
               >
                 <Square />
               </button>
@@ -437,7 +452,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
                   : "Start recording to see live transcript"
             }
             readOnly={speechSupported && isRecording}
-            onChange={!speechSupported || !isRecording ? (e) => updateState({ audioTranscript: e.target.value }) : undefined}
+            onChange={!speechSupported || !isRecording ? (e) => setAudioTranscript(e.target.value) : undefined}
           />
         </div>
       </div>
@@ -451,9 +466,9 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
         
         <div className="upload-button-container">
           <button 
-            className="upload-button"
+            className="upload-button icon-only"
             onClick={() => setShowUploadModal(true)}
-            title="Upload documents (PDF, DOCX)"
+            title="Add Documents"
           >
             <Upload className="upload-icon" />
           </button>
@@ -491,7 +506,8 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
             alert('Please enter a notebook title before taking notes. The notebook won\'t start saving without a title.')
             return
           }
-          updateState({ notes: newNotes })
+          console.log('Notes changed:', newNotes) // Debug log
+          setNotes(newNotes)
         }}
         placeholder="Start typing your notes here..."
       />
@@ -504,7 +520,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({ state, updateState }) 
         leftContent={renderLeftPanel()}
         rightContent={renderRightPanel()}
         initialLeftWidth={leftPanelWidth}
-        onResize={(width) => updateState({ leftPanelWidth: width })}
+        onResize={(width) => setLeftPanelWidth(width)}
         minLeftWidth={30}
         maxLeftWidth={70}
       />
