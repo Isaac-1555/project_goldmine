@@ -1,24 +1,27 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Mic, Square, Play, Pause, X, AlertCircle } from 'lucide-react'
-import { useAuth } from '../Auth/AuthProvider'
-import { supabase } from '../../lib/supabase'
-import { processUploadedAudio } from '../../lib/audioProcessor'
 import './AudioRecorder.css'
 
+export interface AudioRecording {
+  id: string
+  name: string
+  blob: Blob
+  duration: number
+  timestamp: Date
+}
+
 interface AudioRecorderProps {
-  onRecordingComplete?: (fileId: string) => void
+  onRecordingComplete?: (recording: AudioRecording) => void
   onClose?: () => void
 }
 
 export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, onClose }) => {
-  const { user } = useAuth()
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [title, setTitle] = useState('')
 
@@ -130,128 +133,24 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  const uploadRecording = async () => {
-    if (!audioBlob || !user || !title.trim()) return
-
-    setUploading(true)
-    setError('')
+  const saveRecording = async () => {
+    if (!audioBlob || !title.trim()) return
 
     try {
-      // Generate unique file path
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.webm`
-      const filePath = `${user.id}/${fileName}`
-
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('files')
-        .upload(filePath, audioBlob)
-
-      if (uploadError) throw uploadError
-
-      // Create file record in database
-      const { data: fileData, error: dbError } = await supabase
-        .from('files')
-        .insert({
-          user_id: user.id,
-          title: title.trim(),
-          file_type: 'audio',
-          storage_path: filePath,
-          status: 'processing'
-        })
-        .select()
-        .single()
-
-      if (dbError) throw dbError
-
-      // Process the uploaded audio
-      console.log('Recording uploaded successfully, processing audio:', fileData)
-      
-      try {
-        console.log('Processing uploaded audio...')
-        const { transcript, summary, tags } = await processUploadedAudio(audioBlob)
-        
-        // Save transcript if we have one
-        if (transcript && transcript !== "Audio file uploaded. Please use live transcription during recording for best results.") {
-          await supabase.from('transcripts').insert([
-            {
-              file_id: fileData.id,
-              content: transcript,
-              created_at: new Date().toISOString()
-            }
-          ])
-        }
-        
-        // Save summary
-        const { data: summaryData, error: summaryError } = await supabase
-          .from('summaries')
-          .insert({
-            file_id: fileData.id,
-            summary_text: summary,
-            created_at: new Date().toISOString()
-          })
-          .select()
-          .single()
-
-        if (!summaryError && summaryData) {
-          // Save tags
-          for (const tagName of tags) {
-            try {
-              let { data: existingTag } = await supabase
-                .from('tags')
-                .select('id')
-                .eq('name', tagName)
-                .maybeSingle()
-
-              let tagId: string
-              if (existingTag) {
-                tagId = existingTag.id
-              } else {
-                const { data: newTag } = await supabase
-                  .from('tags')
-                  .insert({ name: tagName })
-                  .select('id')
-                  .single()
-                if (newTag) tagId = newTag.id
-              }
-
-              if (tagId!) {
-                await supabase
-                  .from('summary_tags')
-                  .insert({
-                    summary_id: summaryData.id,
-                    tag_id: tagId
-                  })
-              }
-            } catch (error) {
-              console.error('Error saving tag:', tagName, error)
-            }
-          }
-        }
-        
-        // Update file status to completed
-        await supabase
-          .from('files')
-          .update({ status: 'completed' })
-          .eq('id', fileData.id)
-          
-        console.log('Audio processing completed successfully')
-      } catch (error) {
-        console.error('Audio processing failed:', error)
-        // Update file status to failed
-        await supabase
-          .from('files')
-          .update({ status: 'failed' })
-          .eq('id', fileData.id)
+      const recording: AudioRecording = {
+        id: `recording_${Date.now()}_${Math.random().toString(36).substring(2)}`,
+        name: title.trim(),
+        blob: audioBlob,
+        duration: recordingTime,
+        timestamp: new Date()
       }
       
-      onRecordingComplete?.(fileData.id)
+      onRecordingComplete?.(recording)
       onClose?.()
       
     } catch (err: any) {
-      console.error('Upload error:', err)
-      setError(err.message || 'Failed to upload recording')
-    } finally {
-      setUploading(false)
+      console.error('Save error:', err)
+      setError(err.message || 'Failed to save recording')
     }
   }
 
@@ -362,11 +261,11 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                   Record Again
                 </button>
                 <button 
-                  onClick={uploadRecording} 
+                  onClick={saveRecording} 
                   className="upload-button"
-                  disabled={uploading || !title.trim()}
+                  disabled={!title.trim()}
                 >
-                  {uploading ? 'Uploading...' : 'Save & Transcribe'}
+                  Save Recording
                 </button>
               </div>
             </div>

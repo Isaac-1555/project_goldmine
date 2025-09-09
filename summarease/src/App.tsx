@@ -6,6 +6,7 @@ import { SignUpForm } from './components/Auth/SignUpForm'
 import { Dashboard } from './components/Dashboard/Dashboard'
 import { LandingPage } from './components/LandingPage'
 import './App.css'
+import './styles/buttons.css'
 
 function AppContent() {
   const { user, loading } = useAuth()

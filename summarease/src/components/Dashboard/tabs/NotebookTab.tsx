@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react'
-import { Mic, Square, Pause, Play, Upload, Save, X, Check } from 'lucide-react'
+import { Mic, Upload, Save, Check, Play, Pause, Square } from 'lucide-react'
 import { FileUploadModal } from '../../Upload/FileUploadModal'
 import { createUnifiedContent } from '../../../lib/api'
 import { supabase } from '../../../lib/supabase'
-import { AudioTranscriber, processAudioTranscript } from '../../../lib/audioProcessor'
+import { processAudioTranscript } from '../../../lib/audioProcessor'
+import { transcribeAudio } from '../../../lib/transcriptionService'
 import { ResizableDivider } from '../../ResizableDivider'
 import { NoteTaking } from '../../NoteTaking'
-import { useNotebookState, type NotebookState } from '../../../hooks/useNotebookState'
+import { DocumentList, type DocumentItem } from '../../DocumentList'
 import './RecordTab.css'
 
 // Helper function to save summary and tags
-async function saveProcessedAudio(fileId: string, summary: string, tags: string[]) {
+async function saveProcessedContent(fileId: string, summary: string, tags: string[]) {
   // Save summary
   const { data: summaryData, error: summaryError } = await supabase
     .from('summaries')
@@ -78,78 +79,126 @@ async function saveProcessedAudio(fileId: string, summary: string, tags: string[
     .eq('id', fileId)
 }
 
-interface NotebookTabProps {
-  // Optional props for external state management (for backward compatibility)
-  state?: NotebookState
-  updateState?: (updates: Partial<NotebookState>) => void
-}
+interface NotebookTabProps {}
 
-export const NotebookTab: React.FC<NotebookTabProps> = ({ 
-  state: externalState, 
-  updateState: externalUpdateState 
-}) => {
-  // Use internal state management if no external state is provided
-  const [internalState, internalActions] = useNotebookState()
-  
-  // Use external state if provided, otherwise use internal state
-  const state = externalState || internalState
-  const {
-    setTitle,
-    setNotes,
-    setAudioTranscript,
-    addUploadedFiles,
-    removeUploadedFile,
-    startRecording,
-    pauseRecording,
-    stopRecording,
-    updateRecordingTime,
-    setLeftPanelWidth,
-    updateState: internalUpdateState,
-    saveLocally,
-    clearLocalStorage,
-    resetNotebook
-  } = internalActions
-  
-  // Use external updateState if provided, otherwise use internal
-  const updateState = externalUpdateState || internalUpdateState
-  // Extract state values
-  const {
-    title,
-    notes,
-    audioTranscript,
-    uploadedFiles,
-    recordingTime,
-    isRecording,
-    isPaused,
-    leftPanelWidth,
-    saving,
-    localSaving,
-    isLocalSave,
-    localSaveId
-  } = state
-  
-  // Local state for components that don't need persistence
-  const [transcriber] = useState(() => new AudioTranscriber())
-  const [speechSupported, setSpeechSupported] = useState(false)
+export const NotebookTab: React.FC<NotebookTabProps> = () => {
+  // State management
+  const [title, setTitle] = useState('')
+  const [notes, setNotes] = useState('')
+  const [documents, setDocuments] = useState<DocumentItem[]>([])
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [localSaving, setLocalSaving] = useState(false)
+  const [leftPanelWidth, setLeftPanelWidth] = useState(40)
+  const [isLocalSave, setIsLocalSave] = useState(false)
+  const [localSaveId, setLocalSaveId] = useState<string | undefined>(undefined)
+  
+  // Recording state
+  const [isRecording, setIsRecording] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
+  const [recordingChunks, setRecordingChunks] = useState<Blob[]>([])
 
-  // Check speech recognition support
+  // Recording timer
   useEffect(() => {
-    setSpeechSupported(transcriber.isSupported())
-  }, [transcriber])
-
-  // Recording timer (only if using external state management)
-  useEffect(() => {
-    if (!externalState) return // Skip if using internal state management
-    
     let interval: NodeJS.Timeout
     if (isRecording && !isPaused) {
       interval = setInterval(() => {
-        updateRecordingTime(recordingTime + 1)
+        setRecordingTime(prev => prev + 1)
       }, 1000)
     }
     return () => clearInterval(interval)
-  }, [isRecording, isPaused, recordingTime, updateRecordingTime, externalState])
+  }, [isRecording, isPaused])
+
+  // Auto-save locally every 5 seconds if there's content
+  useEffect(() => {
+    if (!title.trim() && !notes.trim() && documents.length === 0) return
+    
+    const interval = setInterval(() => {
+      handleLocalSave()
+    }, 5000)
+    
+    return () => clearInterval(interval)
+  }, [title, notes, documents])
+
+  // Recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      
+      setRecordingChunks([])
+      setMediaRecorder(recorder)
+      
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          setRecordingChunks(prev => [...prev, event.data])
+        }
+      }
+      
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(recordingChunks, { type: 'audio/webm' })
+        await processRecording(audioBlob)
+        stream.getTracks().forEach(track => track.stop())
+      }
+      
+      recorder.start()
+      setIsRecording(true)
+      setRecordingTime(0)
+    } catch (error) {
+      console.error('Error starting recording:', error)
+      alert('Unable to access microphone. Please check permissions.')
+    }
+  }
+
+  const pauseRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.pause()
+      setIsPaused(true)
+    }
+  }
+
+  const resumeRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'paused') {
+      mediaRecorder.resume()
+      setIsPaused(false)
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop()
+      setIsRecording(false)
+      setIsPaused(false)
+    }
+  }
+
+  const processRecording = async (audioBlob: Blob) => {
+    const recordingName = `Recording ${new Date().toLocaleTimeString()}`
+    
+    // Transcribe the audio
+    const transcriptionResult = await transcribeAudio(audioBlob)
+    
+    let transcriptContent = ''
+    if (transcriptionResult.success) {
+      transcriptContent = transcriptionResult.transcript
+    } else {
+      transcriptContent = `[Transcription failed: ${transcriptionResult.error}]\n\nPlease manually add the transcript for this ${Math.round(recordingTime / 60)} minute recording.`
+    }
+    
+    // Add transcript as a document
+    const transcriptDocument: DocumentItem = {
+      id: `transcript_${Date.now()}_${Math.random().toString(36).substring(2)}`,
+      name: `${recordingName} - Transcript`,
+      type: 'transcript',
+      content: transcriptContent,
+      timestamp: new Date()
+    }
+    
+    setDocuments(prev => [...prev, transcriptDocument])
+    setRecordingTime(0)
+  }
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -157,72 +206,41 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  const handleStartRecording = () => {
-    if (!title.trim()) {
-      alert('Please enter a notebook title before recording. The notebook won\'t start saving without a title.')
-      return
-    }
-    
-    startRecording()
-    
-    // Start live transcription if supported
-    if (speechSupported) {
-      try {
-        transcriber.startListening((newTranscript) => {
-          setAudioTranscript(newTranscript)
-        })
-      } catch (error) {
-        console.error('Failed to start transcription:', error)
-      }
-    }
-  }
-
-  const handlePauseRecording = () => {
-    pauseRecording()
-  }
-
-  const handleStopRecording = () => {
-    stopRecording()
-    
-    // Stop transcription and get final transcript
-    if (speechSupported) {
-      const finalTranscript = transcriber.stopListening()
-      setAudioTranscript(finalTranscript)
-    }
-  }
-
+  // Handler functions
   const handleFileUpload = (files: File[]) => {
-    if (!title.trim()) {
-      alert('Please enter a notebook title before uploading files. The notebook won\'t start saving without a title.')
-      return
-    }
-    addUploadedFiles(files)
+    const newDocuments: DocumentItem[] = files.map(file => ({
+      id: `file_${Date.now()}_${Math.random().toString(36).substring(2)}`,
+      name: file.name,
+      type: 'file' as const,
+      file,
+      size: file.size,
+      timestamp: new Date()
+    }))
+    
+    setDocuments(prev => [...prev, ...newDocuments])
+    setShowUploadModal(false)
   }
 
-  const handleRemoveFile = (index: number) => {
-    removeUploadedFile(index)
+
+  const handleRemoveDocument = (documentId: string) => {
+    setDocuments(prev => prev.filter(doc => doc.id !== documentId))
   }
 
   const handleLocalSave = async () => {
     if (localSaving || !title.trim()) return
     
-    // Use the hook's saveLocally method if available, otherwise fallback to manual save
-    if (!externalState) {
-      await saveLocally()
-      return
-    }
-    
-    // Fallback for external state management
     try {
-      updateState({ localSaving: true })
+      setLocalSaving(true)
       
       const localData = {
         id: localSaveId || `local_${Date.now()}`,
         title: title.trim(),
         notes: notes,
-        audioTranscript: audioTranscript,
-        uploadedFiles: uploadedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-        recordingTime: recordingTime,
+        documents: documents.map(doc => ({
+          ...doc,
+          // Don't store file blob in localStorage for performance
+          file: undefined
+        })),
         lastSaved: new Date().toISOString(),
         isLocalSave: true
       }
@@ -239,15 +257,13 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       
       localStorage.setItem('summarease-local-notebooks', JSON.stringify(existingLocal))
       
-      updateState({ 
-        isLocalSave: true, 
-        localSaveId: localData.id 
-      })
+      setIsLocalSave(true)
+      setLocalSaveId(localData.id)
       
     } catch (error) {
       console.error('Error saving locally:', error)
     } finally {
-      updateState({ localSaving: false })
+      setLocalSaving(false)
     }
   }
 
@@ -258,21 +274,24 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     }
 
     // Check if there's any content to save
-    const hasContent = audioTranscript.trim() || notes.trim() || uploadedFiles.length > 0
+    const hasContent = notes.trim() || documents.length > 0
     if (!hasContent) {
       alert('Please add some content before saving.')
       return
     }
 
     try {
-      updateState({ saving: true })
+      setSaving(true)
+      
+      // Prepare content for unified creation
+      const uploadedFiles = documents.filter(doc => doc.type === 'file' && doc.file).map(doc => doc.file!)
+      const transcripts = documents.filter(doc => doc.type === 'transcript').map(doc => doc.content).join('\n\n')
       
       // Create unified content with all sources
       const fileId = await createUnifiedContent(title.trim(), {
-        audioTranscript: audioTranscript.trim() || undefined,
+        audioTranscript: transcripts || undefined,
         uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
-        notes: notes.trim() || undefined,
-        recordingDuration: recordingTime || undefined
+        notes: notes.trim() || undefined
       })
       
       if (fileId) {
@@ -280,16 +299,15 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         
         // Generate summary from all content sources
         const contentSources = []
-        if (audioTranscript.trim()) contentSources.push(audioTranscript.trim())
+        if (transcripts.trim()) contentSources.push(transcripts.trim())
         if (notes.trim()) contentSources.push(notes.replace(/<[^>]*>/g, '').trim())
         
-        // Add document content (will be processed in createUnifiedContent)
         const allContent = contentSources.join('\n\n')
         
         if (allContent) {
           try {
             const { summary, tags } = await processAudioTranscript(allContent)
-            await saveProcessedAudio(fileId, summary, tags)
+            await saveProcessedContent(fileId, summary, tags)
             console.log('Summary generated and saved successfully')
           } catch (error) {
             console.error('Failed to generate summary:', error)
@@ -297,39 +315,22 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         }
         
         // Clear local storage and reset form
-        if (!externalState) {
-          clearLocalStorage()
-          resetNotebook()
-        } else {
-          // Fallback for external state management
-          if (localSaveId) {
-            try {
-              const existingLocal = JSON.parse(localStorage.getItem('summarease-local-notebooks') || '[]')
-              const filtered = existingLocal.filter((item: any) => item.id !== localSaveId)
-              localStorage.setItem('summarease-local-notebooks', JSON.stringify(filtered))
-            } catch (error) {
-              console.error('Error removing local save:', error)
-            }
-          }
-          
-          // Reset form
-          updateState({
-            title: '',
-            audioTranscript: '',
-            notes: '',
-            uploadedFiles: [],
-            recordingTime: 0,
-            isLocalSave: false,
-            localSaveId: undefined
-          })
-          
-          // Clear localStorage
+        if (localSaveId) {
           try {
-            localStorage.removeItem('summarease-notebook-state')
+            const existingLocal = JSON.parse(localStorage.getItem('summarease-local-notebooks') || '[]')
+            const filtered = existingLocal.filter((item: any) => item.id !== localSaveId)
+            localStorage.setItem('summarease-local-notebooks', JSON.stringify(filtered))
           } catch (error) {
-            console.error('Error clearing notebook state:', error)
+            console.error('Error removing local save:', error)
           }
         }
+        
+        // Reset form
+        setTitle('')
+        setNotes('')
+        setDocuments([])
+        setIsLocalSave(false)
+        setLocalSaveId(undefined)
         
         alert('Content saved successfully!')
       } else {
@@ -339,156 +340,92 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       console.error('Error saving content:', error)
       alert('Failed to save content. Please try again.')
     } finally {
-      updateState({ saving: false })
+      setSaving(false)
     }
-  }
-
-  const handleUploadSuccess = (files: File[]) => {
-    addUploadedFiles(files)
-    setShowUploadModal(false)
   }
 
   const renderLeftPanel = () => (
     <div className="notebook-left-panel">
       {/* Title Input and Save Buttons */}
       <div className="title-section">
-        <div className="title-controls">
-          <input
-            type="text"
-            className="title-input"
-            placeholder="Enter notebook title..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <div className="save-buttons">
-            <button 
-              className="save-button local-save"
-              onClick={handleLocalSave}
-              disabled={localSaving}
-              title="Save locally"
-            >
-              <Save className="save-icon" />
-              {localSaving ? 'Saving...' : 'Save'}
-            </button>
-            <button 
-              className="save-button done-save"
-              onClick={handleDoneContent}
-              disabled={saving || !title.trim()}
-              title="Upload to database"
-            >
-              <Check className="save-icon" />
-              {saving ? 'Uploading...' : 'Done'}
-            </button>
-          </div>
+        <input
+          type="text"
+          className="title-input"
+          placeholder="Enter notebook title..."
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <div className="save-buttons">
+<button 
+            className="btn btn-primary"
+            onClick={handleLocalSave}
+            disabled={localSaving}
+          >
+            <Save className="save-icon" />
+            {localSaving ? 'Saving...' : 'Save'}
+          </button>
+<button 
+            className="btn btn-success"
+            onClick={handleDoneContent}
+            disabled={saving || !title.trim()}
+          >
+            <Check className="save-icon" />
+            {saving ? 'Uploading...' : 'Done'}
+          </button>
         </div>
         {isLocalSave && (
           <div className="local-save-indicator">
-            <span className="save-status">Saved locally - Auto-saving every 5s</span>
+            ✓ Saved locally - Auto-saving every 5s
           </div>
         )}
       </div>
 
-      {/* Recording Section */}
-      <div className="recording-section">
-        <div className="section-header">
-          <Mic className="section-icon" />
-          <h3>Audio Recording</h3>
-        </div>
-        
+      {/* Control Buttons */}
+      <div className="control-buttons">
         {!isRecording ? (
-          <div className="recording-controls">
-            <button 
-              className="record-button icon-only" 
-              onClick={handleStartRecording}
-              title="Start Recording"
-            >
-              <Mic className="record-icon" />
-            </button>
-            <p className="recording-hint">
-              {speechSupported 
-                ? "Live transcription will appear below as you speak"
-                : "Live transcription not supported in this browser"
-              }
-            </p>
-          </div>
+<button className="btn btn-danger" onClick={startRecording}>
+            <Mic className="btn-icon" />
+            Record
+          </button>
         ) : (
-          <div className="recording-active">
-            <div className="recording-controls">
-              <button 
-                className="control-button pause-button"
-                onClick={handlePauseRecording}
-                title={isPaused ? "Resume Recording" : "Pause Recording"}
-              >
-                {isPaused ? <Play /> : <Pause />}
-              </button>
-              <button 
-                className="control-button stop-button"
-                onClick={handleStopRecording}
-                title="Stop Recording"
-              >
-                <Square />
-              </button>
-            </div>
-            <div className="recording-info">
-              <div className="record-timer">{formatTime(recordingTime)}</div>
-              <div className="recording-status">
-                {isPaused ? 'Recording Paused' : 'Recording...'}
-              </div>
-            </div>
+          <div className="recording-controls">
+<button 
+              className="btn btn-warning" 
+              onClick={isPaused ? resumeRecording : pauseRecording}
+            >
+              {isPaused ? <Play className="btn-icon" /> : <Pause className="btn-icon" />}
+              {isPaused ? 'Resume' : 'Pause'}
+            </button>
+<button className="btn btn-gray" onClick={stopRecording}>
+              <Square className="btn-icon" />
+              Stop
+            </button>
           </div>
         )}
-
-        {/* Audio Transcript */}
-        <div className="transcript-section">
-          <label className="transcript-label">Audio Transcript</label>
-          <textarea
-            className="transcript-area"
-            value={audioTranscript}
-            placeholder={
-              !speechSupported 
-                ? "Live transcription not supported. You can manually enter transcript here."
-                : isRecording 
-                  ? "Transcript will appear here as you speak..." 
-                  : "Start recording to see live transcript"
-            }
-            readOnly={speechSupported && isRecording}
-            onChange={!speechSupported || !isRecording ? (e) => setAudioTranscript(e.target.value) : undefined}
-          />
-        </div>
+        
+<button className="btn btn-primary" onClick={() => setShowUploadModal(true)}>
+          <Upload className="btn-icon" />
+          Upload
+        </button>
       </div>
 
-      {/* File Upload Section */}
-      <div className="upload-section">
-        <div className="section-header">
-          <Upload className="section-icon" />
-          <h3>Documents</h3>
+      {/* Recording Indicator */}
+      {isRecording && (
+        <div className="recording-indicator">
+          <div className="recording-dot"></div>
+          <span className="recording-text">
+            {isPaused ? 'Recording Paused' : 'Recording...'} {formatTime(recordingTime)}
+          </span>
         </div>
-        
-        <div className="upload-button-container">
-          <button 
-            className="upload-button icon-only"
-            onClick={() => setShowUploadModal(true)}
-            title="Add Documents"
-          >
-            <Upload className="upload-icon" />
-          </button>
-        </div>
-        
-        {uploadedFiles.length > 0 && (
-          <div className="uploaded-files">
-            {uploadedFiles.map((file, index) => (
-              <div key={index} className="file-item">
-                <span className="file-name">{file.name}</span>
-                <button 
-                  className="remove-file-button"
-                  onClick={() => handleRemoveFile(index)}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+      )}
+
+      {/* Documents List */}
+      <div className="documents-container">
+        <DocumentList
+          documents={documents}
+          onRemoveDocument={handleRemoveDocument}
+          className="documents-list"
+        />
       </div>
     </div>
   )
@@ -497,16 +434,15 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     <div className="notebook-right-panel">
       <div className="notes-header">
         <h3>Notes</h3>
-        <p>Take notes while recording or reviewing content</p>
+        <p>Take notes while reviewing content</p>
       </div>
       <NoteTaking
         initialContent={notes}
         onChange={(newNotes) => {
           if (!title.trim() && newNotes.trim() && !notes.trim()) {
-            alert('Please enter a notebook title before taking notes. The notebook won\'t start saving without a title.')
+            alert('Please enter a notebook title before taking notes.')
             return
           }
-          console.log('Notes changed:', newNotes) // Debug log
           setNotes(newNotes)
         }}
         placeholder="Start typing your notes here..."
@@ -529,7 +465,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       <FileUploadModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        onFilesSelected={handleUploadSuccess}
+        onFilesSelected={handleFileUpload}
         mode="select"
       />
     </div>

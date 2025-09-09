@@ -1,0 +1,157 @@
+.document-list {
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.document-list.empty {
+  padding: 20px;
+}
+
+.empty-state {
+  text-align: center;
+  color: #6b7280;
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  margin: 0 0 4px;
+  font-weight: 500;
+}
+
+.empty-state small {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+.document-list-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.document-list-header h3 {
+  margin: 0;
+  font-size: 1em;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.document-items {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.document-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  transition: background-color 0.2s ease;
+}
+
+.document-item:last-child {
+  border-bottom: none;
+}
+
+.document-item:hover {
+  background: #f3f4f6;
+}
+
+.document-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0; /* Prevents flex item from growing beyond container */
+}
+
+.document-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.file-icon {
+  color: #3b82f6;
+}
+
+.transcript-icon {
+  color: #f59e0b;
+}
+
+.document-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.document-name {
+  font-weight: 500;
+  color: #1f2937;
+  font-size: 0.9em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.document-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.75em;
+  color: #6b7280;
+}
+
+.document-size,
+.document-time,
+.document-type {
+  white-space: nowrap;
+}
+
+.document-type {
+  background: #f59e0b;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7em;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.document-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Buttons in document actions now use global .btn styles */
+.btn.btn-sm { width: 32px; height: 32px; padding: 0; }
+.btn.btn-sm svg { width: 16px; height: 16px; }
+
+/* Scrollbar styling */
+.document-items::-webkit-scrollbar {
+  width: 4px;
+}
+
+.document-items::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.document-items::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 2px;
+}
+
+.document-items::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}

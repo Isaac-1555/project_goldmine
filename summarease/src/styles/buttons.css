@@ -1,0 +1,62 @@
+/* Global button system for Summarease */
+:root {
+  --btn-radius: 10px;
+  --btn-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  --btn-shadow-hover: 0 6px 16px rgba(15, 23, 42, 0.12);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--btn-radius);
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  box-shadow: var(--btn-shadow);
+  user-select: none;
+}
+
+.btn:active { transform: translateY(0); box-shadow: var(--btn-shadow); }
+.btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--btn-shadow-hover); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
+.btn .icon, .btn svg { width: 18px; height: 18px; }
+
+/* Variants */
+.btn-primary { background: #2563eb; color: #fff; border-color: #1e40af; }
+.btn-primary:hover { background: #1d4ed8; border-color: #1e3a8a; }
+
+.btn-success { background: #059669; color: #fff; border-color: #047857; }
+.btn-success:hover { background: #047857; border-color: #065f46; }
+
+.btn-danger { background: #ef4444; color: #fff; border-color: #dc2626; }
+.btn-danger:hover { background: #dc2626; border-color: #b91c1c; }
+
+.btn-warning { background: #f59e0b; color: #fff; border-color: #d97706; }
+.btn-warning:hover { background: #d97706; border-color: #b45309; }
+
+.btn-gray { background: #6b7280; color: #fff; border-color: #4b5563; }
+.btn-gray:hover { background: #4b5563; border-color: #374151; }
+
+.btn-outline { background: #ffffff; color: #374151; border-color: #e5e7eb; }
+.btn-outline:hover { background: #f9fafb; border-color: #d1d5db; }
+
+/* Quiet/soft variants for small icon buttons */
+.btn-soft-danger { background: #fef2f2; color: #ef4444; border-color: #fecaca; }
+.btn-soft-danger:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+
+.btn-soft-primary { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.btn-soft-primary:hover { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+
+/* Sizes */
+.btn-sm { padding: 8px 10px; font-weight: 600; font-size: 13px; border-radius: 8px; }
+.btn-lg { padding: 14px 18px; font-size: 15px; border-radius: 12px; }
+
+/* Grouping helper */
+.btn-group { display: flex; gap: 10px; }
+
