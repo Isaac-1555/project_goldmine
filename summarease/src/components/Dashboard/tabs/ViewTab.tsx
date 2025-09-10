@@ -8,9 +8,10 @@ import './ViewTab.css'
 interface ViewTabProps {
   onFileSelect: (file: FileWithMetadata) => void
   selectedFileId?: string
+  onEditFile?: (fileId: string) => void
 }
 
-export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId }) => {
+export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, onEditFile }) => {
   const [activeSubTab, setActiveSubTab] = useState<'list' | 'graph'>('list')
 
   return (
@@ -37,7 +38,7 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId }
 
       <div className="view-content">
         {activeSubTab === 'list' ? (
-          <ListView onFileSelect={onFileSelect} selectedFileId={selectedFileId} />
+          <ListView onFileSelect={onFileSelect} selectedFileId={selectedFileId} onEditFile={onEditFile} />
         ) : (
           <GraphView onFileSelect={onFileSelect} selectedFileId={selectedFileId} />
         )}

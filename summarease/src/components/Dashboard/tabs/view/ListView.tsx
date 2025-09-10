@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react'
-import { FileText, Tag, Calendar } from 'lucide-react'
-import { getUserFiles, type FileWithMetadata } from '../../../../lib/api'
+import { FileText, Tag, Calendar, Edit3, Trash2 } from 'lucide-react'
+import { getUserFiles, deleteFile, type FileWithMetadata } from '../../../../lib/api'
 import './ListView.css'
 
 interface ListViewProps {
   onFileSelect: (file: FileWithMetadata) => void
   selectedFileId?: string
+  onEditFile?: (fileId: string) => void
 }
 
-export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId }) => {
+export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId, onEditFile }) => {
   const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [localNotebooks, setLocalNotebooks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [showConfirm, setShowConfirm] = useState<{ id: string; title: string } | null>(null)
 
   useEffect(() => {
     loadFiles()
@@ -64,6 +67,19 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
       }
     }
     onFileSelect(mockFile)
+  }
+
+  const handleConfirmDelete = async (fileId: string) => {
+    try {
+      setDeletingId(fileId)
+      const ok = await deleteFile(fileId)
+      if (ok) {
+        await loadFiles()
+      }
+    } finally {
+      setDeletingId(null)
+      setShowConfirm(null)
+    }
   }
 
   const formatDate = (dateString: string) => {
@@ -148,7 +164,12 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
               <div
                 key={file.id || `file-${index}`}
                 className={`file-card ${selectedFileId === file.id ? 'selected' : ''}`}
-                onClick={() => onFileSelect(file)}
+                onClick={(e) => {
+                  // Avoid card click when clicking actions
+                  const target = e.target as HTMLElement
+                  if (target.closest('.file-actions')) return
+                  onFileSelect(file)
+                }}
               >
                 <div className="file-header">
                   <div className="file-icon">
@@ -161,10 +182,26 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
                         <Calendar className="meta-icon" />
                         {formatDate(file.created_at)}
                       </span>
-                      <span className="file-status">
+                      <span className={`file-status ${file.status}`}>
                         {file.status === 'completed' ? 'Processed' : 'Processing...'}
                       </span>
                     </div>
+                  </div>
+                  <div className="file-actions">
+                    <button
+                      className="action-btn edit"
+                      title="Edit in Notebook"
+                      onClick={() => onEditFile?.(file.id)}
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                    <button
+                      className="action-btn delete"
+                      title="Delete"
+                      onClick={() => setShowConfirm({ id: file.id, title: file.title || file.filename })}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
                 
@@ -189,6 +226,28 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
               </div>
             ))}
           </div>
+
+          {showConfirm && (
+            <div className="modal-overlay">
+              <div className="delete-modal">
+                <h3>Delete Item</h3>
+                <p>{`Are you sure you want to delete "${showConfirm.title}"? This action cannot be undone.`}</p>
+                <div className="modal-actions">
+                  <button className="cancel-button" onClick={() => setShowConfirm(null)} disabled={!!deletingId}>
+                    Cancel
+                  </button>
+                  <button
+                    className="delete-confirm-button"
+                    onClick={() => handleConfirmDelete(showConfirm.id)}
+                    disabled={!!deletingId}
+                  >
+                    <Trash2 className="icon" />
+                    {deletingId ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

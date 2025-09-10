@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Mic, Upload, Save, Check, Play, Pause, Square } from 'lucide-react'
+import { Mic, Upload, Save, Check, Play, Pause, Square, Plus, X as XIcon } from 'lucide-react'
 import { FileUploadModal } from '../../Upload/FileUploadModal'
-import { createUnifiedContent } from '../../../lib/api'
+import { createUnifiedContent, updateNotebookContent, addTagsToSummary } from '../../../lib/api'
 import { supabase } from '../../../lib/supabase'
 import { processAudioTranscript } from '../../../lib/audioProcessor'
 import { transcribeAudio } from '../../../lib/transcriptionService'
@@ -79,19 +79,44 @@ async function saveProcessedContent(fileId: string, summary: string, tags: strin
     .eq('id', fileId)
 }
 
-interface NotebookTabProps {}
+interface NotebookTabProps {
+  mode?: 'create' | 'edit'
+  editingFileId?: string
+  initialTitle?: string
+  initialNotesHtml?: string
+  initialTranscriptText?: string
+  initialDocuments?: DocumentItem[]
+  initialTags?: string[]
+  initialSummaryId?: string
+  onExitEdit?: () => void
+}
 
-export const NotebookTab: React.FC<NotebookTabProps> = () => {
+export const NotebookTab: React.FC<NotebookTabProps> = ({
+  mode = 'create',
+  editingFileId,
+  initialTitle,
+  initialNotesHtml,
+  initialTranscriptText,
+  initialDocuments = [],
+  initialTags = [],
+  initialSummaryId,
+  onExitEdit,
+}) => {
   // State management
-  const [title, setTitle] = useState('')
-  const [notes, setNotes] = useState('')
-  const [documents, setDocuments] = useState<DocumentItem[]>([])
+  const [title, setTitle] = useState(initialTitle || '')
+  const [notes, setNotes] = useState(initialNotesHtml || '')
+  const [documents, setDocuments] = useState<DocumentItem[]>(initialDocuments)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [localSaving, setLocalSaving] = useState(false)
   const [leftPanelWidth, setLeftPanelWidth] = useState(40)
   const [isLocalSave, setIsLocalSave] = useState(false)
   const [localSaveId, setLocalSaveId] = useState<string | undefined>(undefined)
+
+  // Custom tags state
+  const [customTagInput, setCustomTagInput] = useState('')
+  const [customTags, setCustomTags] = useState<string[]>(initialTags)
+  const [existingSummaryId] = useState<string | undefined>(initialSummaryId)
   
   // Recording state
   const [isRecording, setIsRecording] = useState(false)
@@ -110,6 +135,27 @@ export const NotebookTab: React.FC<NotebookTabProps> = () => {
     }
     return () => clearInterval(interval)
   }, [isRecording, isPaused])
+
+  // If entering edit mode later, sync initial props
+  useEffect(() => {
+    if (mode === 'edit') {
+      if (initialTitle) setTitle(initialTitle)
+      if (initialNotesHtml) setNotes(initialNotesHtml)
+      if (initialDocuments?.length) setDocuments(initialDocuments)
+      if (initialTags?.length) setCustomTags(initialTags)
+      // If transcript text exists but not present as a DocumentItem, add it
+      if (initialTranscriptText && !initialDocuments.some(d => d.type === 'transcript')) {
+        const transcriptDocument: DocumentItem = {
+          id: `transcript_prefill_${Date.now()}`,
+          name: 'Transcript',
+          type: 'transcript',
+          content: initialTranscriptText,
+          timestamp: new Date(),
+        }
+        setDocuments(prev => [transcriptDocument, ...prev])
+      }
+    }
+  }, [mode, initialTitle, initialNotesHtml, initialDocuments, initialTranscriptText, initialTags])
 
   // Auto-save locally every 5 seconds if there's content
   useEffect(() => {
@@ -274,7 +320,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = () => {
     }
 
     // Check if there's any content to save
-    const hasContent = notes.trim() || documents.length > 0
+    const hasContent = (notes && notes.trim()) || documents.length > 0
     if (!hasContent) {
       alert('Please add some content before saving.')
       return
@@ -283,31 +329,94 @@ export const NotebookTab: React.FC<NotebookTabProps> = () => {
     try {
       setSaving(true)
       
-      // Prepare content for unified creation
+      // Prepare content sources
       const uploadedFiles = documents.filter(doc => doc.type === 'file' && doc.file).map(doc => doc.file!)
-      const transcripts = documents.filter(doc => doc.type === 'transcript').map(doc => doc.content).join('\n\n')
-      
-      // Create unified content with all sources
-      const fileId = await createUnifiedContent(title.trim(), {
+      const transcripts = documents
+        .filter(doc => doc.type === 'transcript')
+        .map(doc => (doc.content || '').toString())
+        .join('\n\n')
+
+      const plainNotes = (notes || '').replace(/<[^>]*>/g, '').trim()
+
+      if (mode === 'edit' && editingFileId) {
+        // Update existing notebook
+        const updateResult = await updateNotebookContent(editingFileId, {
+          notesHtml: notes || '',
+          notesText: plainNotes,
+          transcriptText: transcripts || undefined,
+          newFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
+        })
+
+        if (!updateResult.success) {
+          alert('Failed to update content. Please try again.')
+          return
+        }
+
+        // Re-generate summary from combined sources
+        const contentSources: string[] = []
+        if (transcripts.trim()) contentSources.push(transcripts.trim())
+        if (plainNotes) contentSources.push(plainNotes)
+        if (updateResult.newDocsExtractedText && updateResult.newDocsExtractedText.trim()) contentSources.push(updateResult.newDocsExtractedText.trim())
+        const allContent = contentSources.join('\n\n')
+
+        if (allContent) {
+          try {
+            const { summary, tags } = await processAudioTranscript(allContent)
+            // Update or insert summary
+            let summaryId = existingSummaryId
+            if (summaryId) {
+              const { error } = await supabase
+                .from('summaries')
+                .update({ summary_text: summary })
+                .eq('id', summaryId)
+              if (error) throw error
+            } else {
+              const { data: newSummary, error: summaryInsertError } = await supabase
+                .from('summaries')
+                .insert({ file_id: editingFileId, summary_text: summary, created_at: new Date().toISOString() })
+                .select('id')
+                .single()
+              if (summaryInsertError) throw summaryInsertError
+              summaryId = newSummary.id
+            }
+
+            const finalTags = Array.from(new Set([...(tags || []), ...customTags]))
+            if (summaryId && finalTags.length) {
+              await addTagsToSummary(summaryId, finalTags)
+            }
+          } catch (error) {
+            console.error('Failed to generate/update summary:', error)
+          }
+        }
+
+        alert('Content updated successfully!')
+        onExitEdit?.()
+        return
+      }
+
+      // Create unified content with all sources (create mode)
+      const { id: fileId, documentsExtractedText } = await createUnifiedContent(title.trim(), {
         audioTranscript: transcripts || undefined,
         uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
-        notes: notes.trim() || undefined
+        notes: notes?.trim() ? notes : undefined
       })
       
       if (fileId) {
         console.log('Content saved successfully with ID:', fileId)
         
-        // Generate summary from all content sources
-        const contentSources = []
+        // Generate summary from all content sources (notes, transcript, uploaded docs)
+        const contentSources: string[] = []
         if (transcripts.trim()) contentSources.push(transcripts.trim())
-        if (notes.trim()) contentSources.push(notes.replace(/<[^>]*>/g, '').trim())
+        if (plainNotes) contentSources.push(plainNotes)
+        if (documentsExtractedText && documentsExtractedText.trim()) contentSources.push(documentsExtractedText.trim())
         
         const allContent = contentSources.join('\n\n')
         
         if (allContent) {
           try {
             const { summary, tags } = await processAudioTranscript(allContent)
-            await saveProcessedContent(fileId, summary, tags)
+            const finalTags = Array.from(new Set([...(tags || []), ...customTags]))
+            await saveProcessedContent(fileId, summary, finalTags)
             console.log('Summary generated and saved successfully')
           } catch (error) {
             console.error('Failed to generate summary:', error)
@@ -331,6 +440,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = () => {
         setDocuments([])
         setIsLocalSave(false)
         setLocalSaveId(undefined)
+        setCustomTags([])
         
         alert('Content saved successfully!')
       } else {
@@ -356,7 +466,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = () => {
           onChange={(e) => setTitle(e.target.value)}
         />
         <div className="save-buttons">
-<button 
+          <button 
             className="btn btn-primary"
             onClick={handleLocalSave}
             disabled={localSaving}
@@ -364,20 +474,75 @@ export const NotebookTab: React.FC<NotebookTabProps> = () => {
             <Save className="save-icon" />
             {localSaving ? 'Saving...' : 'Save'}
           </button>
-<button 
+          <button 
             className="btn btn-success"
             onClick={handleDoneContent}
             disabled={saving || !title.trim()}
           >
             <Check className="save-icon" />
-            {saving ? 'Uploading...' : 'Done'}
+            {mode === 'edit' ? (saving ? 'Updating...' : 'Update') : (saving ? 'Uploading...' : 'Done')}
           </button>
         </div>
-        {isLocalSave && (
+        {isLocalSave && mode !== 'edit' && (
           <div className="local-save-indicator">
             ✓ Saved locally - Auto-saving every 5s
           </div>
         )}
+
+        {/* Custom Tags Input */}
+        <div style={{ marginTop: '12px' }}>
+          <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Tags</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {customTags.map((tag) => (
+              <span key={tag} className="tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => setCustomTags((prev) => prev.filter((t) => t !== tag))}
+                  className="btn btn-soft-danger btn-sm"
+                  title="Remove tag"
+                  style={{ width: 20, height: 20, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <XIcon size={12} />
+                </button>
+              </span>
+            ))}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <input
+                type="text"
+                value={customTagInput}
+                onChange={(e) => setCustomTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const v = customTagInput.trim()
+                    if (v && !customTags.includes(v)) setCustomTags((prev) => [...prev, v])
+                    setCustomTagInput('')
+                  }
+                }}
+                placeholder="Add a tag and press Enter"
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  padding: '6px 8px',
+                  fontSize: 14,
+                  outline: 'none',
+                }}
+              />
+              <button
+                type="button"
+                className="btn btn-soft-primary btn-sm"
+                onClick={() => {
+                  const v = customTagInput.trim()
+                  if (v && !customTags.includes(v)) setCustomTags((prev) => [...prev, v])
+                  setCustomTagInput('')
+                }}
+                title="Add tag"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Control Buttons */}

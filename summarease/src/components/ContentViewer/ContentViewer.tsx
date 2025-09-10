@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Edit3, Save, X, FileText, MessageSquare, Tag, Clock, ArrowLeft, Trash2 } from 'lucide-react'
+import { Edit3, Save, X, FileText, MessageSquare, Tag, Clock, ArrowLeft, Trash2, File as FileIcon, Eye } from 'lucide-react'
 import { StatusIndicator } from '../FileStatus/StatusIndicator'
 import { getFileDetails, updateSummary, deleteFile, type FileWithMetadata } from '../../lib/api'
+import { supabase } from '../../lib/supabase'
 import './ContentViewer.css'
 
 interface ContentViewerProps {
@@ -25,7 +26,13 @@ interface FileDetails {
   summary: {
     id: string
     summary_text: string
+    created_at?: string
   } | null
+  summaries?: Array<{
+    id: string
+    summary_text: string
+    created_at?: string
+  }>
   tags: Array<{
     id: string
     name: string
@@ -42,9 +49,50 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
   const [fileDetails, setFileDetails] = useState<FileDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'notes' | 'tags'>('summary')
+  const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'notes' | 'tags' | 'docs'>('summary')
   const [isEditing, setIsEditing] = useState(false)
   const [editedSummary, setEditedSummary] = useState('')
+  // Render summary text preserving list formatting when present
+  const renderSummaryText = (text: string) => {
+    const lines = (text || '').split('\n')
+
+    // Group lines into paragraphs or lists
+    const blocks: Array<{ type: 'list' | 'p'; items?: string[]; text?: string }> = []
+    let currentList: string[] | null = null
+
+    const listPattern = /^\s*(?:[-*•]|\d+\.)\s+/
+
+    for (const line of lines) {
+      if (listPattern.test(line)) {
+        const item = line.replace(listPattern, '').trim()
+        if (!currentList) {
+          currentList = []
+          blocks.push({ type: 'list', items: currentList })
+        }
+        currentList.push(item)
+      } else {
+        currentList = null
+        const t = line.trim()
+        if (t) blocks.push({ type: 'p', text: t })
+      }
+    }
+
+    return (
+      <>
+        {blocks.map((b, idx) =>
+          b.type === 'list' ? (
+            <ul key={`ul-${idx}`} className="summary-list-block">
+              {(b.items || []).map((it, i) => (
+                <li key={`li-${idx}-${i}`}>{it}</li>
+              ))}
+            </ul>
+          ) : (
+            <p key={`p-${idx}`}>{b.text}</p>
+          )
+        )}
+      </>
+    )
+  }
   const [saving, setSaving] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -103,19 +151,19 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
   }
 
   const handleSaveSummary = async () => {
-    if (!fileDetails?.summary?.id) return
+    // Save changes to the latest summary
+    const latestSummaryId = fileDetails?.summary?.id || fileDetails?.summaries?.[0]?.id
+    if (!latestSummaryId) return
 
     try {
       setSaving(true)
-      const success = await updateSummary(fileDetails.summary.id, editedSummary)
+      const success = await updateSummary(latestSummaryId, editedSummary)
       
       if (success) {
         setFileDetails(prev => prev ? {
           ...prev,
-          summary: prev.summary ? {
-            ...prev.summary,
-            summary_text: editedSummary
-          } : null
+          summary: prev.summary ? { ...prev.summary, summary_text: editedSummary } : prev.summary,
+          summaries: prev.summaries ? [{ ...(prev.summaries[0] || {}), summary_text: editedSummary }, ...prev.summaries.slice(1)] : prev.summaries
         } : null)
         setIsEditing(false)
       } else {
@@ -276,6 +324,13 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
           <Tag className="tab-icon" />
           Tags ({fileDetails.tags.length})
         </button>
+        <button
+          className={`tab ${activeTab === 'docs' ? 'active' : ''}`}
+          onClick={() => setActiveTab('docs')}
+        >
+          <FileIcon className="tab-icon" />
+          Docs {(fileDetails.documents?.length ?? 0) > 0 ? `(${fileDetails.documents!.length})` : '(0)'}
+        </button>
       </div>
 
       <div className="content-body">
@@ -322,9 +377,28 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                   />
                 ) : (
                   <div className="summary-text">
-                    {fileDetails.summary.summary_text.split('\n').map((paragraph, index) => (
-                      <p key={`summary-p-${index}`}>{paragraph}</p>
-                    ))}
+                    {renderSummaryText(fileDetails.summary.summary_text)}
+                  </div>
+                )}
+
+                {/* Saved summaries list */}
+                {fileDetails.summaries && fileDetails.summaries.length > 0 && (
+                  <div className="summary-history">
+                    <h3 className="summary-history-title">Saved Summaries</h3>
+                    <ol className="summary-list">
+                      {fileDetails.summaries.map((s, idx) => (
+                        <li key={`sum-${s.id}-${idx}`} className="summary-item">
+                          <div className="summary-item-meta">
+                            <Clock className="icon" />
+                            <span>{s.created_at ? formatDate(s.created_at) : 'Unknown date'}</span>
+                            {idx === 0 && <span className="summary-badge">Latest</span>}
+                          </div>
+                          <div className="summary-item-body">
+                            {renderSummaryText(s.summary_text)}
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
                   </div>
                 )}
               </>
@@ -374,6 +448,79 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
               <div className="no-content">
                 <p>No notes available.</p>
               </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'docs' && (
+          <div className="docs-content">
+            {(fileDetails.documents?.length || 0) === 0 ? (
+              <div className="no-content">
+                <p>No uploaded documents.</p>
+              </div>
+            ) : (
+              <ul className="doc-list">
+                {fileDetails.documents!.map((doc: any, index: number) => {
+                  // Support both local DocumentItem and DB document rows
+                  const name = doc.name || doc.original_filename || (doc.storage_path ? String(doc.storage_path).split('/').pop() : `Document ${index+1}`)
+                  const createdAt = doc.timestamp ? (doc.timestamp instanceof Date ? doc.timestamp.toISOString() : String(doc.timestamp)) : (doc.created_at || new Date().toISOString())
+                  const size = doc.file?.size || doc.size || undefined
+
+                  const deriveBadge = () => {
+                    const n = (name || '').toLowerCase()
+                    const ft = String(doc.file_type || doc.type || '')
+                    if (n.endsWith('.pdf') || ft.includes('pdf')) return 'PDF'
+                    if (n.endsWith('.docx') || ft.includes('word')) return 'DOCX'
+                    if (n.endsWith('.doc')) return 'DOC'
+                    return 'FILE'
+                  }
+
+                  const handleOpen = async () => {
+                    try {
+                      // If it's a database-backed document with storage_path, open signed URL
+                      if (doc.storage_path) {
+                        const { data, error } = await supabase.storage
+                          .from('files')
+                          .createSignedUrl(String(doc.storage_path), 60)
+                        if (error) throw error
+                        if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+                        return
+                      }
+                      // If it's a local File object (from local notebook), open object URL
+                      if (doc.file instanceof window.File) {
+                        const url = URL.createObjectURL(doc.file)
+                        window.open(url, '_blank', 'noopener,noreferrer')
+                        // Release after a while
+                        setTimeout(() => URL.revokeObjectURL(url), 30_000)
+                      }
+                    } catch (e) {
+                      console.error('Failed to open document', e)
+                    }
+                  }
+
+                  return (
+                    <li
+                      key={`doc-${doc.id || index}`}
+                      className="doc-item clickable"
+                      onClick={handleOpen}
+                      role="button"
+                      aria-label={`Open ${name}`}
+                    >
+                      <div className="doc-main">
+                        <FileIcon className="doc-icon" />
+                        <span className="doc-name" title={name}>{name}</span>
+                        <span className="doc-badge">{deriveBadge()}</span>
+                        <span className="doc-date">{formatDate(createdAt)}</span>
+                        {size ? <span className="doc-size">{`${Math.round((size/1024/1024)*100)/100} MB`}</span> : null}
+                        <button className="doc-view" onClick={(e) => { e.stopPropagation(); handleOpen() }} title="View document">
+                          <Eye size={16} />
+                          <span>View</span>
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
             )}
           </div>
         )}

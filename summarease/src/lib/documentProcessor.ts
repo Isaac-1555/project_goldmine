@@ -83,6 +83,19 @@ export async function processDocumentClientSide(file: File): Promise<{
   }
 }
 
+export async function extractTextOnly(file: File): Promise<string> {
+  // Extract text only without requiring the Gemini API key
+  let extractedText = ''
+  if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.toLowerCase().endsWith('.docx')) {
+    extractedText = await extractTextFromDocx(file)
+  } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+    extractedText = await extractTextFromPdf(file)
+  } else {
+    throw new Error('Unsupported file type. Please upload PDF or DOCX files.')
+  }
+  return extractedText
+}
+
 async function extractTextFromDocx(file: File): Promise<string> {
   try {
     console.log('Extracting text from DOCX using Mammoth...')

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { processDocumentClientSide } from './documentProcessor'
+import { processDocumentClientSide, extractTextOnly } from './documentProcessor'
 
 export interface FileWithMetadata {
   id: string
@@ -118,8 +118,8 @@ export async function getFileDetails(fileId: string) {
       .eq('file_id', fileId)
       .maybeSingle()
 
-    // Get summary with tags (might not exist)
-    const { data: summary } = await supabase
+    // Get all summaries with tags (might be 0..n)
+    const { data: summariesArr } = await supabase
       .from('summaries')
       .select(`
         *,
@@ -131,13 +131,17 @@ export async function getFileDetails(fileId: string) {
         )
       `)
       .eq('file_id', fileId)
-      .maybeSingle()
+      .order('created_at', { ascending: false })
+
+    const latestSummary = (summariesArr && summariesArr.length > 0) ? summariesArr[0] : null
+    const latestTags = latestSummary?.summary_tags?.map((st: any) => st.tags) || []
 
     return {
       file,
       transcript: transcript || null,
-      summary: summary || null,
-      tags: summary?.summary_tags?.map((st: any) => st.tags) || []
+      summary: latestSummary || null,
+      summaries: summariesArr || [],
+      tags: latestTags
     }
   } catch (error: any) {
     console.error('Error fetching file details:', error)
@@ -174,13 +178,18 @@ export async function getNotebookDetails(fileId: string) {
       .maybeSingle()
 
     // Get documents
-    const { data: documents } = await supabase
+    const { data: documents, error: documentsError } = await supabase
       .from('documents')
       .select('*')
       .eq('file_id', fileId)
+      .order('created_at', { ascending: false })
+
+    if (documentsError) {
+      console.error('Error fetching documents:', documentsError)
+    }
 
     // Get summary with tags
-    const { data: summary } = await supabase
+    const { data: summariesArr } = await supabase
       .from('summaries')
       .select(`
         *,
@@ -192,15 +201,19 @@ export async function getNotebookDetails(fileId: string) {
         )
       `)
       .eq('file_id', fileId)
-      .maybeSingle()
+      .order('created_at', { ascending: false })
+
+    const latestSummary = (summariesArr && summariesArr.length > 0) ? summariesArr[0] : null
+    const latestTags = latestSummary?.summary_tags?.map((st: any) => st.tags) || []
 
     return {
       file,
       transcript: transcript || null,
       notes: notes || null,
       documents: documents || [],
-      summary: summary || null,
-      tags: summary?.summary_tags?.map((st: any) => st.tags) || []
+      summary: latestSummary || null,
+      summaries: summariesArr || [],
+      tags: latestTags
     }
   } catch (error: any) {
     console.error('Error fetching notebook details:', error)
@@ -346,7 +359,7 @@ export async function createUnifiedContent(
     notes?: string
     recordingDuration?: number
   }
-): Promise<string | null> {
+): Promise<{ id: string | null, documentsExtractedText: string }> {
   try {
     const { data: user } = await supabase.auth.getUser()
     if (!user.user) {
@@ -383,11 +396,13 @@ export async function createUnifiedContent(
     }
 
     // Handle uploaded files as separate documents
+    let docsExtractedText: string[] = []
     if (sources.uploadedFiles && sources.uploadedFiles.length > 0) {
       for (const file of sources.uploadedFiles) {
         try {
-          // Process document client-side
-          const { extractedText } = await processDocumentClientSide(file)
+          // Extract text client-side (no API key required)
+          const extractedText = await extractTextOnly(file)
+          if (extractedText) docsExtractedText.push(extractedText)
           
           // Upload file to storage
           const fileName = `${user.user.id}/${Date.now()}_${file.name}`
@@ -398,7 +413,7 @@ export async function createUnifiedContent(
           if (uploadError) throw uploadError
           
           // Save to documents table
-          await supabase.from('documents').insert([
+          const { error: docInsertError } = await supabase.from('documents').insert([
             {
               file_id: fileData.id,
               original_filename: file.name,
@@ -408,6 +423,9 @@ export async function createUnifiedContent(
               created_at: new Date().toISOString()
             }
           ])
+          if (docInsertError) {
+            console.error('Error inserting document row:', docInsertError)
+          }
         } catch (error) {
           console.error('Error processing uploaded file:', file.name, error)
         }
@@ -433,10 +451,10 @@ export async function createUnifiedContent(
       }
     }
 
-    return fileData.id
+    return { id: fileData.id, documentsExtractedText: docsExtractedText.join('\n\n') }
   } catch (error: any) {
     console.error('Error creating unified content:', error)
-    return null
+    return { id: null, documentsExtractedText: '' }
   }
 }
 
@@ -444,20 +462,23 @@ export async function createUnifiedContent(
  * Create a new file record for a recording (legacy function)
  */
 export async function createRecording(title: string, transcriptText: string = ''): Promise<string | null> {
-  return createUnifiedContent(title, { audioTranscript: transcriptText })
+  const res = await createUnifiedContent(title, { audioTranscript: transcriptText })
+  return res.id
 }
 
 /**
- * Save tags for a summary
+ * Save tags for a summary (internal helper)
  */
 async function saveTags(summaryId: string, tags: string[]): Promise<void> {
   for (const tagName of tags) {
+    const name = (tagName || '').trim()
+    if (!name) continue
     try {
       // Check if tag exists, create if not
       let { data: existingTag, error: tagSelectError } = await supabase
         .from('tags')
         .select('id')
-        .eq('name', tagName)
+        .eq('name', name)
         .maybeSingle()
 
       if (tagSelectError) {
@@ -472,7 +493,7 @@ async function saveTags(summaryId: string, tags: string[]): Promise<void> {
       } else {
         const { data: newTag, error: tagInsertError } = await supabase
           .from('tags')
-          .insert({ name: tagName })
+          .insert({ name })
           .select('id')
           .single()
 
@@ -483,16 +504,136 @@ async function saveTags(summaryId: string, tags: string[]): Promise<void> {
         tagId = newTag.id
       }
 
-      // Link tag to summary
+      // Link tag to summary (ignore duplicates)
       await supabase
         .from('summary_tags')
         .insert({
           summary_id: summaryId,
           tag_id: tagId
         })
+        .select()
+        .maybeSingle()
+        .catch(() => {})
     } catch (error) {
-      console.error('Error saving tag:', tagName, error)
+      console.error('Error saving tag:', name, error)
     }
+  }
+}
+
+/**
+ * Public: add (custom) tags to an existing summary
+ */
+export async function addTagsToSummary(summaryId: string, tags: string[]): Promise<void> {
+  await saveTags(summaryId, tags)
+}
+
+/**
+ * Update existing notebook content: notes/transcript, and append newly uploaded documents
+ */
+export async function updateNotebookContent(
+  fileId: string,
+  changes: {
+    notesHtml?: string
+    notesText?: string
+    transcriptText?: string
+    newFiles?: File[]
+    recordingDuration?: number
+  }
+): Promise<{ success: boolean; newDocsExtractedText?: string }> {
+  try {
+    // Update or insert notes
+    if (changes.notesHtml || changes.notesText) {
+      const { data: existingNotes } = await supabase
+        .from('notes')
+        .select('id')
+        .eq('file_id', fileId)
+        .maybeSingle()
+
+      if (existingNotes?.id) {
+        await supabase
+          .from('notes')
+          .update({
+            content: (changes.notesText || '').trim(),
+            html_content: changes.notesHtml || '',
+          })
+          .eq('id', existingNotes.id)
+      } else {
+        await supabase
+          .from('notes')
+          .insert({
+            file_id: fileId,
+            content: (changes.notesText || '').trim(),
+            html_content: changes.notesHtml || '',
+            created_at: new Date().toISOString()
+          })
+      }
+    }
+
+    // Update or insert transcript
+    if (changes.transcriptText && changes.transcriptText.trim()) {
+      const { data: existingTranscript } = await supabase
+        .from('transcripts')
+        .select('id')
+        .eq('file_id', fileId)
+        .maybeSingle()
+
+      if (existingTranscript?.id) {
+        await supabase
+          .from('transcripts')
+          .update({
+            content: changes.transcriptText,
+            duration: changes.recordingDuration || null,
+          })
+          .eq('id', existingTranscript.id)
+      } else {
+        await supabase
+          .from('transcripts')
+          .insert({
+            file_id: fileId,
+            content: changes.transcriptText,
+            duration: changes.recordingDuration || null,
+            created_at: new Date().toISOString()
+          })
+      }
+    }
+
+    // Append any newly uploaded files to documents
+    let newDocsExtractedText: string[] = []
+    if (changes.newFiles && changes.newFiles.length > 0) {
+      const { data: user } = await supabase.auth.getUser()
+      if (!user.user) throw new Error('User not authenticated')
+
+      for (const file of changes.newFiles) {
+        try {
+          const extractedText = await extractTextOnly(file)
+          if (extractedText) newDocsExtractedText.push(extractedText)
+          const fileName = `${user.user.id}/${Date.now()}_${file.name}`
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('files')
+            .upload(fileName, file)
+          if (uploadError) throw uploadError
+
+          const { error: docInsertError } = await supabase.from('documents').insert({
+            file_id: fileId,
+            original_filename: file.name,
+            file_type: file.type,
+            storage_path: uploadData.path,
+            extracted_text: extractedText,
+            created_at: new Date().toISOString()
+          })
+          if (docInsertError) {
+            console.error('Error inserting document row:', file.name, docInsertError)
+          }
+        } catch (e) {
+          console.error('Error appending uploaded file to documents:', file.name, e)
+        }
+      }
+    }
+
+    return { success: true, newDocsExtractedText: newDocsExtractedText.join('\n\n') }
+  } catch (error: any) {
+    console.error('Error updating notebook content:', error)
+    return { success: false }
   }
 }
 
