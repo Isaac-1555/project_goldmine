@@ -7,15 +7,16 @@ interface ListViewProps {
   onFileSelect: (file: FileWithMetadata) => void
   selectedFileId?: string
   onEditFile?: (fileId: string) => void
+  onEditLocalNotebook?: (localNotebook: any) => void
 }
 
-export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId, onEditFile }) => {
+export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId, onEditFile, onEditLocalNotebook }) => {
   const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [localNotebooks, setLocalNotebooks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [showConfirm, setShowConfirm] = useState<{ id: string; title: string } | null>(null)
+  const [showConfirm, setShowConfirm] = useState<{ id: string; title: string; isLocal?: boolean } | null>(null)
 
   useEffect(() => {
     loadFiles()
@@ -69,12 +70,20 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
     onFileSelect(mockFile)
   }
 
-  const handleConfirmDelete = async (fileId: string) => {
+  const handleConfirmDelete = async (fileId: string, isLocal: boolean = false) => {
     try {
       setDeletingId(fileId)
-      const ok = await deleteFile(fileId)
-      if (ok) {
-        await loadFiles()
+      if (isLocal) {
+        // Delete from localStorage
+        const existingLocal = JSON.parse(localStorage.getItem('summarease-local-notebooks') || '[]')
+        const filtered = existingLocal.filter((item: any) => item.id !== fileId)
+        localStorage.setItem('summarease-local-notebooks', JSON.stringify(filtered))
+        loadLocalNotebooks()
+      } else {
+        const ok = await deleteFile(fileId)
+        if (ok) {
+          await loadFiles()
+        }
       }
     } finally {
       setDeletingId(null)
@@ -130,7 +139,12 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
               <div
                 key={notebook.id}
                 className={`file-card local-notebook ${selectedFileId === notebook.id ? 'selected' : ''}`}
-                onClick={() => handleLocalNotebookSelect(notebook)}
+                onClick={(e) => {
+                  // Avoid card click when clicking actions
+                  const target = e.target as HTMLElement
+                  if (target.closest('.file-actions')) return
+                  handleLocalNotebookSelect(notebook)
+                }}
               >
                 <div className="file-header">
                   <div className="file-icon">
@@ -145,6 +159,22 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
                       </span>
                       <span className="file-status local-status">Local Save</span>
                     </div>
+                  </div>
+                  <div className="file-actions">
+                    <button
+                      className="action-btn edit"
+                      title="Edit in Notebook"
+                      onClick={() => onEditLocalNotebook?.(notebook)}
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                    <button
+                      className="action-btn delete"
+                      title="Delete"
+                      onClick={() => setShowConfirm({ id: notebook.id, title: notebook.title, isLocal: true })}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
                 <div className="file-summary">
@@ -238,7 +268,7 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
                   </button>
                   <button
                     className="delete-confirm-button"
-                    onClick={() => handleConfirmDelete(showConfirm.id)}
+                    onClick={() => handleConfirmDelete(showConfirm.id, showConfirm.isLocal)}
                     disabled={!!deletingId}
                   >
                     <Trash2 className="icon" />

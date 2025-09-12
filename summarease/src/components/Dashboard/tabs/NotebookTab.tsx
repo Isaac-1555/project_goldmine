@@ -339,7 +339,40 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       const plainNotes = (notes || '').replace(/<[^>]*>/g, '').trim()
 
       if (mode === 'edit' && editingFileId) {
-        // Update existing notebook
+        // Check if this is a local notebook (ID starts with 'local_')
+        if (editingFileId.startsWith('local_')) {
+          // Update local notebook
+          const localData = {
+            id: editingFileId,
+            title: title.trim(),
+            notes: notes,
+            documents: documents.map(doc => ({
+              ...doc,
+              // Don't store file blob in localStorage for performance
+              file: undefined
+            })),
+            lastSaved: new Date().toISOString(),
+            isLocalSave: true
+          }
+          
+          // Update in localStorage
+          const existingLocal = JSON.parse(localStorage.getItem('summarease-local-notebooks') || '[]')
+          const existingIndex = existingLocal.findIndex((item: any) => item.id === editingFileId)
+          
+          if (existingIndex >= 0) {
+            existingLocal[existingIndex] = localData
+          } else {
+            existingLocal.push(localData)
+          }
+          
+          localStorage.setItem('summarease-local-notebooks', JSON.stringify(existingLocal))
+          
+          alert('Local notebook updated successfully!')
+          onExitEdit?.()
+          return
+        }
+
+        // Update existing cloud notebook
         const updateResult = await updateNotebookContent(editingFileId, {
           notesHtml: notes || '',
           notesText: plainNotes,

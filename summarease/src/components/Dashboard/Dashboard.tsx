@@ -96,6 +96,43 @@ export const Dashboard: React.FC = () => {
     }
   }
 
+  // Handle Edit from local notebook
+  const handleEditLocalNotebook = (localNotebook: any) => {
+    try {
+      const documents: DocumentItem[] = []
+
+      // Convert local notebook documents back to DocumentItem format
+      if (localNotebook.documents && Array.isArray(localNotebook.documents)) {
+        for (const doc of localNotebook.documents) {
+          documents.push({
+            id: doc.id,
+            name: doc.name,
+            type: doc.type,
+            content: doc.content,
+            size: doc.size,
+            timestamp: doc.timestamp ? new Date(doc.timestamp) : new Date(),
+            // Note: file blob is not stored in localStorage, so file property will be undefined
+            file: undefined
+          } as DocumentItem)
+        }
+      }
+
+      setEditingContext({
+        fileId: localNotebook.id, // Use local ID for identification
+        title: localNotebook.title,
+        notesHtml: localNotebook.notes || '',
+        transcriptText: '', // Will be extracted from documents if any transcript exists
+        documents,
+        tags: [], // Local notebooks don't store tags separately yet
+        summaryId: undefined, // Local notebooks don't have summaries
+      })
+      setActiveTab('notebook')
+    } catch (e) {
+      console.error('Failed to load local notebook for editing', e)
+      setActiveTab('notebook')
+    }
+  }
+
   const renderTabContent = () => {
     if (showContentViewer && selectedFile) {
       return (
@@ -128,6 +165,7 @@ export const Dashboard: React.FC = () => {
             onFileSelect={handleFileSelect}
             selectedFileId={selectedFile?.id}
             onEditFile={handleEditFromView}
+            onEditLocalNotebook={handleEditLocalNotebook}
           />
         )
       case 'study-tools':
