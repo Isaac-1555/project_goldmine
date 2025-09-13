@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Speech API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #transcript {
+            padding: 15px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            min-height: 100px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Web Speech API Test</h1>
+    
+    <div id="browser-info" class="status info"></div>
+    <div id="api-support" class="status"></div>
+    
+    <div>
+        <button onclick="startTest()">Start Speech Recognition Test</button>
+        <button onclick="stopTest()">Stop</button>
+    </div>
+    
+    <div id="status-message"></div>
+    
+    <h3>Live Transcript:</h3>
+    <div id="transcript"></div>
+    
+    <h3>Debug Log:</h3>
+    <div id="debug-log" style="font-family: monospace; font-size: 12px; background: #000; color: #0f0; padding: 10px; height: 200px; overflow-y: auto;"></div>
+
+    <script>
+        let recognition = null;
+        const debugLog = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            debugLog.push(logEntry);
+            document.getElementById('debug-log').innerHTML = debugLog.join('<br>');
+            console.log(logEntry);
+        }
+        
+        // Check browser
+        const userAgent = navigator.userAgent;
+        document.getElementById('browser-info').innerHTML = `
+            <strong>Browser:</strong> ${userAgent}<br>
+            <strong>Platform:</strong> ${navigator.platform}<br>
+            <strong>Language:</strong> ${navigator.language}
+        `;
+        
+        // Check API support
+        const hasSpeechRecognition = 'SpeechRecognition' in window;
+        const hasWebkitSpeechRecognition = 'webkitSpeechRecognition' in window;
+        
+        if (hasSpeechRecognition || hasWebkitSpeechRecognition) {
+            document.getElementById('api-support').className = 'status success';
+            document.getElementById('api-support').innerHTML = `
+                ✅ Web Speech API is supported!<br>
+                SpeechRecognition: ${hasSpeechRecognition}<br>
+                webkitSpeechRecognition: ${hasWebkitSpeechRecognition}
+            `;
+            log('Web Speech API is supported');
+            
+            // Initialize recognition
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = () => {
+                log('Speech recognition started');
+                document.getElementById('status-message').innerHTML = '<div class="status success">🎤 Listening... Speak now!</div>';
+            };
+            
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                document.getElementById('transcript').innerHTML = 
+                    '<strong>Final:</strong> ' + finalTranscript + 
+                    '<br><strong>Interim:</strong> <em>' + interimTranscript + '</em>';
+                
+                log('Transcript update: ' + (finalTranscript || interimTranscript));
+            };
+            
+            recognition.onerror = (event) => {
+                log('Error: ' + event.error, 'error');
+                document.getElementById('status-message').innerHTML = 
+                    '<div class="status error">❌ Error: ' + event.error + '</div>';
+            };
+            
+            recognition.onend = () => {
+                log('Speech recognition ended');
+                document.getElementById('status-message').innerHTML = 
+                    '<div class="status info">Speech recognition stopped</div>';
+            };
+            
+        } else {
+            document.getElementById('api-support').className = 'status error';
+            document.getElementById('api-support').innerHTML = '❌ Web Speech API is NOT supported in this browser';
+            log('Web Speech API is NOT supported', 'error');
+        }
+        
+        function startTest() {
+            if (recognition) {
+                try {
+                    log('Attempting to start recognition...');
+                    recognition.start();
+                } catch (error) {
+                    log('Failed to start: ' + error.message, 'error');
+                    document.getElementById('status-message').innerHTML = 
+                        '<div class="status error">Failed to start: ' + error.message + '</div>';
+                }
+            } else {
+                alert('Speech Recognition not available');
+            }
+        }
+        
+        function stopTest() {
+            if (recognition) {
+                recognition.stop();
+                log('Stopping recognition...');
+            }
+        }
+    </script>
+</body>
+</html>

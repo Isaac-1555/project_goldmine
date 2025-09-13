@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Mic, Square, Play, Pause, X, AlertCircle } from 'lucide-react'
+import { LiveTranscriber } from '../../lib/webSpeechTranscription'
 import './AudioRecorder.css'
 
 export interface AudioRecording {
@@ -8,6 +9,7 @@ export interface AudioRecording {
   blob: Blob
   duration: number
   timestamp: Date
+  transcript?: string
 }
 
 interface AudioRecorderProps {
@@ -24,6 +26,9 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
   const [isPlaying, setIsPlaying] = useState(false)
   const [error, setError] = useState('')
   const [title, setTitle] = useState('')
+  const [liveTranscriber, setLiveTranscriber] = useState<LiveTranscriber | null>(null)
+  const [liveTranscript, setLiveTranscript] = useState('')
+  const [showTranscript, setShowTranscript] = useState(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -49,6 +54,28 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
 
+      // Initialize Web Speech API transcriber
+      const transcriber = new LiveTranscriber(
+        (transcript, isFinal) => {
+          setLiveTranscript(transcript)
+        },
+        (error) => {
+          console.error('Transcription error:', error)
+          // Don't show error to user, transcription is optional
+        }
+      )
+      
+      // Start transcription if supported
+      if (transcriber.isSupported()) {
+        try {
+          transcriber.start()
+          setLiveTranscriber(transcriber)
+          setShowTranscript(true)
+        } catch (err) {
+          console.error('Failed to start transcription:', err)
+        }
+      }
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunksRef.current.push(event.data)
@@ -60,6 +87,13 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
         setAudioBlob(blob)
         const url = URL.createObjectURL(blob)
         setAudioUrl(url)
+        
+        // Stop transcription and get final transcript
+        if (liveTranscriber) {
+          const finalTranscript = liveTranscriber.stop()
+          setLiveTranscript(finalTranscript)
+          setLiveTranscriber(null)
+        }
         
         // Stop all tracks to release microphone
         stream.getTracks().forEach(track => track.stop())
@@ -87,6 +121,10 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
       if (timerRef.current) {
         clearInterval(timerRef.current)
       }
+      // Pause transcription
+      if (liveTranscriber) {
+        liveTranscriber.pause()
+      }
     }
   }
 
@@ -98,6 +136,11 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1)
       }, 1000)
+      
+      // Resume transcription
+      if (liveTranscriber) {
+        liveTranscriber.resume()
+      }
     }
   }
 
@@ -142,7 +185,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
         name: title.trim(),
         blob: audioBlob,
         duration: recordingTime,
-        timestamp: new Date()
+        timestamp: new Date(),
+        transcript: liveTranscript || undefined
       }
       
       onRecordingComplete?.(recording)
@@ -163,6 +207,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
     setRecordingTime(0)
     setIsPlaying(false)
     setTitle('')
+    setLiveTranscript('')
+    setShowTranscript(false)
     chunksRef.current = []
   }
 
@@ -189,6 +235,22 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                 {isRecording && (
                   <div className="recording-status">
                     {isPaused ? 'Paused' : 'Recording...'}
+                  </div>
+                )}
+                {showTranscript && liveTranscript && (
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '0.75rem',
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: '8px',
+                    maxHeight: '100px',
+                    overflowY: 'auto',
+                    fontSize: '14px',
+                    color: '#666',
+                    textAlign: 'left'
+                  }}>
+                    <small style={{ color: '#999' }}>Live transcript:</small>
+                    <div style={{ marginTop: '4px' }}>{liveTranscript}</div>
                   </div>
                 )}
               </div>
@@ -255,6 +317,22 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                   maxLength={100}
                 />
               </div>
+              
+              {liveTranscript && (
+                <div style={{
+                  marginTop: '1rem',
+                  padding: '0.75rem',
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: '8px',
+                  maxHeight: '150px',
+                  overflowY: 'auto',
+                  fontSize: '14px',
+                  color: '#666'
+                }}>
+                  <strong>Transcript:</strong>
+                  <div style={{ marginTop: '4px' }}>{liveTranscript}</div>
+                </div>
+              )}
 
               <div className="upload-actions">
                 <button onClick={resetRecording} className="cancel-button">

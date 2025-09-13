@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Mic, Upload, Save, Check, Play, Pause, Square, Plus, X as XIcon } from 'lucide-react'
 import { FileUploadModal } from '../../Upload/FileUploadModal'
 import { createUnifiedContent, updateNotebookContent, addTagsToSummary } from '../../../lib/api'
 import { supabase } from '../../../lib/supabase'
 import { processAudioTranscript } from '../../../lib/audioProcessor'
-import { transcribeAudio } from '../../../lib/transcriptionService'
+import { LiveTranscriber, getFallbackTranscript } from '../../../lib/webSpeechTranscription'
 import { ResizableDivider } from '../../ResizableDivider'
 import { NoteTaking } from '../../NoteTaking'
 import { DocumentList, type DocumentItem } from '../../DocumentList'
@@ -124,6 +124,10 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   const [recordingTime, setRecordingTime] = useState(0)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [recordingChunks, setRecordingChunks] = useState<Blob[]>([])
+  const [liveTranscriber, setLiveTranscriber] = useState<LiveTranscriber | null>(null)
+  const [liveTranscript, setLiveTranscript] = useState('')
+  const [transcriptionError, setTranscriptionError] = useState<string | null>(null)
+  const finalTranscriptRef = useRef<string>('')
 
   // Recording timer
   useEffect(() => {
@@ -171,11 +175,65 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   // Recording functions
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Request microphone permission explicitly
+      console.log('Requesting microphone permission...')
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      })
+      console.log('Microphone permission granted')
+      
       const recorder = new MediaRecorder(stream)
       
       setRecordingChunks([])
       setMediaRecorder(recorder)
+      setTranscriptionError(null)
+      
+      // Initialize Web Speech API transcriber
+      const transcriber = new LiveTranscriber(
+        (transcript, isFinal) => {
+          console.log('📝 Live transcript update:', {
+            transcript: transcript.substring(0, 100) + (transcript.length > 100 ? '...' : ''),
+            length: transcript.length,
+            isFinal
+          })
+          setLiveTranscript(transcript)
+          // Also store in ref to preserve value
+          if (transcript && transcript.trim()) {
+            finalTranscriptRef.current = transcript
+          }
+        },
+        (error) => {
+          console.error('❌ Transcription error:', error)
+          setTranscriptionError(error)
+        }
+      )
+      
+      // Check if Web Speech API is supported
+      const isSupported = transcriber.isSupported()
+      console.log('Checking Web Speech API support:', isSupported)
+      
+      if (isSupported) {
+        try {
+          console.log('Attempting to start Web Speech API...')
+          transcriber.start()
+          setLiveTranscriber(transcriber)
+          console.log('Web Speech API started successfully')
+        } catch (err) {
+          console.error('Failed to start Web Speech API:', err)
+          setTranscriptionError('Speech recognition failed to start')
+          // Set a more informative error message
+          setLiveTranscript('[Speech recognition failed to initialize. Error: ' + (err as Error).message + ']')
+        }
+      } else {
+        console.warn('Web Speech API not supported in this browser')
+        setTranscriptionError('Speech recognition not supported in this browser')
+        // Don't set liveTranscript to error here - let it remain empty
+        // The error will be handled in processRecording
+      }
       
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -185,8 +243,15 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       
       recorder.onstop = async () => {
         const audioBlob = new Blob(recordingChunks, { type: 'audio/webm' })
-        await processRecording(audioBlob)
-        stream.getTracks().forEach(track => track.stop())
+        // Use ref directly to avoid closure issues
+        console.log('🎤 Recorder stopped, finalTranscriptRef:', finalTranscriptRef.current?.substring(0, 100))
+        
+        // Small delay to ensure any final transcript updates are captured
+        setTimeout(async () => {
+          console.log('🔍 Processing with finalTranscriptRef:', finalTranscriptRef.current?.substring(0, 100))
+          await processRecording(audioBlob)
+          stream.getTracks().forEach(track => track.stop())
+        }, 200)
       }
       
       recorder.start()
@@ -202,6 +267,10 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.pause()
       setIsPaused(true)
+      // Pause transcription
+      if (liveTranscriber) {
+        liveTranscriber.pause()
+      }
     }
   }
 
@@ -209,28 +278,75 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     if (mediaRecorder && mediaRecorder.state === 'paused') {
       mediaRecorder.resume()
       setIsPaused(false)
+      // Resume transcription
+      if (liveTranscriber) {
+        liveTranscriber.resume()
+      }
     }
   }
 
   const stopRecording = () => {
     if (mediaRecorder) {
-      mediaRecorder.stop()
       setIsRecording(false)
       setIsPaused(false)
+      
+      // Stop transcription and save final transcript before stopping media recorder
+      if (liveTranscriber) {
+        const finalTranscript = liveTranscriber.stop()
+        console.log('Final transcript from Web Speech API:', finalTranscript)
+        // Store transcript in ref to preserve it through the async flow
+        if (finalTranscript && finalTranscript.trim()) {
+          finalTranscriptRef.current = finalTranscript
+          setLiveTranscript(finalTranscript)
+        }
+      }
+      
+      // Stop media recorder after saving transcript
+      mediaRecorder.stop()
     }
   }
 
   const processRecording = async (audioBlob: Blob) => {
     const recordingName = `Recording ${new Date().toLocaleTimeString()}`
     
-    // Transcribe the audio
-    const transcriptionResult = await transcribeAudio(audioBlob)
-    
     let transcriptContent = ''
-    if (transcriptionResult.success) {
-      transcriptContent = transcriptionResult.transcript
+    let isValidTranscript = false
+    
+    // Use ref value which is more reliable than state
+    const capturedTranscript = finalTranscriptRef.current || liveTranscript
+    
+    console.log('🎯 Processing recording - transcript state:', {
+      hasLiveTranscript: !!liveTranscript,
+      hasFinalTranscript: !!finalTranscriptRef.current,
+      transcriptPreview: capturedTranscript?.substring(0, 100) + (capturedTranscript && capturedTranscript.length > 100 ? '...' : ''),
+      transcriptLength: capturedTranscript?.length || 0,
+      hasError: !!transcriptionError,
+      error: transcriptionError
+    })
+    
+    // Check if we have a valid transcript (not an error message)
+    if (capturedTranscript && capturedTranscript.trim() && !capturedTranscript.startsWith('[')) {
+      transcriptContent = capturedTranscript
+      isValidTranscript = true
+      console.log('✅ Using Web Speech API transcript:', {
+        preview: transcriptContent.substring(0, 100) + '...',
+        length: transcriptContent.length
+      })
     } else {
-      transcriptContent = `[Transcription failed: ${transcriptionResult.error}]\n\nPlease manually add the transcript for this ${Math.round(recordingTime / 60)} minute recording.`
+      // No valid transcript captured
+      console.log('⚠️ No valid transcript captured');
+      console.log('capturedTranscript:', capturedTranscript);
+      console.log('finalTranscriptRef.current:', finalTranscriptRef.current);
+      console.log('liveTranscript:', liveTranscript);
+      
+      if (transcriptionError) {
+        console.log('Transcription had an error:', transcriptionError)
+        transcriptContent = `[Transcription Error: ${transcriptionError}]\n\nPlease type your transcript manually.`
+      } else {
+        console.log('No transcript captured - speech may not have been detected')
+        transcriptContent = '[No speech detected]\n\nThe Web Speech API did not capture any speech. Please ensure:\n1. You spoke clearly into the microphone\n2. Your microphone is working\n3. You allowed microphone permissions\n\nTry recording again or type your transcript manually.'
+      }
+      isValidTranscript = false // Don't try to generate summary from error messages
     }
     
     // Add transcript as a document
@@ -244,6 +360,15 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     
     setDocuments(prev => [...prev, transcriptDocument])
     setRecordingTime(0)
+    
+    // Reset transcription state after using it
+    // Use setTimeout to avoid race conditions with state updates
+    setTimeout(() => {
+      setLiveTranscript('')
+      setLiveTranscriber(null)
+      setTranscriptionError(null)
+      finalTranscriptRef.current = '' // Clear the ref as well
+    }, 500)
   }
 
   const formatTime = (seconds: number) => {
@@ -435,22 +560,31 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       })
       
       if (fileId) {
-        console.log('Content saved successfully with ID:', fileId)
+        console.log('✅ Content saved successfully with ID:', fileId)
         
         // Generate summary from all content sources (notes, transcript, uploaded docs)
         const contentSources: string[] = []
-        if (transcripts.trim()) contentSources.push(transcripts.trim())
+        if (transcripts.trim()) {
+          contentSources.push(transcripts.trim())
+          console.log('📄 Including transcript in summary:', transcripts.substring(0, 100) + '...')
+        }
         if (plainNotes) contentSources.push(plainNotes)
         if (documentsExtractedText && documentsExtractedText.trim()) contentSources.push(documentsExtractedText.trim())
         
         const allContent = contentSources.join('\n\n')
+        console.log('📊 Total content for summary:', {
+          length: allContent.length,
+          preview: allContent.substring(0, 200) + '...'
+        })
         
         if (allContent) {
           try {
+            console.log('🤖 Calling processAudioTranscript with content...')
             const { summary, tags } = await processAudioTranscript(allContent)
+            console.log('📝 Summary generated:', summary.substring(0, 100) + '...')
             const finalTags = Array.from(new Set([...(tags || []), ...customTags]))
             await saveProcessedContent(fileId, summary, finalTags)
-            console.log('Summary generated and saved successfully')
+            console.log('✅ Summary generated and saved successfully')
           } catch (error) {
             console.error('Failed to generate summary:', error)
           }
@@ -614,6 +748,41 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           <span className="recording-text">
             {isPaused ? 'Recording Paused' : 'Recording...'} {formatTime(recordingTime)}
           </span>
+        </div>
+      )}
+
+      {/* Live Transcript Display */}
+      {isRecording && liveTranscript && (
+        <div className="live-transcript-preview" style={{
+          marginTop: '1rem',
+          padding: '0.75rem',
+          backgroundColor: 'var(--bg-secondary)',
+          borderRadius: '8px',
+          border: '1px solid var(--border-color)',
+          maxHeight: '150px',
+          overflowY: 'auto'
+        }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+            Live Transcript (Web Speech API):
+          </div>
+          <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.5' }}>
+            {liveTranscript || 'Listening...'}
+          </div>
+        </div>
+      )}
+
+      {/* Transcription Error Display */}
+      {transcriptionError && (
+        <div style={{
+          marginTop: '0.5rem',
+          padding: '0.5rem',
+          backgroundColor: '#fef2f2',
+          borderRadius: '6px',
+          border: '1px solid #fecaca',
+          color: '#dc2626',
+          fontSize: '12px'
+        }}>
+          ⚠️ {transcriptionError}
         </div>
       )}
 
