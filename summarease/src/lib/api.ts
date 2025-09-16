@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { processDocumentClientSide, extractTextOnly } from './documentProcessor'
+import { processAudioTranscript } from './audioProcessor'
 
 export interface FileWithMetadata {
   id: string
@@ -640,6 +641,59 @@ export async function updateNotebookContent(
 /**
  * Delete a file and all its associated data
  */
+/**
+ * Regenerate the latest summary for a file by recomputing from current transcript, notes, and documents.
+ * Inserts a new row in summaries and returns the new summary content and tags.
+ */
+export async function regenerateSummary(fileId: string): Promise<{ success: boolean; summaryId?: string; summary_text?: string; tags?: string[]; error?: string }> {
+  try {
+    // Fetch latest notebook-style details (works for audio/notebook files)
+    const details = await getNotebookDetails(fileId)
+
+    let combined = ''
+    if (details.notes?.content?.trim()) {
+      combined += `Notes:\n${details.notes.content.trim()}\n\n`
+    }
+    if (details.transcript?.content?.trim()) {
+      combined += `Transcript:\n${details.transcript.content.trim()}\n\n`
+    }
+    if (Array.isArray(details.documents)) {
+      for (const d of details.documents) {
+        const name = d.original_filename || 'Document'
+        const text = (d.extracted_text || '').toString().trim()
+        if (text) {
+          combined += `${name}:\n${text}\n\n`
+        }
+      }
+    }
+
+    if (!combined.trim()) {
+      return { success: false, error: 'No content available to summarize' }
+    }
+
+    const { summary, tags } = await processAudioTranscript(combined)
+
+    // Insert new summary row
+    const { data: summaryRow, error: summaryInsertError } = await supabase
+      .from('summaries')
+      .insert({ file_id: fileId, summary_text: summary, created_at: new Date().toISOString() })
+      .select('*')
+      .single()
+
+    if (summaryInsertError) throw summaryInsertError
+
+    // Save tags links
+    if (tags?.length) {
+      await addTagsToSummary(summaryRow.id, tags)
+    }
+
+    return { success: true, summaryId: summaryRow.id, summary_text: summary, tags }
+  } catch (error: any) {
+    console.error('Error regenerating summary:', error)
+    return { success: false, error: error.message || 'Failed to regenerate summary' }
+  }
+}
+
 export async function deleteFile(fileId: string): Promise<boolean> {
   try {
     const { error } = await supabase

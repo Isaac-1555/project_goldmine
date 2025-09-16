@@ -5,21 +5,13 @@ import './SettingsTab.css'
 
 export const SettingsTab: React.FC = () => {
   const { user, signOut } = useAuth()
-  const [customPrompt, setCustomPrompt] = useState(
-    localStorage.getItem('customSummaryPrompt') || 
-    'Summarize the following text in a professional tone using five bullet points.'
-  )
+  // Custom summary prompt feature removed
   const [theme, setTheme] = useState<'light' | 'dark'>(
     (localStorage.getItem('theme') as 'light' | 'dark') || 'light'
   )
   const [email, setEmail] = useState(user?.email || '')
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
-
-  const handleSavePrompt = () => {
-    localStorage.setItem('customSummaryPrompt', customPrompt)
-    setShowSaveSuccess(true)
-    setTimeout(() => setShowSaveSuccess(false), 3000)
-  }
+  // Custom summary prompt: removed
 
   const handleThemeChange = (newTheme: 'light' | 'dark') => {
     setTheme(newTheme)
@@ -102,81 +94,14 @@ export const SettingsTab: React.FC = () => {
           </div>
         </div>
 
-        {/* AI Configuration Section */}
+        {/* AI Configuration Section - removed custom prompt feature */}
         <div className="settings-section">
           <div className="section-header">
             <Bot className="section-icon" />
             <h3>AI Configuration</h3>
           </div>
           <div className="section-content">
-            <div className="form-group">
-              <label htmlFor="custom-prompt">Custom Summary Prompt</label>
-              <textarea
-                id="custom-prompt"
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="Enter your custom prompt for AI summaries..."
-                rows={4}
-                className="prompt-textarea"
-              />
-              <p className="input-help">
-                This prompt will be used by the AI for all future summary generations. 
-                Be specific about the format, tone, and length you prefer.
-              </p>
-            </div>
-            
-            <div className="form-actions">
-              <button onClick={handleSavePrompt} className="save-button">
-                <Save className="button-icon" />
-                Save Prompt
-              </button>
-              {showSaveSuccess && (
-                <span className="save-success">✓ Saved successfully!</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Example Prompts */}
-        <div className="settings-section">
-          <div className="section-header">
-            <h3>Example Prompts</h3>
-          </div>
-          <div className="section-content">
-            <div className="example-prompts">
-              <div className="example-prompt">
-                <h4>Academic Style</h4>
-                <p>"Provide a comprehensive academic summary with key concepts, methodologies, and conclusions in structured paragraphs."</p>
-                <button 
-                  className="use-example-btn"
-                  onClick={() => setCustomPrompt("Provide a comprehensive academic summary with key concepts, methodologies, and conclusions in structured paragraphs.")}
-                >
-                  Use This
-                </button>
-              </div>
-              
-              <div className="example-prompt">
-                <h4>Bullet Points</h4>
-                <p>"Summarize the following text in exactly 5 bullet points, focusing on the most important information."</p>
-                <button 
-                  className="use-example-btn"
-                  onClick={() => setCustomPrompt("Summarize the following text in exactly 5 bullet points, focusing on the most important information.")}
-                >
-                  Use This
-                </button>
-              </div>
-              
-              <div className="example-prompt">
-                <h4>Executive Summary</h4>
-                <p>"Create a brief executive summary suitable for business professionals, highlighting key insights and actionable items."</p>
-                <button 
-                  className="use-example-btn"
-                  onClick={() => setCustomPrompt("Create a brief executive summary suitable for business professionals, highlighting key insights and actionable items.")}
-                >
-                  Use This
-                </button>
-              </div>
-            </div>
+            <p className="input-help">Summaries use a standardized student-friendly format. Custom summary prompts have been removed for consistency.</p>
           </div>
         </div>
       </div>

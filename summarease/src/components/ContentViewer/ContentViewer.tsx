@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Edit3, Save, X, FileText, MessageSquare, Tag, Clock, ArrowLeft, Trash2, File as FileIcon, Eye } from 'lucide-react'
 import { StatusIndicator } from '../FileStatus/StatusIndicator'
-import { getFileDetails, updateSummary, deleteFile, type FileWithMetadata } from '../../lib/api'
+import { getFileDetails, updateSummary, deleteFile, regenerateSummary, type FileWithMetadata } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
 import './ContentViewer.css'
 
@@ -162,6 +162,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
     )
   }
   const [saving, setSaving] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -408,13 +409,42 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
               <>
                 <div className="content-actions">
                   {!isEditing ? (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="edit-button"
-                    >
-                      <Edit3 className="icon" />
-                      Edit Summary
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="edit-button"
+                      >
+                        <Edit3 className="icon" />
+                        Edit Summary
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            setRegenerating(true)
+                            const res = await regenerateSummary(fileDetails!.file.id)
+                            if (res.success && res.summary_text) {
+                              setFileDetails(prev => prev ? {
+                                ...prev,
+                                summary: prev.summary ? { ...prev.summary, summary_text: res.summary_text } : prev.summary
+                              } : null)
+                              setEditedSummary(res.summary_text)
+                            } else {
+                              setError(res.error || 'Failed to regenerate summary')
+                            }
+                          } catch (e) {
+                            setError('Failed to regenerate summary')
+                          } finally {
+                            setRegenerating(false)
+                          }
+                        }}
+                        className="save-button"
+                        disabled={regenerating}
+                        title="Regenerate summary using latest transcript, notes, and documents"
+                      >
+                        <Save className="icon" />
+                        {regenerating ? 'Regenerating...' : 'Regenerate Summary'}
+                      </button>
+                    </>
                   ) : (
                     <div className="edit-actions">
                       <button
