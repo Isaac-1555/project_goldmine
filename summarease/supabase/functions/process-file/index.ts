@@ -272,16 +272,64 @@ async function extractTextFromDocx(docxData: Blob, genAI: GoogleGenerativeAI): P
   }
 }
 
+// Helper function to remove duplicate sentences and clean up summary
+function cleanAndDeduplicateSummary(summary: string): string {
+  // Split into sentences, clean whitespace
+  const sentences = summary.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 10)
+  
+  // Remove duplicate sentences (case-insensitive)
+  const uniqueSentences: string[] = []
+  const seenSentences = new Set<string>()
+  
+  for (const sentence of sentences) {
+    const normalizedSentence = sentence.toLowerCase().replace(/\s+/g, ' ').trim()
+    if (!seenSentences.has(normalizedSentence) && normalizedSentence.length > 10) {
+      uniqueSentences.push(sentence)
+      seenSentences.add(normalizedSentence)
+    }
+  }
+  
+  // Rebuild the summary
+  let cleanSummary = uniqueSentences.join('. ').trim()
+  if (cleanSummary && !cleanSummary.endsWith('.') && !cleanSummary.endsWith('!') && !cleanSummary.endsWith('?')) {
+    cleanSummary += '.'
+  }
+  
+  return cleanSummary
+}
+
 async function generateSummary(text: string, genAI: GoogleGenerativeAI): Promise<string> {
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
   const prompt = `
-    Please create a comprehensive but concise summary of the following text. 
-    The summary should:
-    - Capture the main points and key information
-    - Be well-structured and easy to read
-    - Be approximately 200-400 words
-    - Use clear, professional language
+    Create a study-friendly summary for college students from the following text. Use clear sections and bullet points that will display properly as formatted text.
+    
+    Requirements:
+    - Use EXACTLY this structure with plain text formatting
+    - Each bullet point must start on its own new line with "• "
+    - Each bullet point should be unique (no repetition)
+    - Focus on understanding and practical insight (no exam language)
+    - Keep language clear and concise
+    - Limit to 250-350 words total
+    - Use line breaks to separate sections
+    - Do NOT include headings like "Study Notes" or any mention of exams
+    
+    Format:
+    
+    KEY CONCEPTS:
+    • [Most important concept/topic 1]
+    • [Most important concept/topic 2]
+    • [Most important concept/topic 3]
+    
+    DETAILS & EXAMPLES:
+    • [Critical facts, data, or evidence]
+    • [Supporting information that deepens understanding]
+    • [Specific examples or case studies mentioned]
+    
+    APPLICATIONS & REFLECTIONS:
+    • [How to apply these ideas in real life or projects]
+    • [Connections to broader topics or personal growth]
+    • [Implications or takeaways]
     
     Text to summarize:
     ${text}
@@ -289,7 +337,12 @@ async function generateSummary(text: string, genAI: GoogleGenerativeAI): Promise
 
   const result = await model.generateContent(prompt)
   const response = await result.response
-  return response.text()
+  const rawSummary = response.text()
+  
+  // Clean and deduplicate the summary to prevent repetitive content
+  const cleanedSummary = cleanAndDeduplicateSummary(rawSummary)
+  
+  return cleanedSummary
 }
 
 async function extractTags(text: string, genAI: GoogleGenerativeAI): Promise<string[]> {

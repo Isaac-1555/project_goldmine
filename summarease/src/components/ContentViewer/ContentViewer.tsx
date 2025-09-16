@@ -52,45 +52,113 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
   const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'notes' | 'tags' | 'docs'>('summary')
   const [isEditing, setIsEditing] = useState(false)
   const [editedSummary, setEditedSummary] = useState('')
-  // Render summary text preserving list formatting when present
+  // Render summary text with proper formatting for college students
   const renderSummaryText = (text: string) => {
-    const lines = (text || '').split('\n')
+    const rawLines = (text || '').split('\n')
 
-    // Group lines into paragraphs or lists
-    const blocks: Array<{ type: 'list' | 'p'; items?: string[]; text?: string }> = []
+    // Helper: split lines that accidentally include section headers inline
+    const splitOnKnownHeaders = (line: string): string[] => {
+      const parts = line.split(/(KEY CONCEPTS:|DETAILS & EXAMPLES:|APPLICATIONS & REFLECTIONS:)/)
+      const out: string[] = []
+      for (const part of parts) {
+        const t = (part || '').trim()
+        if (!t) continue
+        out.push(t)
+      }
+      return out
+    }
+
+    const lines: string[] = []
+    for (const l of rawLines) {
+      const segments = splitOnKnownHeaders(l)
+      for (const s of segments) lines.push(s)
+    }
+
+    const blocks: Array<{ 
+      type: 'section-header' | 'list' | 'p'
+      items?: string[]
+      text?: string
+      sectionTitle?: string
+    }> = []
     let currentList: string[] | null = null
 
-    const listPattern = /^\s*(?:[-*•]|\d+\.)\s+/
+    // Patterns to identify different elements
+    // Normalize different bullet styles to a standard dot and space
+    const listPattern = /^\s*(?:[-*•]|\u2022|\d+\.)\s+/
+    const sectionHeaderPattern = /^[A-Z][A-Z\s&]+:$/
 
     for (const line of lines) {
-      if (listPattern.test(line)) {
-        const item = line.replace(listPattern, '').trim()
+      const trimmedLine = line.trim()
+      
+      // Skip empty lines
+      if (!trimmedLine) {
+        currentList = null
+        continue
+      }
+      
+      // Check if it's a section header (e.g., "KEY CONCEPTS:", "DETAILS & EXAMPLES:")
+      if (sectionHeaderPattern.test(trimmedLine)) {
+        currentList = null
+        blocks.push({ type: 'section-header', sectionTitle: trimmedLine })
+      }
+      // Check if it's a bullet point
+      else if (listPattern.test(trimmedLine)) {
+        // Remove leading bullet and split any inline bullets into separate items
+        const content = trimmedLine.replace(listPattern, '').trim()
+        const splitItems = content.split(/\s*•\s+/).map(s => s.trim()).filter(Boolean)
         if (!currentList) {
           currentList = []
           blocks.push({ type: 'list', items: currentList })
         }
-        currentList.push(item)
-      } else {
+        for (const it of splitItems) currentList.push(it)
+      }
+      // Paragraphs that contain inline bullets → convert to a list
+      else if (/•/.test(trimmedLine)) {
+        const items = trimmedLine.split(/\s*•\s+/).map(s => s.trim()).filter(Boolean)
+        if (items.length > 1) {
+          currentList = []
+          blocks.push({ type: 'list', items: currentList })
+          for (const it of items) currentList.push(it)
+        } else {
+          currentList = null
+          blocks.push({ type: 'p', text: trimmedLine })
+        }
+      }
+      // Regular paragraph
+      else {
         currentList = null
-        const t = line.trim()
-        if (t) blocks.push({ type: 'p', text: t })
+        blocks.push({ type: 'p', text: trimmedLine })
       }
     }
 
     return (
-      <>
-        {blocks.map((b, idx) =>
-          b.type === 'list' ? (
-            <ul key={`ul-${idx}`} className="summary-list-block">
-              {(b.items || []).map((it, i) => (
-                <li key={`li-${idx}-${i}`}>{it}</li>
-              ))}
-            </ul>
-          ) : (
-            <p key={`p-${idx}`}>{b.text}</p>
-          )
-        )}
-      </>
+      <div className="formatted-summary">
+        {blocks.map((block, idx) => {
+          if (block.type === 'section-header') {
+            return (
+              <h3 key={`section-${idx}`} className="summary-section-header">
+                {block.sectionTitle}
+              </h3>
+            )
+          } else if (block.type === 'list') {
+            return (
+              <ul key={`list-${idx}`} className="summary-bullet-list">
+                {(block.items || []).map((item, i) => (
+                  <li key={`item-${idx}-${i}`} className="summary-bullet-item">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            )
+          } else {
+            return (
+              <p key={`para-${idx}`} className="summary-paragraph">
+                {block.text}
+              </p>
+            )
+          }
+        })}
+      </div>
     )
   }
   const [saving, setSaving] = useState(false)
@@ -378,27 +446,6 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                 ) : (
                   <div className="summary-text">
                     {renderSummaryText(fileDetails.summary.summary_text)}
-                  </div>
-                )}
-
-                {/* Saved summaries list */}
-                {fileDetails.summaries && fileDetails.summaries.length > 0 && (
-                  <div className="summary-history">
-                    <h3 className="summary-history-title">Saved Summaries</h3>
-                    <ol className="summary-list">
-                      {fileDetails.summaries.map((s, idx) => (
-                        <li key={`sum-${s.id}-${idx}`} className="summary-item">
-                          <div className="summary-item-meta">
-                            <Clock className="icon" />
-                            <span>{s.created_at ? formatDate(s.created_at) : 'Unknown date'}</span>
-                            {idx === 0 && <span className="summary-badge">Latest</span>}
-                          </div>
-                          <div className="summary-item-body">
-                            {renderSummaryText(s.summary_text)}
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
                   </div>
                 )}
               </>
