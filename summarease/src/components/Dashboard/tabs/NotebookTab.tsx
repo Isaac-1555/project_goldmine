@@ -4,6 +4,7 @@ import { FileUploadModal } from '../../Upload/FileUploadModal'
 import { createUnifiedContent, updateNotebookContent, addTagsToSummary } from '../../../lib/api'
 import { supabase } from '../../../lib/supabase'
 import { processAudioTranscript } from '../../../lib/audioProcessor'
+import type { SummaryConfig } from '../../../types/summaryTypes'
 import { LiveTranscriber, getFallbackTranscript } from '../../../lib/webSpeechTranscription'
 import { ResizableDivider } from '../../ResizableDivider'
 import { NoteTaking } from '../../NoteTaking'
@@ -519,7 +520,17 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
 
         if (allContent) {
           try {
-            const { summary, tags } = await processAudioTranscript(allContent)
+            // Determine subject area based on content
+            const summaryConfig: Partial<SummaryConfig> = {
+              subjectArea: 'General',
+              academicLevel: 'Undergraduate',
+              summaryType: 'Detailed Study',
+              lengthPreference: 'standard',
+              includeCodeExamples: true,
+              includeMathDerivations: true
+            }
+            
+            const { summary, tags } = await processAudioTranscript(allContent, summaryConfig)
             // Update or insert summary
             let summaryId = existingSummaryId
             if (summaryId) {
@@ -580,7 +591,18 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         if (allContent) {
           try {
             console.log('🤖 Calling processAudioTranscript with content...')
-            const { summary, tags } = await processAudioTranscript(allContent)
+            
+            // Determine subject area based on content
+            const summaryConfig: Partial<SummaryConfig> = {
+              subjectArea: 'General',
+              academicLevel: 'Undergraduate',
+              summaryType: 'Detailed Study',
+              lengthPreference: 'standard',
+              includeCodeExamples: true,
+              includeMathDerivations: true
+            }
+            
+            const { summary, tags } = await processAudioTranscript(allContent, summaryConfig)
             console.log('📝 Summary generated:', summary.substring(0, 100) + '...')
             const finalTags = Array.from(new Set([...(tags || []), ...customTags]))
             await saveProcessedContent(fileId, summary, finalTags)

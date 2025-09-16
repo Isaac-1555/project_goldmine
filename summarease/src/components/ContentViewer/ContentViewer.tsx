@@ -3,6 +3,8 @@ import { Edit3, Pencil, Sparkles, Save, X, FileText, MessageSquare, Tag, Clock, 
 import { StatusIndicator } from '../FileStatus/StatusIndicator'
 import { getFileDetails, updateSummary, deleteFile, regenerateSummary, type FileWithMetadata } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
+import { CodeBlockRenderer } from '../ContentBlocks/CodeBlockRenderer'
+import { MathBlockRenderer } from '../ContentBlocks/MathBlockRenderer'
 import './ContentViewer.css'
 
 interface ContentViewerProps {
@@ -53,113 +55,200 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
   const [isEditing, setIsEditing] = useState(false)
   const [editedSummary, setEditedSummary] = useState('')
   // Render summary text with proper formatting for college students
+  // Only actual code/math segments are displayed in copyable boxes.
   const renderSummaryText = (text: string) => {
-    const rawLines = (text || '').split('\n')
+    if (!text) return null
 
-    // Helper: split lines that accidentally include section headers inline
-    const splitOnKnownHeaders = (line: string): string[] => {
-      const parts = line.split(/(KEY CONCEPTS:|DETAILS & EXAMPLES:|APPLICATIONS & REFLECTIONS:)/)
-      const out: string[] = []
-      for (const part of parts) {
-        const t = (part || '').trim()
-        if (!t) continue
-        out.push(t)
+    // Helper to convert plain text segment into structured blocks (headers, lists, paragraphs)
+    const renderPlainTextSegment = (segment: string, keyPrefix: string) => {
+      if (!segment) return null
+
+      // Normalize: ensure markdown-style headings (#, ##, ###) start on their own line
+      let normalized = segment
+        // Insert a newline before a heading token that appears inline
+        .replace(/([^\n])\s*(#{1,3})\s+(?=\S)/g, '$1\n$2 ')
+        // Collapse multiple blank lines
+        .replace(/\n{3,}/g, '\n\n')
+
+      const lines = normalized.split(/\n+/)
+
+      type Block = { 
+        type: 'h1' | 'h2' | 'h3' | 'list' | 'p'
+        items?: string[]
+        text?: string
+        title?: string
       }
-      return out
-    }
+      const blocks: Block[] = []
+      let currentList: string[] | null = null
 
-    const lines: string[] = []
-    for (const l of rawLines) {
-      const segments = splitOnKnownHeaders(l)
-      for (const s of segments) lines.push(s)
-    }
+      // Patterns
+      const headingRegex = /^(#{1,3})\s*(.+)$/
+      const legacyHeaderRegex = /^(KEY CONCEPTS:|DETAILS\s*&\s*EXAMPLES:|APPLICATIONS\s*&\s*REFLECTIONS:|KEY TERMS.*|SUMMARY)$/i
+      const bulletRegex = /^\s*(?:•|\-|\*|\d+\.)\s+(.+)$/
 
-    const blocks: Array<{ 
-      type: 'section-header' | 'list' | 'p'
-      items?: string[]
-      text?: string
-      sectionTitle?: string
-    }> = []
-    let currentList: string[] | null = null
+      for (const raw of lines) {
+        const line = raw.trim()
+        if (!line) { currentList = null; continue }
+        // Ignore stray heading markers with no title
+        if (/^#{1,6}\s*$/.test(line)) { currentList = null; continue }
 
-    // Patterns to identify different elements
-    // Normalize different bullet styles to a standard dot and space
-    const listPattern = /^\s*(?:[-*•]|\u2022|\d+\.)\s+/
-    const sectionHeaderPattern = /^[A-Z][A-Z\s&]+:$/
-
-    for (const line of lines) {
-      const trimmedLine = line.trim()
-      
-      // Skip empty lines
-      if (!trimmedLine) {
-        currentList = null
-        continue
-      }
-      
-      // Check if it's a section header (e.g., "KEY CONCEPTS:", "DETAILS & EXAMPLES:")
-      if (sectionHeaderPattern.test(trimmedLine)) {
-        currentList = null
-        blocks.push({ type: 'section-header', sectionTitle: trimmedLine })
-      }
-      // Check if it's a bullet point
-      else if (listPattern.test(trimmedLine)) {
-        // Remove leading bullet and split any inline bullets into separate items
-        const content = trimmedLine.replace(listPattern, '').trim()
-        const splitItems = content.split(/\s*•\s+/).map(s => s.trim()).filter(Boolean)
-        if (!currentList) {
-          currentList = []
-          blocks.push({ type: 'list', items: currentList })
-        }
-        for (const it of splitItems) currentList.push(it)
-      }
-      // Paragraphs that contain inline bullets → convert to a list
-      else if (/•/.test(trimmedLine)) {
-        const items = trimmedLine.split(/\s*•\s+/).map(s => s.trim()).filter(Boolean)
-        if (items.length > 1) {
-          currentList = []
-          blocks.push({ type: 'list', items: currentList })
-          for (const it of items) currentList.push(it)
-        } else {
+        // Markdown headings
+        const hMatch = line.match(headingRegex)
+        if (hMatch) {
           currentList = null
-          blocks.push({ type: 'p', text: trimmedLine })
+          const level = hMatch[1].length
+          const title = hMatch[2].trim()
+          blocks.push({ type: (level === 1 ? 'h1' : level === 2 ? 'h2' : 'h3'), title })
+          continue
         }
-      }
-      // Regular paragraph
-      else {
+
+        // Legacy ALL-CAPS section headers ending with colon
+        if (legacyHeaderRegex.test(line)) {
+          currentList = null
+          blocks.push({ type: 'h2', title: line.replace(/:$/, '') })
+          continue
+        }
+
+        // Bullet items starting at line-begin
+        const bMatch = line.match(bulletRegex)
+        if (bMatch) {
+          if (!currentList) {
+            currentList = []
+            blocks.push({ type: 'list', items: currentList })
+          }
+          const content = bMatch[1].trim()
+          // If the remaining content itself contains additional inline bullets, split them
+          const splitItems = content.split(/\s*•\s+/).map(s => s.trim()).filter(Boolean)
+          if (splitItems.length > 1) {
+            splitItems.forEach(it => currentList!.push(it))
+          } else {
+            currentList.push(content)
+          }
+          continue
+        }
+
+        // Inline bullets inside a single line (split into separate list items)
+        if (/(?:^|\s)•\s+/.test(line) && line.split(/\s*•\s+/).length > 1) {
+          const items = line.split(/\s*•\s+/).map(s => s.trim()).filter(Boolean)
+          if (items.length) {
+            currentList = []
+            blocks.push({ type: 'list', items: currentList })
+            items.forEach(it => currentList!.push(it))
+            continue
+          }
+        }
+
+        // Paragraph text
         currentList = null
-        blocks.push({ type: 'p', text: trimmedLine })
+        blocks.push({ type: 'p', text: line })
       }
+
+      // Inline emphasis renderer: ***bold-italic***, **bold**, *italic*
+      const renderInline = (text: string): React.ReactNode[] => {
+        if (!text) return []
+        const parts: React.ReactNode[] = []
+        const regex = /(\*\*\*.+?\*\*\*|\*\*.+?\*\*|\*[^*]+\*)/g
+        let lastIndex = 0
+        let m: RegExpExecArray | null
+        while ((m = regex.exec(text)) !== null) {
+          if (m.index > lastIndex) {
+            parts.push(text.slice(lastIndex, m.index))
+          }
+          const token = m[0]
+          if (token.startsWith('***')) {
+            const inner = token.slice(3, -3)
+            parts.push(<strong key={`b-i-${lastIndex}`}><em>{inner}</em></strong>)
+          } else if (token.startsWith('**')) {
+            const inner = token.slice(2, -2)
+            parts.push(<strong key={`b-${lastIndex}`}>{inner}</strong>)
+          } else if (token.startsWith('*')) {
+            const inner = token.slice(1, -1)
+            parts.push(<em key={`i-${lastIndex}`}>{inner}</em>)
+          }
+          lastIndex = m.index + token.length
+        }
+        if (lastIndex < text.length) parts.push(text.slice(lastIndex))
+        return parts
+      }
+
+      return (
+        <>
+          {blocks.map((block, idx) => {
+            switch (block.type) {
+              case 'h1':
+                return <h2 key={`${keyPrefix}-h1-${idx}`} className="summary-section-header">{block.title}</h2>
+              case 'h2':
+                return <h3 key={`${keyPrefix}-h2-${idx}`} className="summary-section-header">{block.title}</h3>
+              case 'h3':
+                return <h4 key={`${keyPrefix}-h3-${idx}`} className="summary-section-header">{block.title}</h4>
+              case 'list':
+                return (
+                  <ul key={`${keyPrefix}-list-${idx}`} className="summary-bullet-list">
+                    {(block.items || []).map((item, i) => (
+                      <li key={`${keyPrefix}-item-${idx}-${i}`} className="summary-bullet-item">{renderInline(item)}</li>
+                    ))}
+                  </ul>
+                )
+              default:
+                return <p key={`${keyPrefix}-p-${idx}`} className="summary-paragraph">{renderInline(block.text || '')}</p>
+            }
+          })}
+        </>
+      )
     }
 
-    return (
-      <div className="formatted-summary">
-        {blocks.map((block, idx) => {
-          if (block.type === 'section-header') {
-            return (
-              <h3 key={`section-${idx}`} className="summary-section-header">
-                {block.sectionTitle}
-              </h3>
-            )
-          } else if (block.type === 'list') {
-            return (
-              <ul key={`list-${idx}`} className="summary-bullet-list">
-                {(block.items || []).map((item, i) => (
-                  <li key={`item-${idx}-${i}`} className="summary-bullet-item">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            )
-          } else {
-            return (
-              <p key={`para-${idx}`} className="summary-paragraph">
-                {block.text}
-              </p>
-            )
-          }
-        })}
-      </div>
-    )
+    // Parse the text, extracting fenced blocks for code and math only
+    const fenceRegex = /```(\w+)?\n([\s\S]*?)```/g
+    const nodes: React.ReactNode[] = []
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+    let segIndex = 0
+
+    while ((match = fenceRegex.exec(text)) !== null) {
+      const [full, langRaw, content] = match
+      const lang = (langRaw || 'plaintext').toLowerCase()
+
+      // Render preceding plain text segment
+      if (match.index > lastIndex) {
+        const pre = text.substring(lastIndex, match.index)
+        nodes.push(
+          <div key={`seg-${segIndex++}`} className="formatted-summary">
+            {renderPlainTextSegment(pre, `seg-${segIndex}`)}
+          </div>
+        )
+      }
+
+      // Render the fenced block appropriately
+      if (lang === 'math') {
+        nodes.push(
+          <MathBlockRenderer 
+            key={`math-${segIndex++}`} 
+            block={{ type: 'math', latex: content.trim(), displayMode: 'block' }} 
+          />
+        )
+      } else {
+        nodes.push(
+          <CodeBlockRenderer 
+            key={`code-${segIndex++}`} 
+            block={{ type: 'code', language: lang as any, content: content.trim(), lineNumbers: content.split('\n').length > 5 }} 
+          />
+        )
+      }
+
+      lastIndex = match.index + full.length
+    }
+
+    // Render any trailing plain text
+    if (lastIndex < text.length) {
+      const tail = text.substring(lastIndex)
+      nodes.push(
+        <div key={`seg-${segIndex++}`} className="formatted-summary">
+          {renderPlainTextSegment(tail, `seg-${segIndex}`)}
+        </div>
+      )
+    }
+
+    return <>{nodes}</>
   }
   const [saving, setSaving] = useState(false)
   const [regenerating, setRegenerating] = useState(false)

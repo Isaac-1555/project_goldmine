@@ -1,0 +1,170 @@
+/* Summary Preview Container */
+.summary-preview-container {
+  max-width: 100%;
+  margin: 0;
+  background: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Header */
+.summary-preview-header {
+  padding: 1.5rem;
+  background: #1e1e1e;
+  border-bottom: 1px solid #444;
+}
+
+.summary-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #e1e4e8;
+}
+
+/* Toolbar */
+.summary-preview-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: #252525;
+  border-bottom: 1px solid #444;
+}
+
+.view-toggle-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.view-button {
+  padding: 0.5rem 1rem;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #8b949e;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-button:hover {
+  background: #3a3a3a;
+  color: #e1e4e8;
+}
+
+.view-button.active {
+  background: #0969da;
+  border-color: #0969da;
+  color: white;
+}
+
+.copy-all-button {
+  padding: 0.5rem 1rem;
+  background: #238636;
+  border: 1px solid #238636;
+  border-radius: 6px;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-all-button:hover {
+  background: #2ea043;
+  border-color: #2ea043;
+}
+
+/* Copy Status Toast */
+.copy-status-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 0.75rem 1.5rem;
+  background: #238636;
+  color: white;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Content Area */
+.summary-preview-content {
+  padding: 1.5rem;
+  min-height: 400px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Raw Text View */
+.summary-raw-text {
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 0;
+  overflow-x: auto;
+}
+
+.summary-raw-text code {
+  color: #e1e4e8;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Scrollbar styling */
+.summary-preview-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.summary-preview-content::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.summary-preview-content::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+
+.summary-preview-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .summary-preview-toolbar {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .view-toggle-buttons {
+    justify-content: center;
+  }
+  
+  .copy-all-button {
+    width: 100%;
+  }
+  
+  .summary-preview-content {
+    padding: 1rem;
+  }
+}

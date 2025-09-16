@@ -1,6 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import 'katex/dist/katex.min.css'
+import './lib/loadKatex'
 import App from './App.tsx'
 import { PostHogProvider } from 'posthog-js/react'
 

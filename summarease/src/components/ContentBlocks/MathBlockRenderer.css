@@ -1,0 +1,288 @@
+/* Math Block Container */
+.math-block-container {
+  margin: 1.5rem 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Main Math Block */
+.math-block {
+  background: #2d2d2d;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #444;
+}
+
+/* Header with label and actions */
+.math-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: #1e1e1e;
+  border-bottom: 1px solid #444;
+}
+
+.math-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #8b949e;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.math-icon {
+  fill: #8b949e;
+}
+
+.math-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* View Toggle Button */
+.view-toggle-button {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #8b949e;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-toggle-button:hover {
+  background: #3a3a3a;
+  border-color: #555;
+  color: #e1e4e8;
+}
+
+.toggle-icon {
+  fill: currentColor;
+  width: 14px;
+  height: 14px;
+}
+
+/* Copy Button (reuse styles from CodeBlockRenderer) */
+.copy-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: #3a3a3a;
+  border: 1px solid #555;
+  border-radius: 6px;
+  color: #e1e4e8;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-button:hover {
+  background: #4a4a4a;
+  border-color: #666;
+}
+
+.copy-button.copied {
+  background: #2ea043;
+  border-color: #2ea043;
+  color: white;
+}
+
+.copy-icon {
+  fill: currentColor;
+}
+
+/* Math Content */
+.math-content {
+  padding: 1.5rem;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Rendered Math */
+.math-rendered {
+  color: #e1e4e8;
+  font-size: 1.125rem;
+}
+
+.math-rendered.block-mode {
+  display: block;
+  text-align: center;
+  margin: 0.5rem 0;
+}
+
+.math-rendered.inline-mode {
+  display: inline-block;
+}
+
+/* LaTeX Code View */
+.math-latex-code {
+  background: #1e1e1e;
+  border-radius: 4px;
+  padding: 1rem;
+  margin: 0;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.math-latex-code code {
+  color: #9ecbff;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Render Error */
+.math-render-error {
+  color: #ff6b6b;
+  font-size: 0.875rem;
+  text-align: center;
+  width: 100%;
+}
+
+.math-latex-fallback {
+  margin-top: 1rem;
+  background: #1e1e1e;
+  border-radius: 4px;
+  padding: 0.75rem;
+  overflow-x: auto;
+}
+
+.math-latex-fallback code {
+  color: #8b949e;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
+  font-size: 0.8125rem;
+}
+
+/* Variable Definitions */
+.math-variables {
+  padding: 1rem;
+  background: #1e1e1e;
+  border-top: 1px solid #444;
+}
+
+.variables-title {
+  color: #8b949e;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.75rem;
+}
+
+.variables-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.variable-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: #2d2d2d;
+  border-radius: 4px;
+  border: 1px solid #444;
+}
+
+.variable-key {
+  color: #b392f0;
+  font-style: italic;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
+}
+
+.variable-equals {
+  color: #8b949e;
+}
+
+.variable-value {
+  color: #e1e4e8;
+  font-size: 0.875rem;
+}
+
+/* Description */
+.math-block-description {
+  color: #8b949e;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}
+
+/* KaTeX Overrides for Dark Theme */
+.katex {
+  font-size: 1.125em;
+}
+
+.katex .base {
+  color: #e1e4e8 !important;
+}
+
+.katex .mord {
+  color: #e1e4e8 !important;
+}
+
+.katex .mbin {
+  color: #ffab70 !important;
+}
+
+.katex .mrel {
+  color: #f97583 !important;
+}
+
+.katex .mop {
+  color: #b392f0 !important;
+}
+
+.katex .minner {
+  color: #79b8ff !important;
+}
+
+.katex .mord.mathnormal {
+  color: #9ecbff !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .math-block-header {
+    padding: 0.5rem 0.75rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .math-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .view-toggle-button,
+  .copy-button {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+  
+  .math-content {
+    padding: 1rem;
+  }
+  
+  .variables-list {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .variable-item {
+    width: fit-content;
+  }
+}

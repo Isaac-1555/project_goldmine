@@ -1,7 +1,9 @@
 // Client-side audio processing using Web Speech API and Gemini
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { buildEnhancedSummaryPrompt } from './summaryPromptBuilder'
+import type { SummaryConfig } from '../types/summaryTypes'
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'your-gemini-api-key'
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 
 export interface AudioProcessingResult {
   transcript: string
@@ -91,10 +93,21 @@ export class AudioTranscriber {
   }
 }
 
-// Helper function to remove duplicate sentences and clean up summary
+// Helper function to remove duplicate sentences and clean up summary while preserving blocks
 function cleanAndDeduplicateSummary(summary: string): string {
-  // Split into sentences, clean whitespace
-  const sentences = summary.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 10)
+  // First, preserve code, math, and special blocks
+  const blockRegex = /```[\s\S]*?```/g;
+  const blocks: string[] = [];
+  let blockIndex = 0;
+  
+  // Extract and replace blocks with placeholders
+  let processedSummary = summary.replace(blockRegex, (match) => {
+    blocks.push(match);
+    return `__BLOCK_${blockIndex++}__`;
+  });
+  
+  // Split into sentences for non-block content, clean whitespace
+  const sentences = processedSummary.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 10)
   
   // Remove duplicate sentences (case-insensitive)
   const uniqueSentences: string[] = []
@@ -114,10 +127,24 @@ function cleanAndDeduplicateSummary(summary: string): string {
     cleanSummary += '.'
   }
   
+  // Restore the blocks
+  blocks.forEach((block, index) => {
+    cleanSummary = cleanSummary.replace(`__BLOCK_${index}__`, block);
+  });
+  
+  // Ensure proper block formatting
+  cleanSummary = cleanSummary
+    .replace(/```\s*([a-zA-Z]+)\s*/g, '```$1\n') // Ensure language identifier is on same line
+    .replace(/```$/gm, '```\n') // Ensure blocks are properly closed with newline
+    .replace(/(```[^\n]*\n)([^`]+)(```)/g, '$1$2\n$3'); // Ensure content ends with newline before closing
+  
   return cleanSummary
 }
 
-export async function processAudioTranscript(transcript: string): Promise<{
+export async function processAudioTranscript(
+  transcript: string,
+  config?: Partial<SummaryConfig>
+): Promise<{
   summary: string
   tags: string[]
 }> {
@@ -134,40 +161,8 @@ export async function processAudioTranscript(transcript: string): Promise<{
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
-  // Generate summary
-  const summaryPrompt = `
-    Create a study-friendly summary for college students from the following transcript. Use clear sections and bullet points that will display properly as formatted text.
-    
-    Requirements:
-    - Use EXACTLY this structure with plain text formatting
-    - Each bullet point must start on its own new line with "• "
-    - Each bullet point should be unique (no repetition)
-    - Focus on understanding and practical insight (no exam language)
-    - Keep language clear and concise
-    - Limit to 250-350 words total
-    - Use line breaks to separate sections
-    - Do NOT include headings like "Study Notes" or any mention of exams
-    
-    Format:
-    
-    KEY CONCEPTS:
-    • [Most important concept/topic 1]
-    • [Most important concept/topic 2]
-    • [Most important concept/topic 3]
-    
-    DETAILS & EXAMPLES:
-    • [Critical facts, data, or evidence]
-    • [Supporting information that deepens understanding]
-    • [Specific examples or case studies mentioned]
-    
-    APPLICATIONS & REFLECTIONS:
-    • [How to apply these ideas in real life or projects]
-    • [Connections to broader topics or personal growth]
-    • [Implications or takeaways]
-    
-    Transcript to summarize:
-    ${transcript}
-  `
+  // Generate summary using enhanced prompt builder
+  const summaryPrompt = buildEnhancedSummaryPrompt(transcript, config)
 
   const summaryResult = await model.generateContent(summaryPrompt)
   const rawSummary = summaryResult.response.text()
