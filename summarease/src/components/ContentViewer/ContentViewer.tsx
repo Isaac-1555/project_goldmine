@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Edit3, Save, X, FileText, MessageSquare, Tag, Clock, ArrowLeft, Trash2, File as FileIcon, Eye } from 'lucide-react'
+import { Edit3, Pencil, Sparkles, Save, X, FileText, MessageSquare, Tag, Clock, ArrowLeft, Trash2, File as FileIcon, Eye } from 'lucide-react'
 import { StatusIndicator } from '../FileStatus/StatusIndicator'
 import { getFileDetails, updateSummary, deleteFile, regenerateSummary, type FileWithMetadata } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
@@ -412,10 +412,10 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                     <>
                       <button
                         onClick={() => setIsEditing(true)}
-                        className="edit-button"
+                        className="action-icon-btn edit-icon-btn"
+                        title="Edit summary"
                       >
-                        <Edit3 className="icon" />
-                        Edit Summary
+                        <Pencil className="icon" />
                       </button>
                       <button
                         onClick={async () => {
@@ -437,12 +437,11 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                             setRegenerating(false)
                           }
                         }}
-                        className="save-button"
+                        className="action-icon-btn regen-icon-btn"
                         disabled={regenerating}
-                        title="Regenerate summary using latest transcript, notes, and documents"
+                        title="Regenerate summary"
                       >
-                        <Save className="icon" />
-                        {regenerating ? 'Regenerating...' : 'Regenerate Summary'}
+                        <Sparkles className="icon" />
                       </button>
                     </>
                   ) : (

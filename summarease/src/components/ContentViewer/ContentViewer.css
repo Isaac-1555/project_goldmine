@@ -183,13 +183,38 @@
   padding: 2rem;
  }
  
- .content-actions {
+.content-actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
  }
+
+/* Compact icon-only action buttons (right aligned) */
+.action-icon-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.action-icon-btn .icon,
+.action-icon-btn svg { width: 18px; height: 18px; }
+
+/* Edit: blue background with black pencil; darker hover */
+.edit-icon-btn { background: #3b82f6; border-color: #2563eb; }
+.edit-icon-btn .icon { color: #111827; }
+.edit-icon-btn:hover { background: #2563eb; border-color: #1e40af; }
+
+/* Regenerate: gray button with gradient star icon; darker hover */
+.regen-icon-btn { background: #e5e7eb; border-color: #d1d5db; }
+.regen-icon-btn:hover { background: #d1d5db; border-color: #9ca3af; }
+.gradient-star { display: block; }
  
  .summary-section,
  .transcript-section,
