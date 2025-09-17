@@ -96,27 +96,85 @@
   background: white;
 }
 
-/* Graph Elements */
+/* Obsidian-style Graph Elements */
+.graph-node-group {
+  /* Only fade/filters should animate; position is driven by the simulation */
+  transition: opacity 0.15s ease-out, filter 0.15s ease-out;
+}
+
 .graph-node {
   cursor: pointer;
-  transition: all 0.2s;
+  transition: fill 0.15s ease-out, stroke 0.15s ease-out, filter 0.15s ease-out;
 }
 
 .graph-node:hover {
-  r: 25;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+}
+
+.folder-node {
+  transition: all 0.15s ease-out;
+}
+
+.folder-node:hover {
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.08));
+}
+
+.file-node {
+  transition: all 0.15s ease-out;
+}
+
+.file-node:hover {
+  filter: drop-shadow(0 2px 6px rgba(59, 130, 246, 0.15));
+}
+
+.graph-link {
+  transition: opacity 0.15s ease-out, stroke-width 0.15s ease-out;
+}
+
+.graph-link:hover {
+  opacity: 0.8;
+  stroke-width: 2;
 }
 
 .node-label {
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.6875rem;
+  font-weight: 400;
   fill: #374151;
   cursor: pointer;
   user-select: none;
+  transition: fill 0.15s ease-out, opacity 0.15s ease-out;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 
 .node-label:hover {
   fill: #111827;
+  font-weight: 500;
+}
+
+.connection-indicator {
+  transition: all 0.15s ease-out;
+}
+
+.connection-indicator:hover {
+  transform: scale(1.1);
+}
+
+/* Obsidian-style smooth animations */
+.graph-content {
+  transition: transform 0.2s ease-out;
+}
+
+/* Clean, minimal styling */
+.graph-svg {
+  background: #ffffff;
+  border-radius: 8px;
+}
+
+/* Improved text rendering */
+text {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Responsive Design */
