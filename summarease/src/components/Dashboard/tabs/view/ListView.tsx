@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { FileText, Tag, Calendar, Edit3, Trash2 } from 'lucide-react'
-import { getUserFiles, deleteFile, type FileWithMetadata } from '../../../../lib/api'
+import { FileText, Tag, Calendar, Edit3, Trash2, Filter, X, Settings, FolderPlus, Move } from 'lucide-react'
+import { getUserFiles, deleteFile, type FileWithMetadata, getUserFolders, createFolder, updateFolder, deleteFolder, moveFileToFolder, type Folder } from '../../../../lib/api'
 import './ListView.css'
 
 interface ListViewProps {
@@ -17,10 +17,59 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showConfirm, setShowConfirm] = useState<{ id: string; title: string; isLocal?: boolean } | null>(null)
+  const [selectedFolderFilter, setSelectedFolderFilter] = useState<string | null>(null) // null = show all, 'No Folder' = no folder, or folder name
+  
+  // Folder management state
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [showFolderManagement, setShowFolderManagement] = useState(false)
+  const [editingFolder, setEditingFolder] = useState<{ id: string; name: string } | null>(null)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [showMoveModal, setShowMoveModal] = useState<{ fileId: string; fileName: string } | null>(null)
+  const [selectedTargetFolder, setSelectedTargetFolder] = useState<string | null>(null)
+  
+  // Filter files by selected folder
+  const filteredFiles = React.useMemo(() => {
+    if (!selectedFolderFilter) return files // Show all files
+    
+    return files.filter(file => {
+      const folderKey = file.folder_name || 'No Folder'
+      return folderKey === selectedFolderFilter
+    })
+  }, [files, selectedFolderFilter])
+  
+  // Group files by folder
+  const groupedFiles = React.useMemo(() => {
+    const groups: { [key: string]: FileWithMetadata[] } = {}
+    
+    filteredFiles.forEach(file => {
+      const folderKey = file.folder_name || 'No Folder'
+      if (!groups[folderKey]) {
+        groups[folderKey] = []
+      }
+      groups[folderKey].push(file)
+    })
+    
+    // Sort files within each folder by creation date (newest first)
+    Object.keys(groups).forEach(key => {
+      groups[key].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    })
+    
+    return groups
+  }, [filteredFiles])
+  
+  // Get unique folder names for filter options
+  const availableFolders = React.useMemo(() => {
+    const folders = new Set<string>()
+    files.forEach(file => {
+      folders.add(file.folder_name || 'No Folder')
+    })
+    return Array.from(folders).sort()
+  }, [files])
 
   useEffect(() => {
     loadFiles()
     loadLocalNotebooks()
+    loadFolders()
   }, [])
 
   const loadFiles = async () => {
@@ -46,6 +95,15 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
       setLocalNotebooks(latestNotebook)
     } catch (error) {
       console.error('Error loading local notebooks:', error)
+    }
+  }
+  
+  const loadFolders = async () => {
+    try {
+      const userFolders = await getUserFolders()
+      setFolders(userFolders)
+    } catch (error) {
+      console.error('Error loading folders:', error)
     }
   }
 
@@ -91,6 +149,45 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
     }
   }
 
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return
+    
+    const folder = await createFolder(newFolderName.trim())
+    if (folder) {
+      await loadFolders()
+      setNewFolderName('')
+    }
+  }
+  
+  const handleUpdateFolder = async (folderId: string, newName: string) => {
+    if (!newName.trim()) return
+    
+    const success = await updateFolder(folderId, newName.trim())
+    if (success) {
+      await loadFolders()
+      await loadFiles() // Refresh files to get updated folder names
+      setEditingFolder(null)
+    }
+  }
+  
+  const handleDeleteFolder = async (folderId: string) => {
+    const result = await deleteFolder(folderId)
+    if (result.success) {
+      await loadFolders()
+    } else {
+      alert(result.error || 'Failed to delete folder')
+    }
+  }
+  
+  const handleMoveFile = async (fileId: string, targetFolderId: string | null) => {
+    const success = await moveFileToFolder(fileId, targetFolderId)
+    if (success) {
+      await loadFiles() // Refresh files to get updated folder assignments
+      setShowMoveModal(null)
+      setSelectedTargetFolder(null)
+    }
+  }
+  
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -131,6 +228,137 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
 
   return (
     <div className="list-view">
+      {/* Folder Filter */}
+      {files.length > 0 && (
+        <div className="folder-filter">
+          <div className="filter-header">
+            <Filter className="filter-icon" />
+            <span>Filter by folder:</span>
+            <button
+              className="manage-folders-btn"
+              onClick={() => setShowFolderManagement(!showFolderManagement)}
+              title="Manage folders"
+            >
+              <Settings size={14} />
+              Manage
+            </button>
+          </div>
+          <div className="filter-options">
+            <button
+              className={`filter-btn ${!selectedFolderFilter ? 'active' : ''}`}
+              onClick={() => setSelectedFolderFilter(null)}
+            >
+              All Folders ({files.length})
+            </button>
+            {availableFolders.map(folder => {
+              const count = files.filter(f => (f.folder_name || 'No Folder') === folder).length
+              return (
+                <button
+                  key={folder}
+                  className={`filter-btn ${selectedFolderFilter === folder ? 'active' : ''}`}
+                  onClick={() => setSelectedFolderFilter(folder)}
+                >
+                  {folder === 'No Folder' ? '📋' : '📁'} {folder} ({count})
+                </button>
+              )
+            })}
+            {selectedFolderFilter && (
+              <button
+                className="filter-btn clear-filter"
+                onClick={() => setSelectedFolderFilter(null)}
+                title="Clear filter"
+              >
+                <X size={14} />
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Folder Management Panel (moved near filter for visibility) */}
+      {showFolderManagement && (
+        <div className="folder-management">
+          <h4>Manage Folders</h4>
+          
+          {/* Create New Folder */}
+          <div className="create-folder">
+            <input
+              type="text"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              placeholder="New folder name"
+              className="folder-input"
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+            />
+            <button
+              onClick={handleCreateFolder}
+              disabled={!newFolderName.trim()}
+              className="btn btn-primary btn-sm"
+              title="Create folder"
+              aria-label="Create folder"
+            >
+              <FolderPlus size={14} />
+            </button>
+          </div>
+          
+          {/* Existing Folders */}
+          <div className="folders-list">
+            {folders.map(folder => (
+              <div key={folder.id} className="folder-item">
+                {editingFolder?.id === folder.id ? (
+                  <div className="folder-edit">
+                    <input
+                      type="text"
+                      value={editingFolder.name}
+                      onChange={(e) => setEditingFolder({ ...editingFolder, name: e.target.value })}
+                      className="folder-input"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleUpdateFolder(folder.id, editingFolder.name)
+                        if (e.key === 'Escape') setEditingFolder(null)
+                      }}
+                    />
+                    <button
+                      onClick={() => handleUpdateFolder(folder.id, editingFolder.name)}
+                      className="btn btn-primary btn-sm"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingFolder(null)}
+                      className="btn btn-gray btn-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="folder-display">
+                    <span className="folder-name">📁 {folder.name}</span>
+                    <div className="folder-actions">
+                      <button
+                        onClick={() => setEditingFolder({ id: folder.id, name: folder.name })}
+                        className="btn btn-soft-primary btn-sm"
+                        title="Rename folder"
+                      >
+                        <Edit3 size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteFolder(folder.id)}
+                        className="btn btn-soft-danger btn-sm"
+                        title="Delete folder"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
       {localNotebooks.length > 0 && (
         <div className="local-notebooks-section">
           <h3 className="section-title">Latest Local Notebook</h3>
@@ -188,74 +416,139 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
       
       {files.length > 0 && (
         <div className="uploaded-files-section">
-          <h3 className="section-title">Uploaded Content</h3>
-          <div className="file-list">
-            {files.map((file, index) => (
-              <div
-                key={file.id || `file-${index}`}
-                className={`file-card ${selectedFileId === file.id ? 'selected' : ''}`}
-                onClick={(e) => {
-                  // Avoid card click when clicking actions
-                  const target = e.target as HTMLElement
-                  if (target.closest('.file-actions')) return
-                  onFileSelect(file)
-                }}
-              >
-                <div className="file-header">
-                  <div className="file-icon">
-                    <FileText />
-                  </div>
-                  <div className="file-info">
-                    <h3 className="file-title">{file.title || file.filename}</h3>
-                    <div className="file-meta">
-                      <span className="file-date">
-                        <Calendar className="meta-icon" />
-                        {formatDate(file.created_at)}
-                      </span>
-                      <span className={`file-status ${file.status}`}>
-                        {file.status === 'completed' ? 'Processed' : 'Processing...'}
-                      </span>
+          {Object.entries(groupedFiles).map(([folderName, folderFiles]) => (
+            <div key={folderName} className="folder-section">
+              <h3 className="folder-title">
+                📁 {folderName} ({folderFiles.length})
+              </h3>
+              <div className="file-list">
+                {folderFiles.map((file, index) => (
+                  <div
+                    key={file.id || `file-${index}`}
+                    className={`file-card ${selectedFileId === file.id ? 'selected' : ''}`}
+                    onClick={(e) => {
+                      // Avoid card click when clicking actions
+                      const target = e.target as HTMLElement
+                      if (target.closest('.file-actions')) return
+                      onFileSelect(file)
+                    }}
+                  >
+                    <div className="file-header">
+                      <div className="file-icon">
+                        <FileText />
+                      </div>
+                      <div className="file-info">
+                        <h3 className="file-title">{file.title || file.filename}</h3>
+                        <div className="file-meta">
+                          <span className="file-date">
+                            <Calendar className="meta-icon" />
+                            {formatDate(file.created_at)}
+                          </span>
+                          <span className={`file-status ${file.status}`}>
+                            {file.status === 'completed' ? 'Processed' : 'Processing...'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="file-actions">
+                        <button
+                          className="action-btn move"
+                          title="Move to folder"
+                          onClick={() => setShowMoveModal({ fileId: file.id, fileName: file.title || file.filename })}
+                        >
+                          <Move size={16} />
+                        </button>
+                        <button
+                          className="action-btn edit"
+                          title="Edit in Notebook"
+                          onClick={() => onEditFile?.(file.id)}
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                        <button
+                          className="action-btn delete"
+                          title="Delete"
+                          onClick={() => setShowConfirm({ id: file.id, title: file.title || file.filename })}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
+                    
+                    {file.tags && file.tags.length > 0 && (
+                      <div className="file-tags">
+                        <Tag className="tags-icon" />
+                        <div className="tags-list">
+                          {file.tags.map((tag, index) => (
+                            <span key={index} className="tag">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {file.summary && (
+                      <div className="file-summary">
+                        <p>{file.summary.substring(0, 150)}...</p>
+                      </div>
+                    )}
                   </div>
-                  <div className="file-actions">
-                    <button
-                      className="action-btn edit"
-                      title="Edit in Notebook"
-                      onClick={() => onEditFile?.(file.id)}
-                    >
-                      <Edit3 size={16} />
-                    </button>
-                    <button
-                      className="action-btn delete"
-                      title="Delete"
-                      onClick={() => setShowConfirm({ id: file.id, title: file.title || file.filename })}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-                
-                {file.tags && file.tags.length > 0 && (
-                  <div className="file-tags">
-                    <Tag className="tags-icon" />
-                    <div className="tags-list">
-                      {file.tags.map((tag, index) => (
-                        <span key={index} className="tag">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {file.summary && (
-                  <div className="file-summary">
-                    <p>{file.summary.substring(0, 150)}...</p>
-                  </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
+
+          {/* Move File Modal */}
+          {showMoveModal && (
+            <div className="modal-overlay">
+              <div className="move-modal">
+                <h3>Move File</h3>
+                <p>Move "{showMoveModal.fileName}" to:</p>
+                <div className="folder-options">
+                  <label className="folder-option">
+                    <input
+                      type="radio"
+                      name="targetFolder"
+                      value=""
+                      checked={selectedTargetFolder === null}
+                      onChange={() => setSelectedTargetFolder(null)}
+                    />
+                    📋 No Folder
+                  </label>
+                  {folders.map(folder => (
+                    <label key={folder.id} className="folder-option">
+                      <input
+                        type="radio"
+                        name="targetFolder"
+                        value={folder.id}
+                        checked={selectedTargetFolder === folder.id}
+                        onChange={() => setSelectedTargetFolder(folder.id)}
+                      />
+                      📁 {folder.name}
+                    </label>
+                  ))}
+                </div>
+                <div className="modal-actions">
+                  <button
+                    className="cancel-button"
+                    onClick={() => {
+                      setShowMoveModal(null)
+                      setSelectedTargetFolder(null)
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="move-button"
+                    onClick={() => handleMoveFile(showMoveModal.fileId, selectedTargetFolder)}
+                  >
+                    <Move className="icon" />
+                    Move
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {showConfirm && (
             <div className="modal-overlay">

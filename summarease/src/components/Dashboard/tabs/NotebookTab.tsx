@@ -10,6 +10,7 @@ import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
 import { ResizableDivider } from '../../ResizableDivider'
 import { NoteTaking } from '../../NoteTaking'
 import { DocumentList, type DocumentItem } from '../../DocumentList'
+import { FolderSelector } from '../../FolderSelector'
 import './RecordTab.css'
 
 // Helper function to save summary and tags
@@ -90,6 +91,7 @@ interface NotebookTabProps {
   initialDocuments?: DocumentItem[]
   initialTags?: string[]
   initialSummaryId?: string
+  initialFolderId?: string | null
   onExitEdit?: () => void
 }
 
@@ -102,6 +104,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   initialDocuments = [],
   initialTags = [],
   initialSummaryId,
+  initialFolderId,
   onExitEdit,
 }) => {
   // Hooks
@@ -117,6 +120,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   const [leftPanelWidth, setLeftPanelWidth] = useState(40)
   const [isLocalSave, setIsLocalSave] = useState(false)
   const [localSaveId, setLocalSaveId] = useState<string | undefined>(undefined)
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(initialFolderId || null)
 
   // Custom tags state
   const [customTagInput, setCustomTagInput] = useState('')
@@ -152,6 +156,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       if (initialNotesHtml) setNotes(initialNotesHtml)
       if (initialDocuments?.length) setDocuments(initialDocuments)
       if (initialTags?.length) setCustomTags(initialTags)
+      if (initialFolderId !== undefined) setSelectedFolderId(initialFolderId)
       // If transcript text exists but not present as a DocumentItem, add it
       if (initialTranscriptText && !initialDocuments.some(d => d.type === 'transcript')) {
         const transcriptDocument: DocumentItem = {
@@ -164,7 +169,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         setDocuments(prev => [transcriptDocument, ...prev])
       }
     }
-  }, [mode, initialTitle, initialNotesHtml, initialDocuments, initialTranscriptText, initialTags])
+  }, [mode, initialTitle, initialNotesHtml, initialDocuments, initialTranscriptText, initialTags, initialFolderId])
 
   // Auto-save locally every 5 seconds if there's content
   useEffect(() => {
@@ -508,6 +513,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           notesText: plainNotes,
           transcriptText: transcripts || undefined,
           newFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
+          folderId: selectedFolderId,
         })
 
         if (!updateResult.success) {
@@ -565,7 +571,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         audioTranscript: transcripts || undefined,
         uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
         notes: notes?.trim() ? notes : undefined
-      })
+      }, selectedFolderId)
       
       if (fileId) {
         console.log('✅ Content saved successfully with ID:', fileId)
@@ -620,6 +626,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         setIsLocalSave(false)
         setLocalSaveId(undefined)
         setCustomTags([])
+        setSelectedFolderId(null)
         
         alert('Content saved successfully!')
       } else {
@@ -643,6 +650,13 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           placeholder="Enter notebook title..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+        />
+        
+        <FolderSelector
+          selectedFolderId={selectedFolderId}
+          onFolderSelect={setSelectedFolderId}
+          label="Save to folder"
+          placeholder="Select folder (optional)"
         />
         <div className="save-buttons">
           <button 

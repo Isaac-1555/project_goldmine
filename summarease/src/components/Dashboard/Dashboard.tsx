@@ -27,6 +27,7 @@ export const Dashboard: React.FC = () => {
         documents: DocumentItem[]
         tags: string[]
         summaryId?: string
+        folderId?: string | null
       }
   >(null)
 
@@ -88,6 +89,7 @@ export const Dashboard: React.FC = () => {
         documents,
         tags: (details.tags || []).map((t: any) => t.name),
         summaryId: details.summary?.id,
+        folderId: details.file.folder_id,
       })
       setActiveTab('notebook')
     } catch (e) {
@@ -125,6 +127,7 @@ export const Dashboard: React.FC = () => {
         documents,
         tags: [], // Local notebooks don't store tags separately yet
         summaryId: undefined, // Local notebooks don't have summaries
+        folderId: null, // Local notebooks don't support folders yet
       })
       setActiveTab('notebook')
     } catch (e) {
@@ -156,6 +159,7 @@ export const Dashboard: React.FC = () => {
             initialDocuments={editingContext?.documents}
             initialTags={editingContext?.tags}
             initialSummaryId={editingContext?.summaryId}
+            initialFolderId={editingContext?.folderId}
             onExitEdit={() => setEditingContext(null)}
           />
         )

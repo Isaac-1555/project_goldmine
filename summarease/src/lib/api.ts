@@ -11,6 +11,7 @@ export interface FileWithMetadata {
   status: 'processing' | 'completed' | 'failed'
   created_at: string
   storage_path?: string
+  folder_id?: string | null
   folder_name?: string
   summary_text?: string
   summary?: string
@@ -22,6 +23,13 @@ export interface FileWithMetadata {
     uploadedFiles: any[]
     recordingTime: number
   }
+}
+
+export interface Folder {
+  id: string
+  user_id: string
+  name: string
+  created_at: string
 }
 
 export interface ProcessingResult {
@@ -265,7 +273,7 @@ export async function getKnowledgeGraphData() {
 /**
  * Upload a file and create a file record
  */
-export async function uploadFile(file: File, title?: string): Promise<string | null> {
+export async function uploadFile(file: File, title?: string, folderId?: string | null): Promise<string | null> {
   try {
     const { data: user } = await supabase.auth.getUser()
     if (!user.user) {
@@ -305,6 +313,7 @@ export async function uploadFile(file: File, title?: string): Promise<string | n
           file_type: fileType,
           status: 'completed', // Set as completed since we processed it
           user_id: user.user.id,
+          folder_id: folderId,
           storage_path: uploadData.path
         }
       ])
@@ -359,7 +368,8 @@ export async function createUnifiedContent(
     uploadedFiles?: File[]
     notes?: string
     recordingDuration?: number
-  }
+  },
+  folderId?: string | null
 ): Promise<{ id: string | null, documentsExtractedText: string }> {
   try {
     const { data: user } = await supabase.auth.getUser()
@@ -376,6 +386,7 @@ export async function createUnifiedContent(
           file_type: 'audio',
           status: 'completed', // Set as completed since we're processing client-side
           user_id: user.user.id,
+          folder_id: folderId,
           storage_path: `notebooks/${user.user.id}/${Date.now()}_${title.replace(/[^a-zA-Z0-9]/g, '_')}`
         }
       ])
@@ -462,8 +473,8 @@ export async function createUnifiedContent(
 /**
  * Create a new file record for a recording (legacy function)
  */
-export async function createRecording(title: string, transcriptText: string = ''): Promise<string | null> {
-  const res = await createUnifiedContent(title, { audioTranscript: transcriptText })
+export async function createRecording(title: string, transcriptText: string = '', folderId?: string | null): Promise<string | null> {
+  const res = await createUnifiedContent(title, { audioTranscript: transcriptText }, folderId)
   return res.id
 }
 
@@ -539,9 +550,20 @@ export async function updateNotebookContent(
     transcriptText?: string
     newFiles?: File[]
     recordingDuration?: number
+    folderId?: string | null
   }
 ): Promise<{ success: boolean; newDocsExtractedText?: string }> {
   try {
+    // Update folder if specified
+    if (changes.folderId !== undefined) {
+      const { error: folderError } = await supabase
+        .from('files')
+        .update({ folder_id: changes.folderId })
+        .eq('id', fileId)
+      
+      if (folderError) throw folderError
+    }
+
     // Update or insert notes
     if (changes.notesHtml || changes.notesText) {
       const { data: existingNotes } = await supabase
@@ -705,6 +727,146 @@ export async function deleteFile(fileId: string): Promise<boolean> {
     return true
   } catch (error: any) {
     console.error('Error deleting file:', error)
+    return false
+  }
+}
+
+// =============================================================================
+// FOLDER MANAGEMENT FUNCTIONS
+// =============================================================================
+
+/**
+ * Get all folders for the current user
+ */
+export async function getUserFolders(): Promise<Folder[]> {
+  try {
+    const { data: user } = await supabase.auth.getUser()
+    if (!user.user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { data, error } = await supabase
+      .from('folders')
+      .select('*')
+      .eq('user_id', user.user.id)
+      .order('name', { ascending: true })
+
+    if (error) throw error
+    return data || []
+  } catch (error: any) {
+    console.error('Error fetching user folders:', error)
+    return []
+  }
+}
+
+/**
+ * Create a new folder
+ */
+export async function createFolder(name: string): Promise<Folder | null> {
+  try {
+    const { data: user } = await supabase.auth.getUser()
+    if (!user.user) {
+      throw new Error('User not authenticated')
+    }
+
+    const folderName = name.trim()
+    if (!folderName) {
+      throw new Error('Folder name cannot be empty')
+    }
+
+    const { data, error } = await supabase
+      .from('folders')
+      .insert([
+        {
+          user_id: user.user.id,
+          name: folderName
+        }
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error: any) {
+    console.error('Error creating folder:', error)
+    return null
+  }
+}
+
+/**
+ * Update folder name
+ */
+export async function updateFolder(folderId: string, name: string): Promise<boolean> {
+  try {
+    const folderName = name.trim()
+    if (!folderName) {
+      throw new Error('Folder name cannot be empty')
+    }
+
+    const { error } = await supabase
+      .from('folders')
+      .update({ name: folderName })
+      .eq('id', folderId)
+
+    if (error) throw error
+    return true
+  } catch (error: any) {
+    console.error('Error updating folder:', error)
+    return false
+  }
+}
+
+/**
+ * Delete a folder (only if it's empty)
+ */
+export async function deleteFolder(folderId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // First check if folder has any files
+    const { data: filesInFolder, error: filesError } = await supabase
+      .from('files')
+      .select('id')
+      .eq('folder_id', folderId)
+      .limit(1)
+
+    if (filesError) throw filesError
+
+    if (filesInFolder && filesInFolder.length > 0) {
+      return {
+        success: false,
+        error: 'Cannot delete folder that contains files. Please move or delete the files first.'
+      }
+    }
+
+    const { error } = await supabase
+      .from('folders')
+      .delete()
+      .eq('id', folderId)
+
+    if (error) throw error
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error deleting folder:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to delete folder'
+    }
+  }
+}
+
+/**
+ * Move a file to a different folder (or remove from folder if folderId is null)
+ */
+export async function moveFileToFolder(fileId: string, folderId: string | null): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('files')
+      .update({ folder_id: folderId })
+      .eq('id', fileId)
+
+    if (error) throw error
+    return true
+  } catch (error: any) {
+    console.error('Error moving file to folder:', error)
     return false
   }
 }
