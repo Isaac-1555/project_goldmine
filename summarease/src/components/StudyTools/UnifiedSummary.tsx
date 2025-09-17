@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { getUserFiles, getFileDetails, type FileWithMetadata } from '../../lib/api'
 import { processAudioTranscript } from '../../lib/audioProcessor'
+import { useSettingsConfig } from '../../hooks/useSettingsConfig'
 import { Button } from '@radix-ui/themes'
 
 export const UnifiedSummary: React.FC = () => {
+  const { getSummaryConfig } = useSettingsConfig()
   const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [notes, setNotes] = useState('')
@@ -44,7 +46,8 @@ export const UnifiedSummary: React.FC = () => {
         return
       }
 
-      const result = await processAudioTranscript(combinedContent)
+      const summaryConfig = getSummaryConfig()
+      const result = await processAudioTranscript(combinedContent, summaryConfig)
       setSummary(result.summary)
 
     } catch (err: any) {

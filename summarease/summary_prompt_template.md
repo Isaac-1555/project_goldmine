@@ -73,6 +73,59 @@ For other copyable content (chemical formulas, data tables, terminal commands):
 // Preserve exact formatting and spacing
 ```
 
+#### INFOGRAPHICS AND VISUAL CONTENT (When Enabled):
+When the infographics feature is enabled and the content would benefit from visual representation, include infographic descriptions in the following format:
+
+```infographic
+// Specify the type of visualization needed
+// Type: [flowchart|mindmap|timeline|comparison|hierarchy|process|chart]
+// Title: Brief title for the infographic
+// Description: What the infographic should show
+// Elements: List the key components or data points
+// Relationships: How elements connect or relate
+// Data: For charts, include data points in structured format
+```
+
+**Guidelines for Infographics:**
+
+1. **When to Include Infographics:**
+   - Process flows or algorithms → Use `flowchart`
+   - Concept relationships and connections → Use `mindmap`
+   - Historical sequences or project phases → Use `timeline`
+   - Comparing multiple items or concepts → Use `comparison`
+   - Organizational structures or taxonomies → Use `hierarchy`
+   - Step-by-step procedures → Use `process`
+   - Numerical data or trends → Use `chart` (bar, line, pie)
+
+2. **Infographic Requirements:**
+   - Must directly enhance understanding of the content
+   - Should not duplicate information already in text
+   - Include clear, descriptive labels
+   - Specify visual hierarchy (what's most important)
+   - Indicate color coding if relevant
+   - Keep complexity appropriate to content
+
+3. **Example Infographic Specification:**
+```infographic
+Type: flowchart
+Title: Machine Learning Model Training Process
+Description: Visual flow of steps from data preparation to model deployment
+Elements:
+  1. Data Collection (Start)
+  2. Data Preprocessing
+  3. Feature Engineering
+  4. Model Selection
+  5. Training
+  6. Validation
+  7. Testing
+  8. Deployment (End)
+Relationships:
+  - Linear flow from 1→2→3→4→5→6
+  - Decision point at 6: If performance poor → return to 4
+  - If performance good → proceed to 7→8
+Emphasis: Highlight the feedback loop between steps 4-6
+```
+
 ### OUTPUT STRUCTURE:
 
 ## 📚 KEY CONCEPTS

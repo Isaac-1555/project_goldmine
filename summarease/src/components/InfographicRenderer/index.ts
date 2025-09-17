@@ -1,0 +1,1 @@
+export { InfographicRenderer } from './InfographicRenderer';

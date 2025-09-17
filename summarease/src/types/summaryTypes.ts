@@ -76,6 +76,8 @@ export interface SummaryConfig {
   lengthPreference: 'short' | 'standard' | 'detailed';
   includeCodeExamples?: boolean;
   includeMathDerivations?: boolean;
+  includeInfographics?: boolean;
+  llmProvider?: 'gemini' | 'openai' | 'claude' | 'anthropic';
   specialRequirements?: string;
 }
 

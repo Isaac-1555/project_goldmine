@@ -6,6 +6,7 @@ import { supabase } from '../../../lib/supabase'
 import { processAudioTranscript } from '../../../lib/audioProcessor'
 import type { SummaryConfig } from '../../../types/summaryTypes'
 import { LiveTranscriber, getFallbackTranscript } from '../../../lib/webSpeechTranscription'
+import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
 import { ResizableDivider } from '../../ResizableDivider'
 import { NoteTaking } from '../../NoteTaking'
 import { DocumentList, type DocumentItem } from '../../DocumentList'
@@ -103,6 +104,9 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   initialSummaryId,
   onExitEdit,
 }) => {
+  // Hooks
+  const { getSummaryConfig } = useSettingsConfig()
+  
   // State management
   const [title, setTitle] = useState(initialTitle || '')
   const [notes, setNotes] = useState(initialNotesHtml || '')
@@ -520,15 +524,8 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
 
         if (allContent) {
           try {
-            // Determine subject area based on content
-            const summaryConfig: Partial<SummaryConfig> = {
-              subjectArea: 'General',
-              academicLevel: 'Undergraduate',
-              summaryType: 'Detailed Study',
-              lengthPreference: 'standard',
-              includeCodeExamples: true,
-              includeMathDerivations: true
-            }
+            // Use summary configuration from settings
+            const summaryConfig = getSummaryConfig()
             
             const { summary, tags } = await processAudioTranscript(allContent, summaryConfig)
             // Update or insert summary
@@ -592,15 +589,8 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           try {
             console.log('🤖 Calling processAudioTranscript with content...')
             
-            // Determine subject area based on content
-            const summaryConfig: Partial<SummaryConfig> = {
-              subjectArea: 'General',
-              academicLevel: 'Undergraduate',
-              summaryType: 'Detailed Study',
-              lengthPreference: 'standard',
-              includeCodeExamples: true,
-              includeMathDerivations: true
-            }
+            // Use summary configuration from settings
+            const summaryConfig = getSummaryConfig()
             
             const { summary, tags } = await processAudioTranscript(allContent, summaryConfig)
             console.log('📝 Summary generated:', summary.substring(0, 100) + '...')

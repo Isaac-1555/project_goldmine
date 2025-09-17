@@ -15,6 +15,8 @@ export function buildEnhancedSummaryPrompt(
     lengthPreference: 'standard',
     includeCodeExamples: true,
     includeMathDerivations: true,
+    includeInfographics: false,
+    llmProvider: 'gemini',
     specialRequirements: ''
   };
 
@@ -89,6 +91,33 @@ For other copyable content (chemical formulas, data tables, terminal commands):
 // Such as: configuration files, JSON data, terminal commands
 // Preserve exact formatting and spacing
 \`\`\`
+
+${finalConfig.includeInfographics ? `#### INFOGRAPHICS AND VISUAL CONTENT:
+When the content would benefit from visual representation, include infographic descriptions:
+
+\`\`\`infographic
+// Specify the type of visualization needed
+// Type: [flowchart|mindmap|timeline|comparison|hierarchy|process]
+// Title: Brief title for the infographic
+// Description: What the infographic should show
+// Elements: List the key components or data points
+// Relationships: How elements connect or relate
+\`\`\`
+
+Examples of when to include infographics:
+- Process flows or algorithms (use flowchart)
+- Concept relationships (use mindmap)
+- Historical sequences or project timelines (use timeline)
+- Comparing multiple items or concepts (use comparison chart)
+- Organizational structures or taxonomies (use hierarchy)
+- Step-by-step procedures (use process diagram)
+
+Ensure infographics are:
+- Directly relevant to the content
+- Enhance understanding rather than duplicate text
+- Include clear labels and descriptions
+- Specify colors or visual emphasis where important
+` : ''}
 
 ### OUTPUT STRUCTURE:
 

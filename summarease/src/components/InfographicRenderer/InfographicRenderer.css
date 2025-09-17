@@ -1,0 +1,167 @@
+/* InfographicRenderer Styles */
+.infographic-renderer {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.infographic-renderer h3 {
+  margin: 0 0 1rem 0;
+  color: #111827;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.infographic-renderer p {
+  color: #6b7280;
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+}
+
+/* Mermaid Diagram Container */
+.mermaid-container {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+}
+
+.mermaid {
+  text-align: center;
+  min-height: 200px;
+}
+
+/* Timeline Styles */
+.timeline-container {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 0.375rem;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 0.75rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #d1d5db;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: -1.5rem;
+  top: 0.5rem;
+  width: 12px;
+  height: 12px;
+  background: #3b82f6;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px #e5e7eb;
+}
+
+.timeline-content {
+  background: #f9fafb;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+/* Comparison Grid */
+.comparison-container {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 0.375rem;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.comparison-item {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+  color: #374151;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.comparison-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Chart Container */
+.chart-container {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 0.375rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .infographic-renderer {
+    padding: 0.75rem;
+  }
+  
+  .mermaid-container,
+  .timeline-container,
+  .comparison-container,
+  .chart-container {
+    padding: 1rem;
+  }
+  
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dark Mode Support */
+[data-theme="dark"] .infographic-renderer {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .mermaid-container,
+[data-theme="dark"] .timeline-container,
+[data-theme="dark"] .comparison-container,
+[data-theme="dark"] .chart-container {
+  background: #111827;
+}
+
+[data-theme="dark"] .infographic-renderer h3 {
+  color: #f9fafb;
+}
+
+[data-theme="dark"] .infographic-renderer p {
+  color: #d1d5db;
+}
+
+[data-theme="dark"] .timeline-content,
+[data-theme="dark"] .comparison-item {
+  background: #1f2937;
+  color: #e5e7eb;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .timeline::before {
+  background: #374151;
+}
