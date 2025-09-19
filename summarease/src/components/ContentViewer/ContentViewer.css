@@ -273,13 +273,14 @@
 }
 
 .save-button {
-  background: blue;
-  color: #eff6ff;
-  border-color: var(--accent-color);
+  background: #059669;
+  color: white;
+  border-color: #047857;
 }
 
 .save-button:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: #047857;
+  color: white;
 }
 
 .save-button:disabled {
@@ -288,12 +289,15 @@
 }
 
 .cancel-button {
-  color: var(--text-secondary);
+  background: #ef4444;
+  color: white;
+  border-color: #dc2626;
 }
 
 .cancel-button:hover {
-  color: var(--error-color);
-  border-color: var(--error-color);
+  background: #dc2626;
+  color: white;
+  border-color: #b91c1c;
 }
 
 .edit-actions {

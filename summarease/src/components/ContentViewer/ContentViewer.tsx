@@ -476,18 +476,18 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
           Notes {fileDetails.notes ? '(has content)' : '(empty)'}
         </button>
         <button
-          className={`tab ${activeTab === 'tags' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tags')}
-        >
-          <Tag className="tab-icon" />
-          Tags ({fileDetails.tags.length})
-        </button>
-        <button
           className={`tab ${activeTab === 'docs' ? 'active' : ''}`}
           onClick={() => setActiveTab('docs')}
         >
           <FileIcon className="tab-icon" />
           Docs {(fileDetails.documents?.length ?? 0) > 0 ? `(${fileDetails.documents!.length})` : '(0)'}
+        </button>
+        <button
+          className={`tab ${activeTab === 'tags' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tags')}
+        >
+          <Tag className="tab-icon" />
+          Tags ({fileDetails.tags.length})
         </button>
       </div>
 
@@ -722,14 +722,14 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
             <div className="modal-actions">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="cancel-button"
+                className="btn btn-outline"
                 disabled={deleting}
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="delete-confirm-button"
+                className="btn btn-danger"
                 disabled={deleting}
               >
                 <Trash2 className="icon" />

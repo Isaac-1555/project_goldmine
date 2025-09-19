@@ -196,14 +196,14 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
         <div className="modal-footer">
           <button 
             onClick={handleClose} 
-            className="cancel-button"
+            className="btn btn-outline"
             disabled={uploading}
           >
             Cancel
           </button>
           <button 
             onClick={handleUpload}
-            className="upload-button"
+            className="btn btn-primary"
             disabled={!selectedFile || (mode === 'upload' && !title.trim()) || uploading}
           >
             {uploading ? 'Uploading...' : mode === 'select' ? 'Add to Notebook' : 'Upload & Process'}

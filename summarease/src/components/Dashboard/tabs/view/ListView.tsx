@@ -535,7 +535,7 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
                 </div>
                 <div className="modal-actions">
                   <button
-                    className="cancel-button"
+                    className="btn btn-outline"
                     onClick={() => {
                       setShowMoveModal(null)
                       setSelectedTargetFolder(null)
@@ -544,7 +544,7 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
                     Cancel
                   </button>
                   <button
-                    className="move-button"
+                    className="btn btn-primary"
                     onClick={() => handleMoveFile(showMoveModal.fileId, selectedTargetFolder)}
                   >
                     <Move className="icon" />
@@ -561,11 +561,11 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
                 <h3>Delete Item</h3>
                 <p>{`Are you sure you want to delete "${showConfirm.title}"? This action cannot be undone.`}</p>
                 <div className="modal-actions">
-                  <button className="cancel-button" onClick={() => setShowConfirm(null)} disabled={!!deletingId}>
+                  <button className="btn btn-outline" onClick={() => setShowConfirm(null)} disabled={!!deletingId}>
                     Cancel
                   </button>
                   <button
-                    className="delete-confirm-button"
+                    className="btn btn-danger"
                     onClick={() => handleConfirmDelete(showConfirm.id, showConfirm.isLocal)}
                     disabled={!!deletingId}
                   >
