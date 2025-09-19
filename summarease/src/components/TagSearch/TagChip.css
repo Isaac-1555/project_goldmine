@@ -1,0 +1,75 @@
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  background: var(--primary-bg, #eff6ff);
+  border: 1px solid var(--primary-border, #bfdbfe);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--primary-text, #1e40af);
+  transition: all 0.2s ease;
+  max-width: 200px;
+}
+
+.tag-chip:hover {
+  background: var(--primary-hover, #dbeafe);
+  border-color: var(--primary-border-hover, #93c5fd);
+}
+
+.tag-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.tag-remove-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--primary-text, #1e40af);
+  opacity: 0.7;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.tag-remove-button:hover {
+  opacity: 1;
+  background: var(--primary-text, #1e40af);
+  color: white;
+}
+
+.tag-remove-button:focus {
+  outline: 2px solid var(--primary-color, #3b82f6);
+  outline-offset: 1px;
+}
+
+.remove-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* Animation for tag addition/removal */
+.tag-chip {
+  animation: tagSlideIn 0.2s ease-out;
+}
+
+@keyframes tagSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}

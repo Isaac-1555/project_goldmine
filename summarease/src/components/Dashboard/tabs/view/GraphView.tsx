@@ -7,6 +7,8 @@ import './GraphView.css'
 interface GraphViewProps {
   onFileSelect: (file: FileWithMetadata) => void
   selectedFileId?: string
+  searchResults?: FileWithMetadata[]
+  isSearching?: boolean
 }
 
 interface GraphNode extends d3.SimulationNodeDatum {
@@ -38,7 +40,7 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
   strength?: number
 }
 
-export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFileId }) => {
+export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFileId, searchResults, isSearching }) => {
   const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
   const [nodes, setNodes] = useState<GraphNode[]>([])
@@ -148,6 +150,12 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
     }
   }
 
+  // Get search result IDs for highlighting/dimming
+  const searchResultIds = React.useMemo(() => {
+    if (!isSearching || !searchResults) return new Set<string>()
+    return new Set(searchResults.map(file => file.id))
+  }, [isSearching, searchResults])
+
   const generateGraph = useCallback(() => {
     const newNodes: GraphNode[] = []
     const newLinks: GraphLink[] = []
@@ -167,8 +175,11 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
       })
     })
 
+    // Use search results if searching, otherwise use all files
+    const sourceFiles = isSearching ? (searchResults || []) : files
+
     // Create file nodes with initial properties
-    files.forEach(file => {
+    sourceFiles.forEach(file => {
       newNodes.push({
         id: file.id,
         title: file.title || file.filename || 'Untitled',
@@ -201,10 +212,10 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
     })
 
     // Create file-file links based on shared tags
-    for (let i = 0; i < files.length; i++) {
-      for (let j = i + 1; j < files.length; j++) {
-        const fileA = files[i]
-        const fileB = files[j]
+    for (let i = 0; i < sourceFiles.length; i++) {
+      for (let j = i + 1; j < sourceFiles.length; j++) {
+        const fileA = sourceFiles[i]
+        const fileB = sourceFiles[j]
         const tagsA = fileA.tags || []
         const tagsB = fileB.tags || []
         const sharedTags = tagsA.filter(tag => tagsB.includes(tag))
@@ -256,7 +267,7 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
     
     // Initialize D3 simulation
     initializeSimulation(newNodes, newLinks)
-  }, [files, folders, dimensions])
+  }, [files, folders, dimensions, searchResults, isSearching])
 
   const initializeSimulation = useCallback((nodes: GraphNode[], links: GraphLink[]) => {
     if (!svgRef.current) return

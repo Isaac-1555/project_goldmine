@@ -8,9 +8,11 @@ interface ListViewProps {
   selectedFileId?: string
   onEditFile?: (fileId: string) => void
   onEditLocalNotebook?: (localNotebook: any) => void
+  searchResults?: FileWithMetadata[]
+  isSearching?: boolean
 }
 
-export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId, onEditFile, onEditLocalNotebook }) => {
+export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId, onEditFile, onEditLocalNotebook, searchResults, isSearching }) => {
   const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [localNotebooks, setLocalNotebooks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,15 +29,18 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
   const [showMoveModal, setShowMoveModal] = useState<{ fileId: string; fileName: string } | null>(null)
   const [selectedTargetFolder, setSelectedTargetFolder] = useState<string | null>(null)
   
-  // Filter files by selected folder
+  // Filter files by selected folder and search results
   const filteredFiles = React.useMemo(() => {
-    if (!selectedFolderFilter) return files // Show all files
+    // If searching, use search results instead of all files
+    const sourceFiles = isSearching ? (searchResults || []) : files
     
-    return files.filter(file => {
+    if (!selectedFolderFilter) return sourceFiles // Show all files
+    
+    return sourceFiles.filter(file => {
       const folderKey = file.folder_name || 'No Folder'
       return folderKey === selectedFolderFilter
     })
-  }, [files, selectedFolderFilter])
+  }, [files, selectedFolderFilter, searchResults, isSearching])
   
   // Group files by folder
   const groupedFiles = React.useMemo(() => {

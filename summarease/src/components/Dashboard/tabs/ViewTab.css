@@ -9,6 +9,12 @@
   padding: 2rem 2rem 1rem;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.view-header-top {
+  display: flex;
   justify-content: space-between;
   align-items: center;
 }
@@ -66,6 +72,11 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .view-header {
+    padding: 1.5rem;
+    gap: 1rem;
+  }
+  
+  .view-header-top {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
