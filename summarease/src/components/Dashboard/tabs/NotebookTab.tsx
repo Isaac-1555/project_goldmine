@@ -7,6 +7,7 @@ import { processAudioTranscript } from '../../../lib/audioProcessor'
 import type { SummaryConfig } from '../../../types/summaryTypes'
 import { LiveTranscriber, getFallbackTranscript } from '../../../lib/webSpeechTranscription'
 import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
+import { useNotebookState } from '../../../hooks/useNotebookState'
 import { ResizableDivider } from '../../ResizableDivider'
 import { NoteTaking } from '../../NoteTaking'
 import { DocumentList, type DocumentItem } from '../../DocumentList'
@@ -109,6 +110,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
 }) => {
   // Hooks
   const { getSummaryConfig } = useSettingsConfig()
+  const [notebookState, notebookActions] = useNotebookState()
   
   // State management
   const [title, setTitle] = useState(initialTitle || '')
@@ -117,7 +119,6 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [localSaving, setLocalSaving] = useState(false)
-  const [leftPanelWidth, setLeftPanelWidth] = useState(40)
   const [isLocalSave, setIsLocalSave] = useState(false)
   const [localSaveId, setLocalSaveId] = useState<string | undefined>(undefined)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(initialFolderId || null)
@@ -848,8 +849,8 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       <ResizableDivider
         leftContent={renderLeftPanel()}
         rightContent={renderRightPanel()}
-        initialLeftWidth={leftPanelWidth}
-        onResize={(width) => setLeftPanelWidth(width)}
+        initialLeftWidth={notebookState.leftPanelWidth}
+        onResize={(width) => notebookActions.setLeftPanelWidth(width)}
         minLeftWidth={30}
         maxLeftWidth={70}
       />
