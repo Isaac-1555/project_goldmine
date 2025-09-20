@@ -6,6 +6,31 @@ import './lib/loadKatex'
 import App from './App.tsx'
 import { PostHogProvider } from 'posthog-js/react'
 
+// Apply theme immediately to prevent flash of unstyled content
+const initializeTheme = () => {
+  const stored = localStorage.getItem('theme-mode')
+  let themeMode = stored || 'system'
+  
+  // Migrate from old theme storage
+  if (!stored) {
+    const oldTheme = localStorage.getItem('theme')
+    if (oldTheme && (oldTheme === 'light' || oldTheme === 'dark')) {
+      themeMode = oldTheme
+      localStorage.removeItem('theme')
+      localStorage.setItem('theme-mode', oldTheme)
+    }
+  }
+  
+  const getSystemTheme = () => {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+  
+  const actualTheme = themeMode === 'system' ? getSystemTheme() : themeMode
+  document.documentElement.setAttribute('data-theme', actualTheme)
+}
+
+initializeTheme()
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <PostHogProvider

@@ -15,9 +15,9 @@
 
 .resizable-divider {
   width: 8px;
-  background: #f3f4f6;
-  border-left: 1px solid #e5e7eb;
-  border-right: 1px solid #e5e7eb;
+  background: var(--bg-tertiary);
+  border-left: 1px solid var(--border-primary);
+  border-right: 1px solid var(--border-primary);
   cursor: col-resize;
   display: flex;
   align-items: center;
@@ -28,31 +28,33 @@
 }
 
 .resizable-divider:hover {
-  background: #e5e7eb;
+  background: var(--border-primary);
 }
 
 .resizable-divider.dragging {
-  background: #d1d5db;
+  background: var(--border-primary);
 }
 
 .divider-handle {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9ca3af;
+  color: var(--text-muted);
   transition: color 0.2s;
   padding: 4px;
   border-radius: 4px;
 }
 
 .resizable-divider:hover .divider-handle {
-  color: #6b7280;
-  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  opacity: 0.8;
 }
 
 .resizable-divider.dragging .divider-handle {
-  color: #374151;
-  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  opacity: 0.9;
 }
 
 /* Responsive behavior */
@@ -74,8 +76,8 @@
     cursor: row-resize;
     border-left: none;
     border-right: none;
-    border-top: 1px solid #e5e7eb;
-    border-bottom: 1px solid #e5e7eb;
+    border-top: 1px solid var(--border-primary);
+    border-bottom: 1px solid var(--border-primary);
   }
   
   .divider-handle {

@@ -8,11 +8,154 @@
   line-height: 1.5;
   font-weight: 400;
   
-  /* CSS Variables defined in Layout.css */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* CSS Variables for theming - Light Theme Default */
+  /* Backgrounds */
+  --bg-primary: #ffffff;
+  --bg-secondary: #fafbfc;
+  --bg-tertiary: #f5f6f7;
+  --bg-sidebar: #f8f9fa;
+  --bg-input: #ffffff;
+
+  /* Text */
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+  --text-inverse: #ffffff;
+  --text-link: #2563eb;
+
+  /* Interactive */
+  --accent-primary: #3b82f6;
+  --accent-primary-hover: #2563eb;
+  --accent-secondary: #f59e0b;
+  --accent-secondary-hover: #d97706;
+
+  /* Legacy support */
+  --accent-color: #3b82f6;
+  --accent-hover: #2563eb;
+  --border-color: #e2e4e6;
+
+  /* Status */
+  --color-success: #059669;
+  --color-success-bg: #ecfdf5;
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-error: #dc2626;
+  --color-error-bg: #fef2f2;
+  --color-info: #3b82f6;
+  --color-info-bg: #eff6ff;
+  --color-processing: #7c3aed;
+
+  /* Legacy support */
+  --success-color: #059669;
+  --error-color: #dc2626;
+  --warning-color: #d97706;
+
+  /* Borders */
+  --border-primary: #e2e4e6;
+  --border-secondary: #f1f3f4;
+  --border-focus: #3b82f6;
+  --border-error: #fca5a5;
+
+  /* Component-specific */
+  --graph-node-default: #3b82f6;
+  --graph-node-default-bg: #3b82f625;
+  --graph-node-hover: #3b82f6;
+  --graph-node-selected: #f59e0b;
+  --graph-edge: #9ca3af80;
+  --graph-cluster-bg: #eff6ff60;
+  
+  --recording-active: #dc2626;
+  --recording-paused: #d97706;
+  --recording-waveform: linear-gradient(45deg, #3b82f6, #0d9488);
+  --recording-timer: #1a202c;
+  
+  --status-processing: #7c3aed;
+  --status-completed: #059669;
+  --status-failed: #dc2626;
+  --status-uploading: #3b82f6;
+  
+  --chat-user-bg: #eff6ff;
+  --chat-ai-bg: #f5f6f7;
+  --chat-border: #f1f3f4;
+  --chat-typing: #3b82f6;
+}
+
+/* Dark Theme Override */
+[data-theme="dark"] {
+  /* Backgrounds */
+  --bg-primary: #000000;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #2d2d2d;
+  --bg-sidebar: #1a1f2e;
+  --bg-input: #262626;
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  --text-inverse: #1a202c;
+  --text-link: #60a5fa;
+
+  /* Interactive */
+  --accent-primary: #60a5fa;
+  --accent-primary-hover: #3b82f6;
+  --accent-secondary: #fbbf24;
+  --accent-secondary-hover: #f59e0b;
+
+  /* Legacy support */
+  --accent-color: #60a5fa;
+  --accent-hover: #3b82f6;
+  --border-color: #404040;
+
+  /* Status */
+  --color-success: #34d399;
+  --color-success-bg: #064e3b;
+  --color-warning: #fbbf24;
+  --color-warning-bg: #451a03;
+  --color-error: #f87171;
+  --color-error-bg: #4c0519;
+  --color-info: #60a5fa;
+  --color-info-bg: #1e3a8a;
+  --color-processing: #a78bfa;
+
+  /* Legacy support */
+  --success-color: #34d399;
+  --error-color: #f87171;
+  --warning-color: #fbbf24;
+
+  /* Borders */
+  --border-primary: #404040;
+  --border-secondary: #333333;
+  --border-focus: #60a5fa;
+  --border-error: #f87171;
+
+  /* Component-specific */
+  --graph-node-default: #60a5fa;
+  --graph-node-default-bg: #60a5fa30;
+  --graph-node-hover: #60a5fa;
+  --graph-node-selected: #fbbf24;
+  --graph-edge: #6b728060;
+  --graph-cluster-bg: #1e3a8a40;
+  
+  --recording-active: #f87171;
+  --recording-paused: #fbbf24;
+  --recording-waveform: linear-gradient(45deg, #60a5fa, #2dd4bf);
+  --recording-timer: #ffffff;
+  
+  --status-processing: #a78bfa;
+  --status-completed: #34d399;
+  --status-failed: #f87171;
+  --status-uploading: #60a5fa;
+  
+  --chat-user-bg: #1e3a8a;
+  --chat-ai-bg: #2d2d2d;
+  --chat-border: #404040;
+  --chat-typing: #60a5fa;
 }
 
 html, body {

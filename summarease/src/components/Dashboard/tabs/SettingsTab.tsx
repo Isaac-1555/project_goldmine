@@ -1,25 +1,17 @@
 import React, { useState } from 'react'
-import { User, Palette, Bot, Save, Info, ChevronDown } from 'lucide-react'
+import { User, Palette, Bot, Save, Info, ChevronDown, Monitor } from 'lucide-react'
 import { useAuth } from '../../Auth/AuthProvider'
 import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
+import { useTheme } from '../../../contexts/ThemeContext'
 import './SettingsTab.css'
 
 export const SettingsTab: React.FC = () => {
   const { user, signOut } = useAuth()
   const { settings, updateSetting } = useSettingsConfig()
+  const { themeMode, actualTheme, setThemeMode } = useTheme()
   
-  const [theme, setTheme] = useState<'light' | 'dark'>(
-    (localStorage.getItem('theme') as 'light' | 'dark') || 'light'
-  )
   const [email, setEmail] = useState(user?.email || '')
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
-
-  const handleThemeChange = (newTheme: 'light' | 'dark') => {
-    setTheme(newTheme)
-    localStorage.setItem('theme', newTheme)
-    // Apply theme to document
-    document.documentElement.setAttribute('data-theme', newTheme)
-  }
 
   const handleSignOut = async () => {
     try {
@@ -77,20 +69,35 @@ export const SettingsTab: React.FC = () => {
               <label>Theme</label>
               <div className="theme-options">
                 <button
-                  className={`theme-option ${theme === 'light' ? 'active' : ''}`}
-                  onClick={() => handleThemeChange('light')}
+                  className={`theme-option ${themeMode === 'light' ? 'active' : ''}`}
+                  onClick={() => setThemeMode('light')}
                 >
                   <div className="theme-preview light-preview"></div>
                   Light
                 </button>
                 <button
-                  className={`theme-option ${theme === 'dark' ? 'active' : ''}`}
-                  onClick={() => handleThemeChange('dark')}
+                  className={`theme-option ${themeMode === 'dark' ? 'active' : ''}`}
+                  onClick={() => setThemeMode('dark')}
                 >
                   <div className="theme-preview dark-preview"></div>
                   Dark
                 </button>
+                <button
+                  className={`theme-option ${themeMode === 'system' ? 'active' : ''}`}
+                  onClick={() => setThemeMode('system')}
+                >
+                  <div className="theme-preview system-preview">
+                    <Monitor size={16} />
+                  </div>
+                  System
+                </button>
               </div>
+              <p className="input-help">
+                {themeMode === 'system' 
+                  ? `Following system preference (currently ${actualTheme})` 
+                  : `Theme set to ${themeMode}`
+                }
+              </p>
             </div>
           </div>
         </div>

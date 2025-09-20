@@ -12,12 +12,12 @@
 .study-tools-header h2 {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .study-tools-header p {
-  color: #6b7280;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -27,7 +27,7 @@
   gap: 0.5rem;
   background: none;
   border: none;
-  color: #3b82f6;
+  color: var(--accent-primary);
   font-size: 0.875rem;
   cursor: pointer;
   margin-bottom: 1rem;
@@ -35,7 +35,7 @@
 }
 
 .back-button:hover {
-  color: #2563eb;
+  color: var(--accent-primary-hover);
 }
 
 /* Study Tools Menu */
@@ -46,8 +46,8 @@
 }
 
 .tool-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
   border-radius: 0.75rem;
   padding: 2rem;
   text-align: center;
@@ -56,7 +56,7 @@
 }
 
 .tool-card:hover {
-  border-color: #3b82f6;
+  border-color: var(--accent-primary);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
   transform: translateY(-2px);
 }
@@ -70,25 +70,25 @@
 .tool-icon svg {
   width: 3rem;
   height: 3rem;
-  color: #3b82f6;
+  color: var(--accent-primary);
 }
 
 .tool-card h3 {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .tool-card p {
-  color: #6b7280;
+  color: var(--text-muted);
   margin-bottom: 1.5rem;
   line-height: 1.5;
 }
 
 .tool-button {
-  background: #3b82f6;
-  color: white;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 0.5rem;
@@ -98,7 +98,7 @@
 }
 
 .tool-button:hover {
-  background: #2563eb;
+  background: var(--accent-primary-hover);
 }
 
 /* File Selection */
@@ -109,8 +109,8 @@
 }
 
 .selectable-file-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
   border-radius: 0.5rem;
   padding: 1.5rem;
   cursor: pointer;
@@ -118,19 +118,19 @@
 }
 
 .selectable-file-card:hover {
-  border-color: #3b82f6;
+  border-color: var(--accent-primary);
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
 }
 
 .selectable-file-card h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .selectable-file-card p {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.875rem;
   line-height: 1.4;
   margin-bottom: 1rem;
@@ -144,8 +144,8 @@
 
 .tag {
   padding: 0.25rem 0.5rem;
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
   border-radius: 0.25rem;
   font-size: 0.75rem;
   font-weight: 500;
@@ -160,14 +160,14 @@
   justify-content: center;
   padding: 3rem;
   text-align: center;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .loading-spinner {
   width: 2rem;
   height: 2rem;
-  border: 2px solid #e5e7eb;
-  border-top: 2px solid #3b82f6;
+  border: 2px solid var(--border-primary);
+  border-top: 2px solid var(--accent-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
@@ -189,14 +189,14 @@
 .quiz-placeholder,
 .flashcards-placeholder {
   text-align: center;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .placeholder-icon {
   width: 4rem;
   height: 4rem;
   margin-bottom: 1rem;
-  color: #d1d5db;
+  color: var(--border-primary);
 }
 
 .quiz-placeholder h3,
@@ -204,7 +204,7 @@
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 /* Responsive Design */

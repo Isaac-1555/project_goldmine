@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './components/Auth/AuthProvider'
+import { ThemeProvider } from './contexts/ThemeContext'
 import { LoginForm } from './components/Auth/LoginForm'
 import { SignUpForm } from './components/Auth/SignUpForm'
 import { Dashboard } from './components/Dashboard/Dashboard'
@@ -74,9 +75,11 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ThemeProvider>
     </Router>
   )
 }
