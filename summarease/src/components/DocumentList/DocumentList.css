@@ -1,7 +1,7 @@
 .document-list {
-  background: #f8fafc;
+  background: var(--bg-secondary);
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-primary);
   overflow: hidden;
 }
 
@@ -11,7 +11,7 @@
 
 .empty-state {
   text-align: center;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .empty-icon {
@@ -33,15 +33,15 @@
 
 .document-list-header {
   padding: 16px 20px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #ffffff;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-primary);
 }
 
 .document-list-header h3 {
   margin: 0;
   font-size: 1em;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .document-items {
@@ -54,7 +54,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 20px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-primary);
   transition: background-color 0.2s ease;
 }
 
@@ -63,7 +63,7 @@
 }
 
 .document-item:hover {
-  background: #f3f4f6;
+  background: var(--bg-tertiary);
 }
 
 .document-info {
@@ -95,7 +95,7 @@
 
 .document-name {
   font-weight: 500;
-  color: #1f2937;
+  color: var(--text-primary);
   font-size: 0.9em;
   white-space: nowrap;
   overflow: hidden;
@@ -109,7 +109,7 @@
   align-items: center;
   flex-wrap: wrap;
   font-size: 0.75em;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .document-size,
@@ -148,10 +148,10 @@
 }
 
 .document-items::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
+  background: var(--border-primary);
   border-radius: 2px;
 }
 
 .document-items::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  background: var(--text-muted);
 }

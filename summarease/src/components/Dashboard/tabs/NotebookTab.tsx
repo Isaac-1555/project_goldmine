@@ -828,7 +828,6 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     <div className="notebook-right-panel">
       <div className="notes-header">
         <h3>Notes</h3>
-        <p>Take notes while reviewing content</p>
       </div>
       <NoteTaking
         initialContent={notes}
