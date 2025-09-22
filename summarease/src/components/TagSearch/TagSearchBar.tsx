@@ -9,11 +9,13 @@ import './TagSearchBar.css'
 interface TagSearchBarProps {
   onResultsChange: (results: FileWithMetadata[], resultCount: number) => void
   onSearchStateChange: (isSearching: boolean) => void
+  onSearchTagsChange?: (tags: string[]) => void
 }
 
 export const TagSearchBar: React.FC<TagSearchBarProps> = ({ 
   onResultsChange, 
-  onSearchStateChange 
+  onSearchStateChange,
+  onSearchTagsChange
 }) => {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [searchInput, setSearchInput] = useState('')
@@ -22,6 +24,7 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
   const [isLoading, setIsLoading] = useState(false)
   const [searchLogic, setSearchLogic] = useState<'AND' | 'OR'>('AND')
   const [resultCount, setResultCount] = useState(0)
+  const [activeIndex, setActiveIndex] = useState(-1)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const suggestionsRef = useRef<HTMLDivElement>(null)
@@ -29,27 +32,31 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
   // Debounced search for suggestions
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (searchInput.trim()) {
+      const term = searchInput.trim()
+      if (term.length >= 1) {
         setIsLoading(true)
         try {
-          const tagSuggestions = await getTagSuggestions(searchInput.trim())
+          const tagSuggestions = await getTagSuggestions(term)
           // Filter out already selected tags
           const filteredSuggestions = tagSuggestions.filter(
             suggestion => !selectedTags.includes(suggestion.name)
           )
           setSuggestions(filteredSuggestions)
           setShowSuggestions(true)
+          setActiveIndex(filteredSuggestions.length > 0 ? 0 : -1)
         } catch (error) {
           console.error('Error fetching tag suggestions:', error)
           setSuggestions([])
+          setActiveIndex(-1)
         } finally {
           setIsLoading(false)
         }
       } else {
         setSuggestions([])
         setShowSuggestions(false)
+        setActiveIndex(-1)
       }
-    }, 300)
+    }, 250)
 
     return () => clearTimeout(timer)
   }, [searchInput, selectedTags])
@@ -81,7 +88,7 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
     }
 
     performSearch()
-  }, [selectedTags, searchLogic, onResultsChange, onSearchStateChange])
+  }, [selectedTags, searchLogic])
 
   // Handle clicking outside to close suggestions
   useEffect(() => {
@@ -105,15 +112,24 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
   }
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchInput.trim()) {
+    if (!showSuggestions) return
+
+    if (e.key === 'ArrowDown') {
       e.preventDefault()
-      // Add the typed tag if it exists in suggestions
-      const exactMatch = suggestions.find(
-        suggestion => suggestion.name.toLowerCase() === searchInput.trim().toLowerCase()
-      )
-      if (exactMatch) {
-        handleTagSelect(exactMatch.name)
-      }
+      setActiveIndex(prev => {
+        const next = prev + 1
+        return next >= suggestions.length ? 0 : next
+      })
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex(prev => {
+        const next = prev - 1
+        return next < 0 ? Math.max(0, suggestions.length - 1) : next
+      })
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const chosen = suggestions[activeIndex] || suggestions[0]
+      if (chosen) handleTagSelect(chosen.name)
     } else if (e.key === 'Escape') {
       setShowSuggestions(false)
       inputRef.current?.blur()
@@ -122,21 +138,28 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
 
   const handleTagSelect = (tagName: string) => {
     if (!selectedTags.includes(tagName)) {
-      setSelectedTags(prev => [...prev, tagName])
+      const newTags = [...selectedTags, tagName]
+      setSelectedTags(newTags)
+      onSearchTagsChange?.(newTags)
     }
     setSearchInput('')
     setShowSuggestions(false)
+    setActiveIndex(-1)
     inputRef.current?.focus()
   }
 
   const handleTagRemove = (tagName: string) => {
-    setSelectedTags(prev => prev.filter(tag => tag !== tagName))
+    const newTags = selectedTags.filter(tag => tag !== tagName)
+    setSelectedTags(newTags)
+    onSearchTagsChange?.(newTags)
   }
 
   const handleClearAll = () => {
     setSelectedTags([])
     setSearchInput('')
     setShowSuggestions(false)
+    setActiveIndex(-1)
+    onSearchTagsChange?.([])
   }
 
   const toggleSearchLogic = () => {
@@ -158,16 +181,23 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
               onKeyDown={handleInputKeyDown}
               onFocus={() => searchInput.trim() && setShowSuggestions(true)}
               className="search-input"
+              aria-activedescendant={activeIndex >= 0 ? `tag-suggestion-${activeIndex}` : undefined}
+              aria-expanded={showSuggestions}
+              aria-controls="tag-suggestion-list"
+              role="combobox"
             />
             {isLoading && <div className="search-loading-spinner" />}
           </div>
 
-          {showSuggestions && suggestions.length > 0 && (
+          {showSuggestions && (
             <TagSuggestions
               ref={suggestionsRef}
               suggestions={suggestions}
               onTagSelect={handleTagSelect}
               searchTerm={searchInput}
+              isLoading={isLoading}
+              activeIndex={activeIndex}
+              onHoverItem={setActiveIndex}
             />
           )}
         </div>

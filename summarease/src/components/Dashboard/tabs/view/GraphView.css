@@ -84,6 +84,38 @@
   height: 100%;
   overflow: hidden;
   cursor: grab;
+  position: relative;
+}
+
+/* Rebuilding overlay */
+.graph-rebuilding-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: none; /* allow pan/zoom to continue */
+}
+
+.graph-rebuilding-box {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  opacity: 0.9;
+}
+
+.graph-rebuilding-box .loading-spinner {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-width: 2px;
+  margin: 0;
 }
 
 .graph-container:active {
@@ -127,6 +159,37 @@
   filter: drop-shadow(0 2px 6px rgba(59, 130, 246, 0.15));
 }
 
+.tag-node {
+  transition: all 0.15s ease-out;
+  transform-origin: center;
+}
+
+.tag-node:hover {
+  filter: drop-shadow(0 4px 12px rgba(139, 92, 246, 0.3));
+  transform: scale(1.05);
+}
+
+.tag-node-inner {
+  transition: all 0.15s ease-out;
+  pointer-events: none;
+}
+
+/* Enhanced glow animations for tag nodes */
+@keyframes tagPulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+.tag-node.highlighted {
+  animation: tagPulse 2s ease-in-out infinite;
+}
+
 .graph-link {
   transition: opacity 0.15s ease-out, stroke-width 0.15s ease-out;
 }
@@ -147,6 +210,22 @@
 }
 
 .node-label:hover {
+  fill: var(--text-primary);
+  font-weight: 500;
+}
+
+.tag-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 3px rgba(124, 58, 237, 0.2);
+}
+
+.tag-label:hover {
+  fill: #5b21b6 !important;
+  transform: translateY(-1px);
+}
+
+.file-label:hover {
   fill: var(--text-primary);
   font-weight: 500;
 }

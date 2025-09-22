@@ -1,9 +1,9 @@
 .tag-search-bar {
   margin-bottom: 0.75rem;
-  background: var(--bg-secondary, #f8f9fa);
+  background: var(--bg-secondary);
   border-radius: 8px;
   padding: 0.5rem;
-  border: 1px solid var(--border-color, #e2e8f0);
+  border: 1px solid var(--border-primary);
 }
 
 .search-header {
@@ -22,16 +22,16 @@
   position: relative;
   display: flex;
   align-items: center;
-  background: white;
-  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   padding: 0.375rem 0.5rem;
   transition: border-color 0.2s ease;
 }
 
 .search-input-wrapper:focus-within {
-  border-color: var(--primary-color, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 .search-icon {
@@ -47,12 +47,12 @@
   border: none;
   outline: none;
   font-size: 0.875rem;
-  color: var(--text-primary, #1f2937);
+  color: var(--text-primary);
   background: transparent;
 }
 
 .search-input::placeholder {
-  color: var(--text-muted, #9ca3af);
+  color: var(--text-muted);
 }
 
 .search-loading-spinner {
@@ -82,19 +82,19 @@
   align-items: center;
   gap: 0.2rem;
   padding: 0.375rem 0.5rem;
-  background: white;
-  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
   border-radius: 4px;
   font-size: 0.7rem;
   font-weight: 500;
-  color: var(--text-secondary, #4b5563);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .logic-toggle:hover {
-  background: var(--bg-hover, #f3f4f6);
-  border-color: var(--primary-color, #3b82f6);
+  background: var(--bg-tertiary);
+  border-color: var(--border-focus);
 }
 
 .toggle-icon {
@@ -104,7 +104,7 @@
 }
 
 .toggle-icon.active {
-  color: var(--primary-color, #3b82f6);
+  color: var(--accent-primary);
 }
 
 .logic-label {

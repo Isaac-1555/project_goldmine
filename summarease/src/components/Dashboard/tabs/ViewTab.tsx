@@ -17,6 +17,7 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, 
   const [activeSubTab, setActiveSubTab] = useState<'list' | 'graph'>('list')
   const [searchResults, setSearchResults] = useState<FileWithMetadata[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [searchedTags, setSearchedTags] = useState<string[]>([])
 
   const handleSearchResults = (results: FileWithMetadata[], resultCount: number) => {
     setSearchResults(results)
@@ -24,6 +25,10 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, 
 
   const handleSearchStateChange = (searching: boolean) => {
     setIsSearching(searching)
+  }
+
+  const handleSearchTagsChange = (tags: string[]) => {
+    setSearchedTags(tags)
   }
 
   return (
@@ -53,6 +58,7 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, 
         <TagSearchBar 
           onResultsChange={handleSearchResults}
           onSearchStateChange={handleSearchStateChange}
+          onSearchTagsChange={handleSearchTagsChange}
         />
       </div>
 
@@ -72,6 +78,7 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, 
             selectedFileId={selectedFileId}
             searchResults={isSearching ? searchResults : undefined}
             isSearching={isSearching}
+            searchedTags={searchedTags}
           />
         )}
       </div>
