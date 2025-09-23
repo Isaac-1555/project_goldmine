@@ -362,19 +362,38 @@
   margin-bottom: 0;
 }
 
+/* Tags Section */
+.tags-section {
+  margin-top: 1.5rem;
+}
+
+.tags-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .tags-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-top: 1rem;
 }
 
 .tag-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 20px;
   padding: 0.5rem 1rem;
   transition: all 0.2s;
+  position: relative;
+  group: tag-item;
 }
 
 .tag-item:hover {
@@ -382,10 +401,87 @@
   background: var(--bg-tertiary);
 }
 
+.tag-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
 .tag-name {
   color: var(--text-primary);
   font-weight: 500;
   font-size: 0.875rem;
+  flex: 1;
+}
+
+.tag-delete-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+  margin-left: 0.25rem;
+  flex-shrink: 0;
+}
+
+.tag-item:hover .tag-delete-button {
+  opacity: 0.7;
+}
+
+.tag-delete-button:hover {
+  opacity: 1 !important;
+  background: var(--danger-bg, #fef2f2);
+  color: var(--danger-text, #dc2626);
+}
+
+.tag-delete-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* No Tags Message */
+.no-tags-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  margin-top: 1rem;
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.no-tags-content {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.no-tags-icon {
+  width: 2rem;
+  height: 2rem;
+  margin: 0 auto 0.75rem;
+  opacity: 0.5;
+}
+
+.no-tags-content p {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.no-tags-content span {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
  .no-content {

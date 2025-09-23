@@ -517,7 +517,7 @@ async function saveTags(summaryId: string, tags: string[]): Promise<void> {
       }
 
       // Link tag to summary (ignore duplicates)
-      await supabase
+      const { error: linkError } = await supabase
         .from('summary_tags')
         .insert({
           summary_id: summaryId,
@@ -525,7 +525,11 @@ async function saveTags(summaryId: string, tags: string[]): Promise<void> {
         })
         .select()
         .maybeSingle()
-        .catch(() => {})
+      
+      // Ignore duplicate errors
+      if (linkError && !linkError.message.includes('duplicate')) {
+        console.error('Error linking tag to summary:', linkError)
+      }
     } catch (error) {
       console.error('Error saving tag:', name, error)
     }
@@ -537,6 +541,160 @@ async function saveTags(summaryId: string, tags: string[]): Promise<void> {
  */
 export async function addTagsToSummary(summaryId: string, tags: string[]): Promise<void> {
   await saveTags(summaryId, tags)
+}
+
+/**
+ * Add custom tags to a file by finding its latest summary
+ */
+export async function addCustomTagsToFile(fileId: string, tagNames: string[]): Promise<{ success: boolean; error?: string; addedTags?: { id: string; name: string }[] }> {
+  try {
+    // Get the latest summary for this file
+    const { data: latestSummary, error: summaryError } = await supabase
+      .from('summaries')
+      .select('id')
+      .eq('file_id', fileId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (summaryError) {
+      throw summaryError
+    }
+
+    if (!latestSummary) {
+      return { success: false, error: 'No summary found for this file. Tags can only be added to files with summaries.' }
+    }
+
+    // Get existing tags for this summary to prevent duplicates
+    const { data: existingTagsData } = await supabase
+      .from('summary_tags')
+      .select(`
+        tags (
+          id,
+          name
+        )
+      `)
+      .eq('summary_id', latestSummary.id)
+
+    const existingTagNames = new Set(
+      (existingTagsData || []).map((st: any) => st.tags.name.toLowerCase())
+    )
+
+    // Filter out tags that already exist
+    const newTagNames = tagNames.filter(name => 
+      !existingTagNames.has(name.trim().toLowerCase())
+    )
+
+    if (newTagNames.length === 0) {
+      return { success: false, error: 'All provided tags already exist for this file.' }
+    }
+
+    const addedTags: { id: string; name: string }[] = []
+
+    // Process each new tag
+    for (const tagName of newTagNames) {
+      const name = tagName.trim()
+      if (!name) continue
+
+      try {
+        // Check if tag exists in the global tags table
+        let { data: existingTag, error: tagSelectError } = await supabase
+          .from('tags')
+          .select('id, name')
+          .eq('name', name)
+          .maybeSingle()
+
+        if (tagSelectError) {
+          console.error('Error checking tag:', tagSelectError)
+          continue
+        }
+
+        let tagId: string
+        let tagRecord: { id: string; name: string }
+
+        if (existingTag) {
+          tagId = existingTag.id
+          tagRecord = existingTag
+        } else {
+          // Create new tag
+          const { data: newTag, error: tagInsertError } = await supabase
+            .from('tags')
+            .insert({ name })
+            .select('id, name')
+            .single()
+
+          if (tagInsertError) {
+            console.error('Error creating tag:', tagInsertError)
+            continue
+          }
+          tagId = newTag.id
+          tagRecord = newTag
+        }
+
+        // Link tag to summary
+        const { error: linkError } = await supabase
+          .from('summary_tags')
+          .insert({
+            summary_id: latestSummary.id,
+            tag_id: tagId
+          })
+
+        if (linkError) {
+          console.error('Error linking tag to summary:', linkError)
+          continue
+        }
+
+        addedTags.push(tagRecord)
+      } catch (error) {
+        console.error('Error processing tag:', name, error)
+      }
+    }
+
+    return { success: true, addedTags }
+  } catch (error: any) {
+    console.error('Error adding custom tags to file:', error)
+    return { success: false, error: error.message || 'Failed to add tags' }
+  }
+}
+
+/**
+ * Remove a tag from a file's latest summary
+ */
+export async function removeTagFromFile(fileId: string, tagId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Get the latest summary for this file
+    const { data: latestSummary, error: summaryError } = await supabase
+      .from('summaries')
+      .select('id')
+      .eq('file_id', fileId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (summaryError) {
+      throw summaryError
+    }
+
+    if (!latestSummary) {
+      return { success: false, error: 'No summary found for this file.' }
+    }
+
+    // Remove the tag link
+    const { error: deleteError } = await supabase
+      .from('summary_tags')
+      .delete()
+      .eq('summary_id', latestSummary.id)
+      .eq('tag_id', tagId)
+
+    if (deleteError) {
+      throw deleteError
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error removing tag from file:', error)
+    return { success: false, error: error.message || 'Failed to remove tag' }
+  }
 }
 
 /**

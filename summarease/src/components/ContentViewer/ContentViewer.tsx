@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { Edit3, Pencil, Sparkles, Save, X, FileText, MessageSquare, Tag, Clock, ArrowLeft, Trash2, File as FileIcon, Eye } from 'lucide-react'
 import { StatusIndicator } from '../FileStatus/StatusIndicator'
-import { getFileDetails, updateSummary, deleteFile, regenerateSummary, type FileWithMetadata } from '../../lib/api'
+import { getFileDetails, updateSummary, deleteFile, regenerateSummary, removeTagFromFile, type FileWithMetadata } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
 import { CodeBlockRenderer } from '../ContentBlocks/CodeBlockRenderer'
 import { MathBlockRenderer } from '../ContentBlocks/MathBlockRenderer'
+import { TagEditor } from '../TagEditor'
 import './ContentViewer.css'
 
 interface ContentViewerProps {
@@ -254,6 +255,8 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
   const [regenerating, setRegenerating] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [deletingTag, setDeletingTag] = useState<string | null>(null)
+  const [showDeleteTagConfirm, setShowDeleteTagConfirm] = useState<string | null>(null)
 
   useEffect(() => {
     if (file?.id) {
@@ -371,6 +374,39 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  const handleTagsAdded = (newTags: { id: string; name: string }[]) => {
+    // Update the fileDetails state to include the new tags
+    setFileDetails(prev => prev ? {
+      ...prev,
+      tags: [...prev.tags, ...newTags]
+    } : null)
+  }
+
+  const handleDeleteTag = async (tagId: string) => {
+    if (!fileDetails?.file.id) return
+
+    try {
+      setDeletingTag(tagId)
+      const result = await removeTagFromFile(fileDetails.file.id, tagId)
+      
+      if (result.success) {
+        // Remove the tag from the local state immediately
+        setFileDetails(prev => prev ? {
+          ...prev,
+          tags: prev.tags.filter(tag => tag.id !== tagId)
+        } : null)
+        setShowDeleteTagConfirm(null)
+      } else {
+        setError(result.error || 'Failed to remove tag')
+      }
+    } catch (err: any) {
+      setError('Failed to remove tag')
+      console.error('Error removing tag:', err)
+    } finally {
+      setDeletingTag(null)
+    }
   }
 
   const getFileTypeLabel = (fileType: string) => {
@@ -513,7 +549,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                             if (res.success && res.summary_text) {
                               setFileDetails(prev => prev ? {
                                 ...prev,
-                                summary: prev.summary ? { ...prev.summary, summary_text: res.summary_text } : prev.summary
+                                summary: prev.summary ? { ...prev.summary, summary_text: res.summary_text! } : prev.summary
                               } : null)
                               setEditedSummary(res.summary_text)
                             } else {
@@ -691,21 +727,40 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
 
         {activeTab === 'tags' && (
           <div className="tags-content">
+            <TagEditor
+              fileId={fileDetails.file.id}
+              existingTags={fileDetails.tags}
+              onTagsAdded={handleTagsAdded}
+              disabled={fileDetails.file.status === 'processing'}
+            />
+            
             {fileDetails.tags.length > 0 ? (
-              <div className="tags-grid">
-                {fileDetails.tags.map((tag) => (
-                  <div key={tag.id} className="tag-item">
-                    <Tag className="tag-icon" />
-                    <span className="tag-name">{tag.name}</span>
-                  </div>
-                ))}
+              <div className="tags-section">
+                <h4 className="tags-section-title">Current Tags</h4>
+                <div className="tags-grid">
+                  {fileDetails.tags.map((tag) => (
+                    <div key={tag.id} className="tag-item">
+                      <Tag className="tag-icon" />
+                      <span className="tag-name">{tag.name}</span>
+                      <button
+                        className="tag-delete-button"
+                        onClick={() => setShowDeleteTagConfirm(tag.id)}
+                        title={`Remove "${tag.name}" tag`}
+                        aria-label={`Remove ${tag.name} tag`}
+                      >
+                        <X className="tag-delete-icon" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
-              <div className="no-content">
-                <p>No tags available yet.</p>
-                {fileDetails.file.status === 'processing' && (
-                  <span>Tags are being generated...</span>
-                )}
+              <div className="no-tags-message">
+                <div className="no-tags-content">
+                  <Tag className="no-tags-icon" />
+                  <p>No tags yet</p>
+                  <span>Add tags above to organize and categorize this content.</span>
+                </div>
               </div>
             )}
           </div>
@@ -733,6 +788,33 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
               >
                 <Trash2 className="icon" />
                 {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tag Delete Confirmation Modal */}
+      {showDeleteTagConfirm && (
+        <div className="modal-overlay">
+          <div className="delete-modal">
+            <h3>Remove Tag</h3>
+            <p>Are you sure you want to remove the tag "{fileDetails?.tags.find(t => t.id === showDeleteTagConfirm)?.name}"? This will not affect other files with this tag.</p>
+            <div className="modal-actions">
+              <button
+                onClick={() => setShowDeleteTagConfirm(null)}
+                className="btn btn-outline"
+                disabled={deletingTag === showDeleteTagConfirm}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteTag(showDeleteTagConfirm)}
+                className="btn btn-danger"
+                disabled={deletingTag === showDeleteTagConfirm}
+              >
+                <X className="icon" />
+                {deletingTag === showDeleteTagConfirm ? 'Removing...' : 'Remove'}
               </button>
             </div>
           </div>
