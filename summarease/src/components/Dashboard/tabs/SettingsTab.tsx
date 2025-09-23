@@ -139,6 +139,36 @@ export const SettingsTab: React.FC = () => {
               </p>
             </div>
 
+            {/* Auto Tags Toggle */}
+            <div className="form-group">
+              <label htmlFor="auto-tags-toggle" className="toggle-label">
+                <span>Auto Tags</span>
+                <div className="info-tooltip">
+                  <Info className="info-icon" />
+                  <span className="tooltip-text">
+                    When enabled, AI automatically generates relevant tags for your summaries. When disabled, you can manage all tags manually.
+                  </span>
+                </div>
+              </label>
+              <div className="toggle-container">
+                <label className="toggle-switch">
+                  <input
+                    id="auto-tags-toggle"
+                    type="checkbox"
+                    checked={settings.autoTags}
+                    onChange={(e) => updateSetting('autoTags', e.target.checked)}
+                  />
+                  <span className="toggle-slider"></span>
+                </label>
+                <span className="toggle-status">
+                  {settings.autoTags ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
+              <p className="input-help">
+                Auto Tags generates 3-7 relevant keywords during content processing to help organize and link related summaries
+              </p>
+            </div>
+
             {/* LLM Provider Dropdown */}
             <div className="form-group">
               <label htmlFor="llm-provider">AI Model Provider</label>

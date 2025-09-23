@@ -170,23 +170,26 @@ export async function processAudioTranscript(
   // Clean and deduplicate the summary to prevent repetitive content
   const summary = cleanAndDeduplicateSummary(rawSummary)
 
-  // Extract tags
-  const tagsPrompt = `
-    Extract 3-7 relevant keywords or tags from the following transcript. 
-    These should be:
-    - Single words or short phrases (2-3 words max)
-    - Relevant to the main topics and themes
-    - Useful for categorization and search
-    - Lowercase
-    
-    Return only the tags separated by commas, nothing else.
-    
-    Transcript: ${transcript}
-  `
+  // Extract tags (only if autoTags is enabled)
+  let tags: string[] = []
+  if (config?.autoTags !== false) {
+    const tagsPrompt = `
+      Extract 3-7 relevant keywords or tags from the following transcript. 
+      These should be:
+      - Single words or short phrases (2-3 words max)
+      - Relevant to the main topics and themes
+      - Useful for categorization and search
+      - Lowercase
+      
+      Return only the tags separated by commas, nothing else.
+      
+      Transcript: ${transcript}
+    `
 
-  const tagsResult = await model.generateContent(tagsPrompt)
-  const tagsText = tagsResult.response.text().trim()
-  const tags = tagsText.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag.length > 0)
+    const tagsResult = await model.generateContent(tagsPrompt)
+    const tagsText = tagsResult.response.text().trim()
+    tags = tagsText.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag.length > 0)
+  }
 
   return {
     summary,

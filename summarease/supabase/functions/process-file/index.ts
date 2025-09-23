@@ -9,6 +9,7 @@ const corsHeaders = {
 
 interface ProcessFileRequest {
   fileId: string
+  autoTags?: boolean
 }
 
 serve(async (req) => {
@@ -27,7 +28,7 @@ serve(async (req) => {
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY')!
     const genAI = new GoogleGenerativeAI(geminiApiKey)
 
-    const { fileId } = await req.json() as ProcessFileRequest
+    const { fileId, autoTags = true } = await req.json() as ProcessFileRequest
 
     // Get file record from database
     const { data: fileRecord, error: fileError } = await supabase
@@ -97,9 +98,12 @@ serve(async (req) => {
       throw new Error('Failed to save summary')
     }
 
-    // Extract and save tags
-    const tags = await extractTags(summary, genAI)
-    await saveTags(summaryData.id, tags, supabase)
+    // Extract and save tags (only if autoTags is enabled)
+    let tags: string[] = []
+    if (autoTags) {
+      tags = await extractTags(summary, genAI)
+      await saveTags(summaryData.id, tags, supabase)
+    }
 
     // Update file status to completed
     await supabase

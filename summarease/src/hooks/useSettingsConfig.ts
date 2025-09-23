@@ -3,6 +3,7 @@ import type { SummaryConfig } from '../types/summaryTypes';
 
 export interface UserSummarySettings {
   includeInfographics: boolean;
+  autoTags: boolean;
   llmProvider: 'gemini' | 'openai' | 'claude' | 'anthropic';
   subjectArea: SummaryConfig['subjectArea'];
   academicLevel: SummaryConfig['academicLevel'];
@@ -13,6 +14,7 @@ const SETTINGS_KEY = 'summarease_summary_settings';
 
 const defaultSettings: UserSummarySettings = {
   includeInfographics: false,
+  autoTags: true,
   llmProvider: 'gemini',
   subjectArea: 'General',
   academicLevel: 'Undergraduate',
@@ -61,6 +63,7 @@ export function useSettingsConfig() {
       academicLevel: settings.academicLevel,
       lengthPreference: settings.lengthPreference,
       includeInfographics: settings.includeInfographics,
+      autoTags: settings.autoTags,
       llmProvider: settings.llmProvider,
       includeCodeExamples: true, // Default true for now
       includeMathDerivations: true, // Default true for now

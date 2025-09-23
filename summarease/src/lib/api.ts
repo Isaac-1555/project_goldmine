@@ -43,10 +43,10 @@ export interface ProcessingResult {
 /**
  * Trigger file processing for a given file ID
  */
-export async function processFile(fileId: string): Promise<ProcessingResult> {
+export async function processFile(fileId: string, autoTags: boolean = true): Promise<ProcessingResult> {
   try {
     const { data, error } = await supabase.functions.invoke('process-file', {
-      body: { fileId }
+      body: { fileId, autoTags }
     })
 
     if (error) {
@@ -273,7 +273,7 @@ export async function getKnowledgeGraphData() {
 /**
  * Upload a file and create a file record
  */
-export async function uploadFile(file: File, title?: string, folderId?: string | null): Promise<string | null> {
+export async function uploadFile(file: File, title?: string, folderId?: string | null, autoTags: boolean = true): Promise<string | null> {
   try {
     const { data: user } = await supabase.auth.getUser()
     if (!user.user) {
@@ -294,7 +294,7 @@ export async function uploadFile(file: File, title?: string, folderId?: string |
 
     // Process document client-side as temporary workaround
     console.log('Processing document client-side...')
-    const { extractedText, summary, tags } = await processDocumentClientSide(file)
+    const { extractedText, summary, tags } = await processDocumentClientSide(file, autoTags)
 
     // Upload file to Supabase Storage
     const fileName = `${user.user.id}/${Date.now()}_${file.name}`
@@ -346,8 +346,8 @@ export async function uploadFile(file: File, title?: string, folderId?: string |
 
     if (summaryError) {
       console.error('Error saving summary:', summaryError)
-    } else {
-      // Save tags
+    } else if (autoTags) {
+      // Save tags (only if autoTags is enabled)
       await saveTags(summaryData.id, tags)
     }
 
@@ -825,7 +825,7 @@ export async function updateNotebookContent(
  * Regenerate the latest summary for a file by recomputing from current transcript, notes, and documents.
  * Inserts a new row in summaries and returns the new summary content and tags.
  */
-export async function regenerateSummary(fileId: string): Promise<{ success: boolean; summaryId?: string; summary_text?: string; tags?: string[]; error?: string }> {
+export async function regenerateSummary(fileId: string, autoTags?: boolean): Promise<{ success: boolean; summaryId?: string; summary_text?: string; tags?: string[]; error?: string }> {
   try {
     // Fetch latest notebook-style details (works for audio/notebook files)
     const details = await getNotebookDetails(fileId)
@@ -851,7 +851,10 @@ export async function regenerateSummary(fileId: string): Promise<{ success: bool
       return { success: false, error: 'No content available to summarize' }
     }
 
-    const { summary, tags } = await processAudioTranscript(combined)
+    // Use provided autoTags setting or default to true for backward compatibility
+    const shouldGenerateTags = autoTags !== undefined ? autoTags : true
+    const config = { autoTags: shouldGenerateTags }
+    const { summary, tags } = await processAudioTranscript(combined, config)
 
     // Insert new summary row
     const { data: summaryRow, error: summaryInsertError } = await supabase
@@ -862,8 +865,8 @@ export async function regenerateSummary(fileId: string): Promise<{ success: bool
 
     if (summaryInsertError) throw summaryInsertError
 
-    // Save tags links
-    if (tags?.length) {
+    // Save tags links (only if tags were generated)
+    if (shouldGenerateTags && tags?.length) {
       await addTagsToSummary(summaryRow.id, tags)
     }
 

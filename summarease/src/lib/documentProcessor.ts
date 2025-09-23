@@ -10,7 +10,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'your-gemini-api-key'
 
-export async function processDocumentClientSide(file: File): Promise<{
+export async function processDocumentClientSide(file: File, autoTags: boolean = true): Promise<{
   extractedText: string
   summary: string
   tags: string[]
@@ -58,23 +58,26 @@ export async function processDocumentClientSide(file: File): Promise<{
   const summaryResult = await model.generateContent(summaryPrompt)
   const summary = summaryResult.response.text()
 
-  // Extract tags
-  const tagsPrompt = `
-    Extract 3-7 relevant keywords or tags from the following text. 
-    These should be:
-    - Single words or short phrases (2-3 words max)
-    - Relevant to the main topics and themes
-    - Useful for categorization and search
-    - Lowercase
-    
-    Return only the tags separated by commas, nothing else.
-    
-    Text: ${extractedText}
-  `
+  // Extract tags (only if autoTags is enabled)
+  let tags: string[] = []
+  if (autoTags) {
+    const tagsPrompt = `
+      Extract 3-7 relevant keywords or tags from the following text. 
+      These should be:
+      - Single words or short phrases (2-3 words max)
+      - Relevant to the main topics and themes
+      - Useful for categorization and search
+      - Lowercase
+      
+      Return only the tags separated by commas, nothing else.
+      
+      Text: ${extractedText}
+    `
 
-  const tagsResult = await model.generateContent(tagsPrompt)
-  const tagsText = tagsResult.response.text().trim()
-  const tags = tagsText.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag.length > 0)
+    const tagsResult = await model.generateContent(tagsPrompt)
+    const tagsText = tagsResult.response.text().trim()
+    tags = tagsText.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag.length > 0)
+  }
 
   return {
     extractedText,

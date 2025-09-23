@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { Upload, File, X, AlertCircle } from 'lucide-react'
 import { useAuth } from '../Auth/AuthProvider'
+import { useSettingsConfig } from '../../hooks/useSettingsConfig'
 import { supabase } from '../../lib/supabase'
 import './FileUpload.css'
 
@@ -11,6 +12,7 @@ interface FileUploadProps {
 
 export const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onClose }) => {
   const { user } = useAuth()
+  const { settings } = useSettingsConfig()
   const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
@@ -112,7 +114,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onClos
       
       // Start processing in background
       import('../../lib/api').then(({ processFile }) => {
-        processFile(fileData.id).then(result => {
+        processFile(fileData.id, settings.autoTags).then(result => {
           console.log('Processing result:', result)
         })
       })

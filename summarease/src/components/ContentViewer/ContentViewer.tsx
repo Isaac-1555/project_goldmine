@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Edit3, Pencil, Sparkles, Save, X, FileText, MessageSquare, Tag, Clock, ArrowLeft, Trash2, File as FileIcon, Eye } from 'lucide-react'
 import { StatusIndicator } from '../FileStatus/StatusIndicator'
 import { getFileDetails, updateSummary, deleteFile, regenerateSummary, removeTagFromFile, type FileWithMetadata } from '../../lib/api'
+import { useSettingsConfig } from '../../hooks/useSettingsConfig'
 import { supabase } from '../../lib/supabase'
 import { CodeBlockRenderer } from '../ContentBlocks/CodeBlockRenderer'
 import { MathBlockRenderer } from '../ContentBlocks/MathBlockRenderer'
@@ -49,6 +50,7 @@ interface FileDetails {
 }
 
 export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDelete }) => {
+  const { settings } = useSettingsConfig()
   const [fileDetails, setFileDetails] = useState<FileDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -545,7 +547,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                         onClick={async () => {
                           try {
                             setRegenerating(true)
-                            const res = await regenerateSummary(fileDetails!.file.id)
+                            const res = await regenerateSummary(fileDetails!.file.id, settings.autoTags)
                             if (res.success && res.summary_text) {
                               setFileDetails(prev => prev ? {
                                 ...prev,
