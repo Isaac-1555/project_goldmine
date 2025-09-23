@@ -13,6 +13,7 @@ Today we'll explore fundamental concepts in computer science, focusing on sortin
 
 Bubble sort is a simple sorting algorithm that repeatedly steps through the list, compares adjacent elements and swaps them if they're in the wrong order. Here's the implementation:
 
+```python
 def bubble_sort(arr):
     n = len(arr)
     for i in range(n):
@@ -20,6 +21,7 @@ def bubble_sort(arr):
             if arr[j] > arr[j+1]:
                 arr[j], arr[j+1] = arr[j+1], arr[j]
     return arr
+```
 
 The time complexity of bubble sort is O(n²) in the worst case, where n is the number of elements.
 
@@ -27,6 +29,7 @@ The time complexity of bubble sort is O(n²) in the worst case, where n is the n
 
 Quick sort is more efficient, using a divide-and-conquer approach:
 
+```python
 def quick_sort(arr):
     if len(arr) <= 1:
         return arr
@@ -35,6 +38,7 @@ def quick_sort(arr):
     middle = [x for x in arr if x == pivot]
     right = [x for x in arr if x > pivot]
     return quick_sort(left) + middle + quick_sort(right)
+```
 
 Quick sort has an average time complexity of O(n log n), making it much faster for large datasets.
 
@@ -42,6 +46,7 @@ Quick sort has an average time complexity of O(n log n), making it much faster f
 
 Binary search is an efficient algorithm for finding an item in a sorted list:
 
+```python
 def binary_search(arr, target):
     left, right = 0, len(arr) - 1
     while left <= right:
@@ -53,6 +58,7 @@ def binary_search(arr, target):
         else:
             right = mid - 1
     return -1
+```
 
 Binary search has a time complexity of O(log n), which is very efficient for large sorted arrays.
 `,
@@ -64,7 +70,9 @@ Binary search has a time complexity of O(log n), which is very efficient for lar
 
 The derivative represents the rate of change of a function. The basic definition is:
 
-f'(x) = lim(h→0) [f(x+h) - f(x)] / h
+```math
+f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}
+```
 
 ## Common Derivative Rules
 
@@ -75,16 +83,26 @@ f'(x) = lim(h→0) [f(x+h) - f(x)] / h
 ## Examples of Derivatives
 
 For f(x) = x^3 + 2x^2 - 5x + 3:
+
+```math
 f'(x) = 3x^2 + 4x - 5
+```
 
 For g(x) = sin(x^2):
-g'(x) = 2x · cos(x^2)
+
+```math
+g'(x) = 2x \cdot \cos(x^2)
+```
 
 ## Introduction to Integrals
 
 The integral is the reverse operation of differentiation. The fundamental theorem of calculus states:
 
-∫[a to b] f(x)dx = F(b) - F(a), where F'(x) = f(x)
+```math
+\int_a^b f(x)dx = F(b) - F(a)
+```
+
+where F'(x) = f(x)
 
 ## Common Integral Forms
 
@@ -97,7 +115,10 @@ The integral is the reverse operation of differentiation. The fundamental theore
 ## Integration by Parts
 
 The formula for integration by parts is:
-∫u dv = uv - ∫v du
+
+```math
+\int u \, dv = uv - \int v \, du
+```
 
 This is particularly useful for products of functions like ∫x·e^x dx.
 `,
@@ -112,7 +133,10 @@ Linear regression is a fundamental machine learning algorithm used for predictin
 ## Mathematical Foundation
 
 The linear regression model can be expressed as:
-y = β₀ + β₁x₁ + β₂x₂ + ... + βₙxₙ + ε
+
+```math
+y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_n x_n + \epsilon
+```
 
 Where:
 - y is the target variable
@@ -124,12 +148,16 @@ Where:
 ## Cost Function
 
 We use Mean Squared Error (MSE) as our cost function:
-J(θ) = (1/2m) Σ(h(x⁽ⁱ⁾) - y⁽ⁱ⁾)²
+
+```math
+J(\theta) = \frac{1}{2m} \sum_{i=1}^{m} (h(x^{(i)}) - y^{(i)})^2
+```
 
 ## Implementation in Python
 
 Here's a simple implementation of linear regression using gradient descent:
 
+```python
 import numpy as np
 
 class LinearRegression:
@@ -158,11 +186,15 @@ class LinearRegression:
     
     def predict(self, X):
         return np.dot(X, self.weights) + self.bias
+```
 
 ## Gradient Descent Algorithm
 
 The gradient descent update rules are:
-θⱼ := θⱼ - α · ∂J(θ)/∂θⱼ
+
+```math
+\theta_j := \theta_j - \alpha \cdot \frac{\partial J(\theta)}{\partial \theta_j}
+```
 
 Where α is the learning rate and ∂J(θ)/∂θⱼ is the partial derivative of the cost function.
 
@@ -177,9 +209,11 @@ Common metrics for evaluating linear regression models:
 
 To prepare your data for machine learning, you might use these commands:
 
-$ pip install pandas numpy scikit-learn
-$ python preprocess_data.py --input data.csv --output processed_data.csv
-$ python train_model.py --data processed_data.csv --model linear_regression
+```bash
+pip install pandas numpy scikit-learn
+python preprocess_data.py --input data.csv --output processed_data.csv
+python train_model.py --data processed_data.csv --model linear_regression
+```
 `
 };
 

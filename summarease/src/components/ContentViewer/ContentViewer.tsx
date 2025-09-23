@@ -547,27 +547,28 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                         onClick={async () => {
                           try {
                             setRegenerating(true)
+                            setError('') // Clear any previous errors
                             const res = await regenerateSummary(fileDetails!.file.id, settings.autoTags)
                             if (res.success && res.summary_text) {
-                              setFileDetails(prev => prev ? {
-                                ...prev,
-                                summary: prev.summary ? { ...prev.summary, summary_text: res.summary_text! } : prev.summary
-                              } : null)
+                              // Refresh file details from backend to get updated data
+                              await loadFileDetails(fileDetails!.file.id)
+                              // Also update the edited summary state
                               setEditedSummary(res.summary_text)
                             } else {
                               setError(res.error || 'Failed to regenerate summary')
                             }
                           } catch (e) {
                             setError('Failed to regenerate summary')
+                            console.error('Regeneration error:', e)
                           } finally {
                             setRegenerating(false)
                           }
                         }}
                         className="action-icon-btn regen-icon-btn"
                         disabled={regenerating}
-                        title="Regenerate summary"
+                        title={regenerating ? "Regenerating summary..." : "Regenerate summary"}
                       >
-                        <Sparkles className="icon" />
+                        <Sparkles className={`icon ${regenerating ? 'spinning' : ''}`} />
                       </button>
                     </>
                   ) : (

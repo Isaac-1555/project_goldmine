@@ -823,7 +823,7 @@ export async function updateNotebookContent(
  */
 /**
  * Regenerate the latest summary for a file by recomputing from current transcript, notes, and documents.
- * Inserts a new row in summaries and returns the new summary content and tags.
+ * Updates the existing summary instead of creating a new one to avoid duplicates.
  */
 export async function regenerateSummary(fileId: string, autoTags?: boolean): Promise<{ success: boolean; summaryId?: string; summary_text?: string; tags?: string[]; error?: string }> {
   try {
@@ -856,24 +856,149 @@ export async function regenerateSummary(fileId: string, autoTags?: boolean): Pro
     const config = { autoTags: shouldGenerateTags }
     const { summary, tags } = await processAudioTranscript(combined, config)
 
-    // Insert new summary row
-    const { data: summaryRow, error: summaryInsertError } = await supabase
+    // Find existing summary to update instead of creating new one
+    const { data: existingSummaries, error: fetchError } = await supabase
       .from('summaries')
-      .insert({ file_id: fileId, summary_text: summary, created_at: new Date().toISOString() })
-      .select('*')
-      .single()
+      .select('id')
+      .eq('file_id', fileId)
+      .order('created_at', { ascending: false })
+      .limit(1)
 
-    if (summaryInsertError) throw summaryInsertError
+    if (fetchError) throw fetchError
 
-    // Save tags links (only if tags were generated)
-    if (shouldGenerateTags && tags?.length) {
-      await addTagsToSummary(summaryRow.id, tags)
+    let summaryId: string
+    let isNewSummary = false
+    let originalSummaryText: string | null = null
+    
+    if (existingSummaries && existingSummaries.length > 0) {
+      // Update existing summary
+      summaryId = existingSummaries[0].id
+      
+      // Get original summary text for potential rollback
+      const { data: originalSummary } = await supabase
+        .from('summaries')
+        .select('summary_text')
+        .eq('id', summaryId)
+        .single()
+      
+      originalSummaryText = originalSummary?.summary_text || null
+      
+      const { error: updateError } = await supabase
+        .from('summaries')
+        .update({ 
+          summary_text: summary,
+          created_at: new Date().toISOString() // Update timestamp to reflect regeneration
+        })
+        .eq('id', summaryId)
+
+      if (updateError) throw updateError
+
+      // Remove existing tags for this summary before adding new ones
+      if (shouldGenerateTags) {
+        const { error: deleteTagsError } = await supabase
+          .from('summary_tags')
+          .delete()
+          .eq('summary_id', summaryId)
+
+        if (deleteTagsError) {
+          // Rollback summary update
+          if (originalSummaryText) {
+            await supabase
+              .from('summaries')
+              .update({ summary_text: originalSummaryText })
+              .eq('id', summaryId)
+          }
+          throw deleteTagsError
+        }
+      }
+    } else {
+      // No existing summary, create new one
+      isNewSummary = true
+      const { data: summaryRow, error: summaryInsertError } = await supabase
+        .from('summaries')
+        .insert({ file_id: fileId, summary_text: summary, created_at: new Date().toISOString() })
+        .select('id')
+        .single()
+
+      if (summaryInsertError) throw summaryInsertError
+      summaryId = summaryRow.id
     }
 
-    return { success: true, summaryId: summaryRow.id, summary_text: summary, tags }
+    // Save new tags (only if tags were generated)
+    if (shouldGenerateTags && tags?.length) {
+      try {
+        await addTagsToSummary(summaryId, tags)
+      } catch (tagError) {
+        // Rollback on tag creation failure
+        if (isNewSummary) {
+          // Delete the newly created summary
+          await supabase
+            .from('summaries')
+            .delete()
+            .eq('id', summaryId)
+        } else if (originalSummaryText) {
+          // Restore original summary text
+          await supabase
+            .from('summaries')
+            .update({ summary_text: originalSummaryText })
+            .eq('id', summaryId)
+        }
+        throw tagError
+      }
+    }
+
+    return { success: true, summaryId, summary_text: summary, tags }
   } catch (error: any) {
     console.error('Error regenerating summary:', error)
     return { success: false, error: error.message || 'Failed to regenerate summary' }
+  }
+}
+
+/**
+ * Clean up orphaned summaries (optional utility function)
+ * Removes old summaries for a file, keeping only the most recent one
+ */
+export async function cleanupOrphanedSummaries(fileId: string): Promise<{ success: boolean; deletedCount?: number; error?: string }> {
+  try {
+    // Get all summaries for the file, ordered by creation date (newest first)
+    const { data: summaries, error: fetchError } = await supabase
+      .from('summaries')
+      .select('id, created_at')
+      .eq('file_id', fileId)
+      .order('created_at', { ascending: false })
+
+    if (fetchError) throw fetchError
+    
+    if (!summaries || summaries.length <= 1) {
+      return { success: true, deletedCount: 0 }
+    }
+
+    // Keep the first (newest) summary, delete the rest
+    const summariesToDelete = summaries.slice(1)
+    const idsToDelete = summariesToDelete.map(s => s.id)
+
+    if (idsToDelete.length > 0) {
+      // Delete associated tags first
+      const { error: deleteTagsError } = await supabase
+        .from('summary_tags')
+        .delete()
+        .in('summary_id', idsToDelete)
+
+      if (deleteTagsError) throw deleteTagsError
+
+      // Delete the orphaned summaries
+      const { error: deleteSummariesError } = await supabase
+        .from('summaries')
+        .delete()
+        .in('id', idsToDelete)
+
+      if (deleteSummariesError) throw deleteSummariesError
+    }
+
+    return { success: true, deletedCount: idsToDelete.length }
+  } catch (error: any) {
+    console.error('Error cleaning up orphaned summaries:', error)
+    return { success: false, error: error.message || 'Failed to cleanup summaries' }
   }
 }
 
