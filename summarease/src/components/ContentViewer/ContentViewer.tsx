@@ -426,9 +426,8 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
     <div className="content-viewer">
       <div className="content-header">
         {onBack && (
-          <button onClick={onBack} className="back-button">
+          <button onClick={onBack} className="back-button" title="Back">
             <ArrowLeft className="back-icon" />
-            Back
           </button>
         )}
         <div className="file-info">
