@@ -10,6 +10,14 @@ interface GraphViewProps {
   searchResults?: FileWithMetadata[]
   isSearching?: boolean
   searchedTags?: string[]
+  // State management props
+  initialZoom?: number
+  onZoomChange?: (zoom: number) => void
+  initialPanPosition?: { x: number; y: number }
+  onPanPositionChange?: (position: { x: number; y: number }) => void
+  hoveredNodeId?: string | null
+  onHoveredNodeChange?: (nodeId: string | null) => void
+  onSelectedNodeChange?: (nodeId: string | null) => void
 }
 
 interface GraphNode extends d3.SimulationNodeDatum {
@@ -44,26 +52,45 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
   strength?: number
 }
 
-export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFileId, searchResults, isSearching, searchedTags }) => {
+export const GraphView: React.FC<GraphViewProps> = ({ 
+  onFileSelect, 
+  selectedFileId, 
+  searchResults, 
+  isSearching, 
+  searchedTags,
+  // State management props with defaults
+  initialZoom = 1,
+  onZoomChange,
+  initialPanPosition = { x: 0, y: 0 },
+  onPanPositionChange,
+  hoveredNodeId: externalHoveredNodeId,
+  onHoveredNodeChange,
+  onSelectedNodeChange
+}) => {
   const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
   const [nodes, setNodes] = useState<GraphNode[]>([])
   const [links, setLinks] = useState<GraphLink[]>([])
   const [loading, setLoading] = useState(true)
-  // const [draggedNode, setDraggedNode] = useState<GraphNode | null>(null)
   
   // D3 refs and state
   const svgRef = useRef<SVGSVGElement>(null)
   const simulationRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null)
   const transformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity)
   
-  // Container dimensions and zoom state
+  // Container dimensions and zoom state (use external state if available)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
-  const [currentZoom, setCurrentZoom] = useState(1)
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null)
+  const [internalHoveredNode, setInternalHoveredNode] = useState<string | null>(null)
   const [connectedNodes, setConnectedNodes] = useState<Set<string>>(new Set())
-  // Show subtle overlay while graph is rebuilding (simulation running)
   const [graphRebuilding, setGraphRebuilding] = useState(false)
+  
+  // Use external state if available, otherwise use internal state
+  const currentZoom = initialZoom
+  const hoveredNode = externalHoveredNodeId !== undefined ? externalHoveredNodeId : internalHoveredNode
+  const setHoveredNode = onHoveredNodeChange || setInternalHoveredNode
+  
+  // Track last generation parameters to prevent unnecessary regeneration
+  const lastGenParamsRef = useRef<string>('')
   
   // Obsidian-style display thresholds
   const labelVisibilityThreshold = 0.5
@@ -117,6 +144,27 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
 
   useEffect(() => {
     loadData()
+  }, [])
+  
+  // Initialize graph view with stored state - only run once after mount
+  useEffect(() => {
+    if (!svgRef.current || !initialPanPosition) return
+    
+    // Only run this once to avoid infinite loops
+    const hasInitialized = transformRef.current !== d3.zoomIdentity
+    if (hasInitialized) return
+    
+    const svg = d3.select(svgRef.current)
+    const transform = d3.zoomIdentity
+      .translate(initialPanPosition.x, initialPanPosition.y)
+      .scale(initialZoom)
+    
+    // Apply the stored transform without animation
+    svg.call(
+      d3.zoom<SVGSVGElement, unknown>().transform as any,
+      transform
+    )
+    transformRef.current = transform
   }, [])
 
 
@@ -329,10 +377,28 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
 
   // Rebuild the graph any time underlying data, search state, or dimensions change
   useEffect(() => {
-    generateGraph()
-  }, [generateGraph])
+    // Create signature of current parameters
+    const currentParams = JSON.stringify({
+      filesCount: files.length,
+      foldersCount: folders.length,
+      dimensions: dimensions,
+      searchResultsCount: searchResults?.length || 0,
+      isSearching,
+      searchedTags: searchedTags?.sort(),
+      loading
+    })
+    
+    // Only regenerate if parameters actually changed and we have data
+    if (currentParams !== lastGenParamsRef.current) {
+      const hasData = files.length > 0 || (isSearching && searchResults && searchResults.length > 0)
+      if (hasData && !loading) {
+        lastGenParamsRef.current = currentParams
+        generateGraph()
+      }
+    }
+  }, [files, folders, dimensions, searchResults, isSearching, searchedTags, loading])
 
-  const initializeSimulation = useCallback((nodes: GraphNode[], links: GraphLink[]) => {
+  const initializeSimulation = (nodes: GraphNode[], links: GraphLink[]) => {
     if (!svgRef.current) return
 
     // Stop existing simulation
@@ -364,10 +430,11 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
         })
       )
       .force('charge', d3.forceManyBody()
-        .strength((d: GraphNode) => {
+        .strength((d: any) => {
           // Obsidian-style repulsion based on node importance
-          const baseStrength = d.type === 'tag' ? -800 : -200
-          return baseStrength * d.importance
+          const node = d as GraphNode
+          const baseStrength = node.type === 'tag' ? -800 : -200
+          return baseStrength * node.importance
         })
         .distanceMax(300) // Limit repulsion range for performance
       )
@@ -375,7 +442,7 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
         .strength(0.1) // Weak center force for natural clustering
       )
       .force('collision', d3.forceCollide()
-        .radius((d: GraphNode) => d.radius + 5) // Use dynamic radius with padding
+        .radius((d: any) => (d as GraphNode).radius + 5) // Use dynamic radius with padding
         .strength(0.8)
       )
 
@@ -464,7 +531,15 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
       .scaleExtent([0.1, 4])
       .on('zoom', (event) => {
         transformRef.current = event.transform
-        setCurrentZoom(event.transform.k)
+        // Update zoom level through callback if provided
+        if (onZoomChange) {
+          onZoomChange(event.transform.k)
+        }
+        
+        // Update pan position through callback if provided
+        if (onPanPositionChange) {
+          onPanPositionChange({ x: event.transform.x, y: event.transform.y })
+        }
         
         svg.select('.graph-content')
           .attr('transform', event.transform.toString())
@@ -479,7 +554,10 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
         // Simplify links at low zoom
         if (event.transform.k >= 0.3) {
           svg.selectAll('.graph-link')
-            .style('opacity', (d: any) => d.type === 'tag-file' ? 0.6 : 0.4)
+            .style('opacity', (d: any) => {
+              if (!d || !d.type) return 0.4
+              return d.type === 'tag-file' ? 0.6 : 0.4
+            })
         } else {
           svg.selectAll('.graph-link')
             .style('opacity', 0.2)
@@ -506,7 +584,7 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
       setTimeout(() => setGraphRebuilding(false), 120)
     })
 
-  }, [dimensions, isSearching, searchedTags])
+  }
 
   const handleZoomIn = () => {
     if (!svgRef.current) return
@@ -532,17 +610,28 @@ export const GraphView: React.FC<GraphViewProps> = ({ onFileSelect, selectedFile
       d3.zoomIdentity
     )
     transformRef.current = d3.zoomIdentity
+    
+    // Reset zoom and pan state through callbacks if provided
+    if (onZoomChange) onZoomChange(1)
+    if (onPanPositionChange) onPanPositionChange({ x: 0, y: 0 })
   }
 
   const handleNodeClick = (node: GraphNode) => {
     if (node.type === 'file') {
       const file = files.find(f => f.id === node.id)
       if (file) {
+        // Update selected node state if callback provided
+        if (onSelectedNodeChange) {
+          onSelectedNodeChange(node.id)
+        }
         onFileSelect(file)
       }
     } else if (node.type === 'tag') {
+      // Update selected node state for tags too
+      if (onSelectedNodeChange) {
+        onSelectedNodeChange(node.id)
+      }
       // For tag nodes, we could implement tag filtering or expansion
-      // For now, just highlight the tag and its connections
       console.log(`Clicked on tag: ${node.tagName}`)
     }
   }

@@ -92,7 +92,7 @@ export const useNotebookState = (): [NotebookState, NotebookActions] => {
     return INITIAL_STATE
   })
 
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout>()
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastSaveContentRef = useRef<string>('')
 
   // Auto-save functionality

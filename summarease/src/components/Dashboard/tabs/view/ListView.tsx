@@ -10,24 +10,73 @@ interface ListViewProps {
   onEditLocalNotebook?: (localNotebook: any) => void
   searchResults?: FileWithMetadata[]
   isSearching?: boolean
+  // State management props
+  selectedFolderFilter?: string | null
+  onFolderFilterChange?: (filter: string | null) => void
+  showFolderManagement?: boolean
+  onShowFolderManagementChange?: (show: boolean) => void
+  editingFolder?: { id: string; name: string } | null
+  onEditingFolderChange?: (folder: { id: string; name: string } | null) => void
+  newFolderName?: string
+  onNewFolderNameChange?: (name: string) => void
+  showMoveModal?: { fileId: string; fileName: string } | null
+  onShowMoveModalChange?: (modal: { fileId: string; fileName: string } | null) => void
+  selectedTargetFolder?: string | null
+  onSelectedTargetFolderChange?: (folderId: string | null) => void
 }
 
-export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId, onEditFile, onEditLocalNotebook, searchResults, isSearching }) => {
+export const ListView: React.FC<ListViewProps> = ({ 
+  onFileSelect, 
+  selectedFileId, 
+  onEditFile, 
+  onEditLocalNotebook, 
+  searchResults, 
+  isSearching,
+  // State management props with fallback to internal state for backward compatibility
+  selectedFolderFilter: externalSelectedFolderFilter,
+  onFolderFilterChange,
+  showFolderManagement: externalShowFolderManagement,
+  onShowFolderManagementChange,
+  editingFolder: externalEditingFolder,
+  onEditingFolderChange,
+  newFolderName: externalNewFolderName,
+  onNewFolderNameChange,
+  showMoveModal: externalShowMoveModal,
+  onShowMoveModalChange,
+  selectedTargetFolder: externalSelectedTargetFolder,
+  onSelectedTargetFolderChange
+}) => {
   const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [localNotebooks, setLocalNotebooks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showConfirm, setShowConfirm] = useState<{ id: string; title: string; isLocal?: boolean } | null>(null)
-  const [selectedFolderFilter, setSelectedFolderFilter] = useState<string | null>(null) // null = show all, 'No Folder' = no folder, or folder name
+  
+  // Use external state management if provided, otherwise fall back to internal state
+  const [internalSelectedFolderFilter, setInternalSelectedFolderFilter] = useState<string | null>(null)
+  const [internalShowFolderManagement, setInternalShowFolderManagement] = useState(false)
+  const [internalEditingFolder, setInternalEditingFolder] = useState<{ id: string; name: string } | null>(null)
+  const [internalNewFolderName, setInternalNewFolderName] = useState('')
+  const [internalShowMoveModal, setInternalShowMoveModal] = useState<{ fileId: string; fileName: string } | null>(null)
+  const [internalSelectedTargetFolder, setInternalSelectedTargetFolder] = useState<string | null>(null)
   
   // Folder management state
   const [folders, setFolders] = useState<Folder[]>([])
-  const [showFolderManagement, setShowFolderManagement] = useState(false)
-  const [editingFolder, setEditingFolder] = useState<{ id: string; name: string } | null>(null)
-  const [newFolderName, setNewFolderName] = useState('')
-  const [showMoveModal, setShowMoveModal] = useState<{ fileId: string; fileName: string } | null>(null)
-  const [selectedTargetFolder, setSelectedTargetFolder] = useState<string | null>(null)
+  
+  // Use external state if available, otherwise use internal state
+  const selectedFolderFilter = externalSelectedFolderFilter !== undefined ? externalSelectedFolderFilter : internalSelectedFolderFilter
+  const setSelectedFolderFilter = onFolderFilterChange || setInternalSelectedFolderFilter
+  const showFolderManagement = externalShowFolderManagement !== undefined ? externalShowFolderManagement : internalShowFolderManagement
+  const setShowFolderManagement = onShowFolderManagementChange || setInternalShowFolderManagement
+  const editingFolder = externalEditingFolder !== undefined ? externalEditingFolder : internalEditingFolder
+  const setEditingFolder = onEditingFolderChange || setInternalEditingFolder
+  const newFolderName = externalNewFolderName !== undefined ? externalNewFolderName : internalNewFolderName
+  const setNewFolderName = onNewFolderNameChange || setInternalNewFolderName
+  const showMoveModal = externalShowMoveModal !== undefined ? externalShowMoveModal : internalShowMoveModal
+  const setShowMoveModal = onShowMoveModalChange || setInternalShowMoveModal
+  const selectedTargetFolder = externalSelectedTargetFolder !== undefined ? externalSelectedTargetFolder : internalSelectedTargetFolder
+  const setSelectedTargetFolder = onSelectedTargetFolderChange || setInternalSelectedTargetFolder
   
   // Filter files by selected folder and search results
   const filteredFiles = React.useMemo(() => {
@@ -368,7 +417,7 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
         <div className="local-notebooks-section">
           <h3 className="section-title">Latest Local Notebook</h3>
           <div className="file-list">
-            {localNotebooks.map((notebook, index) => (
+            {localNotebooks.map((notebook) => (
               <div
                 key={notebook.id}
                 className={`file-card local-notebook ${selectedFileId === notebook.id ? 'selected' : ''}`}
@@ -458,7 +507,7 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
                         <button
                           className="action-btn move"
                           title="Move to folder"
-                          onClick={() => setShowMoveModal({ fileId: file.id, fileName: file.title || file.filename })}
+                          onClick={() => setShowMoveModal({ fileId: file.id, fileName: file.title || file.filename || 'Untitled' })}
                         >
                           <Move size={16} />
                         </button>
@@ -472,7 +521,7 @@ export const ListView: React.FC<ListViewProps> = ({ onFileSelect, selectedFileId
                         <button
                           className="action-btn delete"
                           title="Delete"
-                          onClick={() => setShowConfirm({ id: file.id, title: file.title || file.filename })}
+                          onClick={() => setShowConfirm({ id: file.id, title: file.title || file.filename || 'Untitled' })}
                         >
                           <Trash2 size={16} />
                         </button>
