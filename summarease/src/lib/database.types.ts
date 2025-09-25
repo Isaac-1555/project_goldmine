@@ -208,6 +208,149 @@ export interface Database {
           attempted_at?: string
         }
       }
+      quiz_sets: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          summary_ids: string[]
+          question_count: number
+          difficulty_level: string
+          question_types: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          summary_ids: string[]
+          question_count?: number
+          difficulty_level?: string
+          question_types?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          summary_ids?: string[]
+          question_count?: number
+          difficulty_level?: string
+          question_types?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      quiz_questions: {
+        Row: {
+          id: string
+          quiz_set_id: string
+          question_text: string
+          question_type: string
+          options: string[]
+          correct_answer_index: number
+          explanation: string | null
+          difficulty_level: string
+          question_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          quiz_set_id: string
+          question_text: string
+          question_type?: string
+          options: string[]
+          correct_answer_index: number
+          explanation?: string | null
+          difficulty_level?: string
+          question_order: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          quiz_set_id?: string
+          question_text?: string
+          question_type?: string
+          options?: string[]
+          correct_answer_index?: number
+          explanation?: string | null
+          difficulty_level?: string
+          question_order?: number
+          created_at?: string
+        }
+      }
+      quiz_sessions: {
+        Row: {
+          id: string
+          quiz_set_id: string
+          user_id: string
+          started_at: string
+          completed_at: string | null
+          total_questions: number
+          correct_answers: number
+          score_percentage: number | null
+          time_spent_seconds: number | null
+          session_status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          quiz_set_id: string
+          user_id: string
+          started_at?: string
+          completed_at?: string | null
+          total_questions: number
+          correct_answers?: number
+          score_percentage?: number | null
+          time_spent_seconds?: number | null
+          session_status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          quiz_set_id?: string
+          user_id?: string
+          started_at?: string
+          completed_at?: string | null
+          total_questions?: number
+          correct_answers?: number
+          score_percentage?: number | null
+          time_spent_seconds?: number | null
+          session_status?: string
+          created_at?: string
+        }
+      }
+      quiz_question_attempts: {
+        Row: {
+          id: string
+          quiz_session_id: string
+          quiz_question_id: string
+          user_answer_index: number | null
+          is_correct: boolean | null
+          time_spent_seconds: number | null
+          attempted_at: string
+        }
+        Insert: {
+          id?: string
+          quiz_session_id: string
+          quiz_question_id: string
+          user_answer_index?: number | null
+          is_correct?: boolean | null
+          time_spent_seconds?: number | null
+          attempted_at?: string
+        }
+        Update: {
+          id?: string
+          quiz_session_id?: string
+          quiz_question_id?: string
+          user_answer_index?: number | null
+          is_correct?: boolean | null
+          time_spent_seconds?: number | null
+          attempted_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -237,6 +380,37 @@ export interface Database {
           file_title: string
           summary_text: string
           tags: string[]
+        }[]
+      }
+      get_user_quiz_statistics: {
+        Args: {
+          user_uuid: string
+        }
+        Returns: {
+          total_quizzes_created: number
+          total_quizzes_taken: number
+          total_sessions: number
+          completed_sessions: number
+          average_score: number
+          total_questions_answered: number
+          total_correct_answers: number
+          accuracy_percentage: number
+          total_time_spent_minutes: number
+          average_session_time_minutes: number
+        }[]
+      }
+      get_user_recent_quiz_performance: {
+        Args: {
+          user_uuid: string
+        }
+        Returns: {
+          session_id: string
+          quiz_title: string
+          completed_at: string
+          score_percentage: number
+          time_spent_minutes: number
+          total_questions: number
+          correct_answers: number
         }[]
       }
     }
