@@ -52,6 +52,16 @@ export const StudyToolsTab: React.FC = () => {
   
   // Generation state
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false)
+  
+  // Notification and new quiz state
+  const [notification, setNotification] = useState<string | null>(null)
+  const [newlyCreatedQuizId, setNewlyCreatedQuizId] = useState<string | null>(null)
+  
+  // User preference for auto-opening quizzes (default: true for better UX)
+  const [autoOpenNewQuiz, setAutoOpenNewQuiz] = useState(() => {
+    const saved = localStorage.getItem('summarease_auto_open_quiz')
+    return saved !== null ? JSON.parse(saved) : true
+  })
 
   // Load files when switching to quiz-select view
   useEffect(() => {
@@ -92,6 +102,19 @@ export const StudyToolsTab: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Notification utility
+  const showNotification = (message: string, duration: number = 4000) => {
+    setNotification(message)
+    setTimeout(() => setNotification(null), duration)
+  }
+
+  // Save user preference for auto-opening quizzes
+  const toggleAutoOpenQuiz = () => {
+    const newValue = !autoOpenNewQuiz
+    setAutoOpenNewQuiz(newValue)
+    localStorage.setItem('summarease_auto_open_quiz', JSON.stringify(newValue))
+  }
 
   const loadFiles = async () => {
     try {
@@ -190,7 +213,7 @@ export const StudyToolsTab: React.FC = () => {
         return
       }
 
-      await createSimpleQuiz(
+      const newQuizSet = await createSimpleQuiz(
         summaryTexts,
         fileIds,
         title
@@ -203,8 +226,29 @@ export const StudyToolsTab: React.FC = () => {
       setSelectedFiles([])
       setSearchQuery('')
       
-      // Show success message briefly
+      // Set newly created quiz ID for highlighting
+      setNewlyCreatedQuizId(newQuizSet.id)
+      
+      // Clear error state
       setError(null)
+      
+      if (autoOpenNewQuiz) {
+        // Auto-open the newly created quiz
+        showNotification(`Quiz "${title}" created! Opening quiz...`, 2000)
+        
+        // Small delay to allow UI to update, then start the quiz
+        setTimeout(() => {
+          handleStartQuiz(newQuizSet.id)
+        }, 500)
+      } else {
+        // Just show notification
+        showNotification(`Quiz "${title}" created successfully! Find it in the Previous Quizzes panel.`, 4000)
+      }
+      
+      // Clear the newly created quiz highlight after some time
+      setTimeout(() => {
+        setNewlyCreatedQuizId(null)
+      }, 10000)
       
     } catch (err: any) {
       console.error('Error generating quiz:', err)
@@ -432,6 +476,27 @@ export const StudyToolsTab: React.FC = () => {
           </div>
         )}
 
+        {/* Quiz Settings */}
+        {view === 'quiz-select' && (
+          <div className="sidebar-section">
+            <h3>Quiz Settings</h3>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={autoOpenNewQuiz}
+                onChange={toggleAutoOpenQuiz}
+              />
+              Auto-open new quizzes
+            </label>
+            <p className="settings-description">
+              {autoOpenNewQuiz 
+                ? "New quizzes will open automatically after generation"
+                : "New quizzes will appear in the sidebar for manual selection"
+              }
+            </p>
+          </div>
+        )}
+        
         {/* Generate Quiz Button */}
         {view === 'quiz-select' && (
           <div className="sidebar-section">
@@ -480,38 +545,47 @@ export const StudyToolsTab: React.FC = () => {
             </div>
           ) : (
             <div className="previous-quizzes-list">
-              {quizSets.map((quiz) => (
-                <div key={quiz.id} className="quiz-item">
-                  <div className="quiz-item-content">
-                    <h4>{quiz.title}</h4>
-                    <p>{quiz.questions.length} questions</p>
-                    <span className="quiz-date">
-                      {new Date(quiz.created_at).toLocaleDateString()}
-                    </span>
+              {quizSets.map((quiz) => {
+                const isNewlyCreated = newlyCreatedQuizId === quiz.id
+                return (
+                  <div 
+                    key={quiz.id} 
+                    className={`quiz-item ${isNewlyCreated ? 'newly-created' : ''}`}
+                  >
+                    <div className="quiz-item-content">
+                      <div className="quiz-title-row">
+                        <h4>{quiz.title}</h4>
+                        {isNewlyCreated && <span className="new-badge">NEW</span>}
+                      </div>
+                      <p>{quiz.questions.length} questions</p>
+                      <span className="quiz-date">
+                        {new Date(quiz.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="quiz-item-actions">
+                      <button
+                        className="retake-quiz-button"
+                        onClick={() => handleStartQuiz(quiz.id)}
+                        disabled={view === 'quiz-taking'}
+                        title="Start Quiz"
+                      >
+                        <Play />
+                      </button>
+                      <button
+                        className="delete-quiz-button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteQuiz(quiz.summary_id)
+                        }}
+                        disabled={view === 'quiz-taking'}
+                        title="Delete Quiz"
+                      >
+                        <Trash2 />
+                      </button>
+                    </div>
                   </div>
-                  <div className="quiz-item-actions">
-                    <button
-                      className="retake-quiz-button"
-                      onClick={() => handleStartQuiz(quiz.id)}
-                      disabled={view === 'quiz-taking'}
-                      title="Start Quiz"
-                    >
-                      <Play />
-                    </button>
-                    <button
-                      className="delete-quiz-button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteQuiz(quiz.summary_id)
-                      }}
-                      disabled={view === 'quiz-taking'}
-                      title="Delete Quiz"
-                    >
-                      <Trash2 />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -804,6 +878,13 @@ export const StudyToolsTab: React.FC = () => {
 
   return (
     <div className="study-tools-container">
+      {/* Notification Toast */}
+      {notification && (
+        <div className="notification-toast">
+          {notification}
+        </div>
+      )}
+      
       {renderLeftSidebar()}
       <div className="study-tools-main">
         {renderMainContent()}

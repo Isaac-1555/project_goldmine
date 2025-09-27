@@ -290,13 +290,16 @@ export async function createSimpleQuiz(
       insertedQuestions.push(insertedQ)
     }
 
-    return {
+    // Create the quiz set object with the first question's ID as the set ID
+    const quizSet: SimpleQuizSet = {
       id: insertedQuestions[0].id, // Use first question's ID as quiz set ID
       title,
       questions: insertedQuestions,
-      created_at: new Date().toISOString(),
+      created_at: insertedQuestions[0].created_at || new Date().toISOString(),
       summary_id: summaryId
     }
+
+    return quizSet
 
   } catch (error: any) {
     console.error('Error creating simple quiz:', error)
@@ -353,7 +356,7 @@ export async function getUserSimpleQuizzes(): Promise<SimpleQuizSet[]> {
         const summary = quiz.summaries as any
         fileInfo[summaryId] = {
           title: `Quiz: ${file.title}`,
-          created_at: summary.created_at // Use summary's created_at
+          created_at: quiz.created_at || summary.created_at || new Date().toISOString() // Use quiz's created_at, fallback to summary, then current time
         }
       }
     }
