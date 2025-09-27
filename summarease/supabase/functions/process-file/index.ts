@@ -164,7 +164,7 @@ async function transcribeAudio(audioData: Blob, genAI: GoogleGenerativeAI): Prom
     
     console.log(`Audio converted to base64, length: ${base64Audio.length}`)
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
     const prompt = `
       Please transcribe the audio content from this audio file. 
@@ -204,7 +204,7 @@ async function extractTextFromPDF(pdfData: Blob, genAI: GoogleGenerativeAI): Pro
     
     console.log(`PDF converted to base64, length: ${base64Data.length}`)
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
     const prompt = `
       Please extract all text content from this PDF document. 
@@ -245,7 +245,7 @@ async function extractTextFromDocx(docxData: Blob, genAI: GoogleGenerativeAI): P
     
     console.log(`DOCX converted to base64, length: ${base64Data.length}`)
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
     const prompt = `
       Please extract all text content from this DOCX document. 
@@ -303,7 +303,7 @@ function cleanAndDeduplicateSummary(summary: string): string {
 }
 
 async function generateSummary(text: string, genAI: GoogleGenerativeAI): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   const prompt = `
     Create a study-friendly summary for college students from the following text. Use clear sections and bullet points that will display properly as formatted text.
@@ -350,7 +350,7 @@ async function generateSummary(text: string, genAI: GoogleGenerativeAI): Promise
 }
 
 async function extractTags(text: string, genAI: GoogleGenerativeAI): Promise<string[]> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   const prompt = `
     Extract 3-7 relevant keywords or tags from the following text. 

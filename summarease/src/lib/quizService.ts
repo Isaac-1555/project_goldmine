@@ -111,7 +111,7 @@ export async function generateQuizWithAI(
   console.log(`Generating quiz from ${combinedSummaryText.length} characters of content`)
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   // Use the structured prompt from the spec document
   const prompt = `You are an expert exam creator. Your task is to generate a multiple-choice quiz based on the provided text summary.

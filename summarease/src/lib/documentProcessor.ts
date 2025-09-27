@@ -40,7 +40,7 @@ export async function processDocumentClientSide(file: File, autoTags: boolean = 
   console.log(`Extracted ${extractedText.length} characters of text`)
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   // Generate summary
   const summaryPrompt = `

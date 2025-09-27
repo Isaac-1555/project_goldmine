@@ -159,7 +159,7 @@ export async function processAudioTranscript(
   console.log(`Processing transcript: ${transcript.length} characters`)
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   // Generate summary using enhanced prompt builder
   const summaryPrompt = buildEnhancedSummaryPrompt(transcript, config)

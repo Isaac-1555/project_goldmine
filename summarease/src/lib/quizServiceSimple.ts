@@ -115,7 +115,7 @@ export async function generateQuizWithAI(
   const estimatedQuestionCount = getOptimalQuestionCount(contentLength)
   
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   // Updated prompt that allows flexible question count
   const prompt = `You are an expert exam creator. Your task is to generate a multiple-choice quiz based on the provided text summary.
