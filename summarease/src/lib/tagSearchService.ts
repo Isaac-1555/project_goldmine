@@ -4,6 +4,21 @@ import { type FileWithMetadata } from './api'
 export interface TagSuggestion {
   name: string
   usageCount: number
+  type: 'tag'
+}
+
+export interface FileSuggestion {
+  name: string
+  usageCount: number
+  type: 'filename'
+}
+
+export type SearchSuggestion = TagSuggestion | FileSuggestion
+
+export interface SearchCriteria {
+  tags: string[]
+  filenames: string[]
+  tagLogic: 'AND' | 'OR'
 }
 
 /**
@@ -21,9 +36,68 @@ export async function getTagSuggestions(searchTerm: string): Promise<TagSuggesti
       return []
     }
 
-    return data || []
+    return (data || []).map((item: any) => ({
+      name: item.name,
+      usageCount: item.usage_count,
+      type: 'tag' as const
+    }))
   } catch (error) {
     console.error('Error in getTagSuggestions:', error)
+    return []
+  }
+}
+
+/**
+ * Get filename suggestions based on search term
+ */
+export async function getFileSuggestions(searchTerm: string): Promise<FileSuggestion[]> {
+  try {
+    const { data, error } = await supabase
+      .rpc('get_filename_suggestions', {
+        search_term: searchTerm.toLowerCase()
+      })
+
+    if (error) {
+      console.error('Error fetching filename suggestions:', error)
+      return []
+    }
+
+    return (data || []).map((item: any) => ({
+      name: item.name,
+      usageCount: item.usage_count,
+      type: 'filename' as const
+    }))
+  } catch (error) {
+    console.error('Error in getFileSuggestions:', error)
+    return []
+  }
+}
+
+/**
+ * Get combined suggestions (tags and filenames) based on search term
+ */
+export async function getCombinedSuggestions(searchTerm: string): Promise<SearchSuggestion[]> {
+  try {
+    const [tagSuggestions, fileSuggestions] = await Promise.all([
+      getTagSuggestions(searchTerm),
+      getFileSuggestions(searchTerm)
+    ])
+
+    // Combine and sort by usage count, with tags prioritized over filenames when counts are equal
+    const combined = [...tagSuggestions, ...fileSuggestions]
+    return combined.sort((a, b) => {
+      if (a.usageCount !== b.usageCount) {
+        return b.usageCount - a.usageCount
+      }
+      // If usage counts are equal, prioritize tags
+      if (a.type !== b.type) {
+        return a.type === 'tag' ? -1 : 1
+      }
+      // If same type and usage count, sort alphabetically
+      return a.name.localeCompare(b.name)
+    })
+  } catch (error) {
+    console.error('Error in getCombinedSuggestions:', error)
     return []
   }
 }
@@ -72,6 +146,56 @@ export async function searchFilesByTags(
     }))
   } catch (error) {
     console.error('Error in searchFilesByTags:', error)
+    return []
+  }
+}
+
+/**
+ * Search files by mixed criteria (tags and/or filenames)
+ */
+export async function searchFilesByMixedCriteria(
+  searchCriteria: SearchCriteria
+): Promise<FileWithMetadata[]> {
+  try {
+    const { tags, filenames, tagLogic } = searchCriteria
+    
+    if (tags.length === 0 && filenames.length === 0) {
+      return []
+    }
+
+    const { data: user } = await supabase.auth.getUser()
+    if (!user.user) {
+      throw new Error('User not authenticated')
+    }
+
+    const { data, error } = await supabase
+      .rpc('search_files_by_mixed_criteria', {
+        user_uuid: user.user.id,
+        tag_names: tags.length > 0 ? tags : [],
+        filename_terms: filenames.length > 0 ? filenames : [],
+        tag_search_logic: tagLogic.toLowerCase()
+      })
+
+    if (error) {
+      console.error('Error searching files by mixed criteria:', error)
+      return []
+    }
+
+    // Map the RPC results to our FileWithMetadata interface
+    return (data || []).map((file: any) => ({
+      id: file.file_id,
+      title: file.title,
+      file_type: file.file_type,
+      status: file.status,
+      created_at: file.created_at,
+      folder_name: file.folder_name,
+      summary_text: file.summary_text,
+      summary: file.summary_text, // Alias for compatibility
+      tags: file.tags || [],
+      filename: file.title // Use title as filename fallback
+    }))
+  } catch (error) {
+    console.error('Error in searchFilesByMixedCriteria:', error)
     return []
   }
 }

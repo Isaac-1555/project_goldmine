@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Search, X, ToggleLeft, ToggleRight } from 'lucide-react'
 import { TagChip } from './TagChip'
 import { TagSuggestions } from './TagSuggestions'
-import { getTagSuggestions, searchFilesByTags, type TagSuggestion } from '../../lib/tagSearchService'
+import { getCombinedSuggestions, searchFilesByMixedCriteria, type SearchSuggestion, type SearchCriteria } from '../../lib/tagSearchService'
 import { type FileWithMetadata } from '../../lib/api'
 import './TagSearchBar.css'
 
@@ -12,14 +12,20 @@ interface TagSearchBarProps {
   onSearchTagsChange?: (tags: string[]) => void
 }
 
+interface SelectedItem {
+  name: string
+  type: 'tag' | 'filename'
+}
+
 export const TagSearchBar: React.FC<TagSearchBarProps> = ({ 
   onResultsChange, 
   onSearchStateChange,
   onSearchTagsChange
 }) => {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [selectedFilenames, setSelectedFilenames] = useState<string[]>([])
   const [searchInput, setSearchInput] = useState('')
-  const [suggestions, setSuggestions] = useState<TagSuggestion[]>([])
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [searchLogic, setSearchLogic] = useState<'AND' | 'OR'>('AND')
@@ -36,16 +42,22 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
       if (term.length >= 1) {
         setIsLoading(true)
         try {
-          const tagSuggestions = await getTagSuggestions(term)
-          // Filter out already selected tags
-          const filteredSuggestions = tagSuggestions.filter(
-            suggestion => !selectedTags.includes(suggestion.name)
+          const combinedSuggestions = await getCombinedSuggestions(term)
+          // Filter out already selected tags and filenames
+          const filteredSuggestions = combinedSuggestions.filter(
+            suggestion => {
+              if (suggestion.type === 'tag') {
+                return !selectedTags.includes(suggestion.name)
+              } else {
+                return !selectedFilenames.includes(suggestion.name)
+              }
+            }
           )
           setSuggestions(filteredSuggestions)
           setShowSuggestions(true)
           setActiveIndex(filteredSuggestions.length > 0 ? 0 : -1)
         } catch (error) {
-          console.error('Error fetching tag suggestions:', error)
+          console.error('Error fetching suggestions:', error)
           setSuggestions([])
           setActiveIndex(-1)
         } finally {
@@ -59,12 +71,12 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
     }, 250)
 
     return () => clearTimeout(timer)
-  }, [searchInput, selectedTags])
+  }, [searchInput, selectedTags, selectedFilenames])
 
-  // Search for files when tags or logic changes
+  // Search for files when tags, filenames, or logic changes
   useEffect(() => {
     const performSearch = async () => {
-      if (selectedTags.length === 0) {
+      if (selectedTags.length === 0 && selectedFilenames.length === 0) {
         onResultsChange([], 0)
         onSearchStateChange(false)
         setResultCount(0)
@@ -75,11 +87,16 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
       onSearchStateChange(true)
       
       try {
-        const results = await searchFilesByTags(selectedTags, searchLogic)
+        const searchCriteria: SearchCriteria = {
+          tags: selectedTags,
+          filenames: selectedFilenames,
+          tagLogic: searchLogic
+        }
+        const results = await searchFilesByMixedCriteria(searchCriteria)
         onResultsChange(results, results.length)
         setResultCount(results.length)
       } catch (error) {
-        console.error('Error searching files by tags:', error)
+        console.error('Error searching files:', error)
         onResultsChange([], 0)
         setResultCount(0)
       } finally {
@@ -88,7 +105,7 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
     }
 
     performSearch()
-  }, [selectedTags, searchLogic])
+  }, [selectedTags, selectedFilenames, searchLogic])
 
   // Handle clicking outside to close suggestions
   useEffect(() => {
@@ -129,18 +146,24 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
     } else if (e.key === 'Enter') {
       e.preventDefault()
       const chosen = suggestions[activeIndex] || suggestions[0]
-      if (chosen) handleTagSelect(chosen.name)
+      if (chosen) handleSuggestionSelect(chosen)
     } else if (e.key === 'Escape') {
       setShowSuggestions(false)
       inputRef.current?.blur()
     }
   }
 
-  const handleTagSelect = (tagName: string) => {
-    if (!selectedTags.includes(tagName)) {
-      const newTags = [...selectedTags, tagName]
-      setSelectedTags(newTags)
-      onSearchTagsChange?.(newTags)
+  const handleSuggestionSelect = (suggestion: SearchSuggestion) => {
+    if (suggestion.type === 'tag') {
+      if (!selectedTags.includes(suggestion.name)) {
+        const newTags = [...selectedTags, suggestion.name]
+        setSelectedTags(newTags)
+        onSearchTagsChange?.(newTags)
+      }
+    } else {
+      if (!selectedFilenames.includes(suggestion.name)) {
+        setSelectedFilenames(prev => [...prev, suggestion.name])
+      }
     }
     setSearchInput('')
     setShowSuggestions(false)
@@ -148,14 +171,19 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
     inputRef.current?.focus()
   }
 
-  const handleTagRemove = (tagName: string) => {
-    const newTags = selectedTags.filter(tag => tag !== tagName)
-    setSelectedTags(newTags)
-    onSearchTagsChange?.(newTags)
+  const handleItemRemove = (name: string, type: 'tag' | 'filename') => {
+    if (type === 'tag') {
+      const newTags = selectedTags.filter(tag => tag !== name)
+      setSelectedTags(newTags)
+      onSearchTagsChange?.(newTags)
+    } else {
+      setSelectedFilenames(prev => prev.filter(filename => filename !== name))
+    }
   }
 
   const handleClearAll = () => {
     setSelectedTags([])
+    setSelectedFilenames([])
     setSearchInput('')
     setShowSuggestions(false)
     setActiveIndex(-1)
@@ -175,15 +203,15 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
             <input
               ref={inputRef}
               type="text"
-              placeholder={selectedTags.length > 0 ? "Add another tag..." : "Search by tags..."}
+              placeholder={(selectedTags.length > 0 || selectedFilenames.length > 0) ? "Add another search term..." : "Search by tags or filenames..."}
               value={searchInput}
               onChange={handleInputChange}
               onKeyDown={handleInputKeyDown}
               onFocus={() => searchInput.trim() && setShowSuggestions(true)}
               className="search-input"
-              aria-activedescendant={activeIndex >= 0 ? `tag-suggestion-${activeIndex}` : undefined}
+              aria-activedescendant={activeIndex >= 0 ? `suggestion-${activeIndex}` : undefined}
               aria-expanded={showSuggestions}
-              aria-controls="tag-suggestion-list"
+              aria-controls="suggestion-list"
               role="combobox"
             />
             {isLoading && <div className="search-loading-spinner" />}
@@ -193,7 +221,7 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
             <TagSuggestions
               ref={suggestionsRef}
               suggestions={suggestions}
-              onTagSelect={handleTagSelect}
+              onSuggestionSelect={handleSuggestionSelect}
               searchTerm={searchInput}
               isLoading={isLoading}
               activeIndex={activeIndex}
@@ -207,7 +235,7 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
             <button
               className="logic-toggle"
               onClick={toggleSearchLogic}
-              title={`Switch to ${searchLogic === 'AND' ? 'OR' : 'AND'} logic`}
+              title={`Switch to ${searchLogic === 'AND' ? 'OR' : 'AND'} logic for tags`}
             >
               {searchLogic === 'AND' ? (
                 <ToggleRight className="toggle-icon active" />
@@ -218,11 +246,11 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
             </button>
           )}
 
-          {selectedTags.length > 0 && (
+          {(selectedTags.length > 0 || selectedFilenames.length > 0) && (
             <button
               className="clear-all-button"
               onClick={handleClearAll}
-              title="Clear all tags"
+              title="Clear all search criteria"
             >
               <X className="clear-icon" />
               Clear
@@ -231,25 +259,39 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
         </div>
       </div>
 
-      {selectedTags.length > 0 && (
+      {(selectedTags.length > 0 || selectedFilenames.length > 0) && (
         <div className="selected-tags">
           {selectedTags.map((tag, index) => (
             <TagChip
-              key={`${tag}-${index}`}
-              tag={tag}
-              onRemove={handleTagRemove}
+              key={`tag-${tag}-${index}`}
+              name={tag}
+              type="tag"
+              onRemove={handleItemRemove}
+            />
+          ))}
+          {selectedFilenames.map((filename, index) => (
+            <TagChip
+              key={`filename-${filename}-${index}`}
+              name={filename}
+              type="filename"
+              onRemove={handleItemRemove}
             />
           ))}
         </div>
       )}
 
-      {selectedTags.length > 0 && (
+      {(selectedTags.length > 0 || selectedFilenames.length > 0) && (
         <div className="search-results-info">
           <span className="results-count">
             Found {resultCount} {resultCount === 1 ? 'summary' : 'summaries'}
             {selectedTags.length > 1 && (
               <span className="logic-info">
                 {searchLogic === 'AND' ? ' with all tags' : ' with any tag'}
+              </span>
+            )}
+            {selectedFilenames.length > 0 && (
+              <span className="logic-info">
+                {selectedTags.length > 0 ? ' or ' : ''}matching filename{selectedFilenames.length > 1 ? 's' : ''}
               </span>
             )}
           </span>

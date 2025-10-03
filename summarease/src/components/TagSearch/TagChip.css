@@ -13,9 +13,30 @@
   max-width: 200px;
 }
 
+.tag-chip.filename-chip {
+  background: var(--info-bg, #f0f9ff);
+  border-color: var(--info-border, #bae6fd);
+  color: var(--info-text, #0c4a6e);
+}
+
 .tag-chip:hover {
   background: var(--primary-hover, #dbeafe);
   border-color: var(--primary-border-hover, #93c5fd);
+}
+
+.tag-chip.filename-chip:hover {
+  background: var(--info-hover, #e0f2fe);
+  border-color: var(--info-border-hover, #7dd3fc);
+}
+
+.chip-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+.chip-icon.filename-chip-icon {
+  color: var(--info-text, #0c4a6e);
 }
 
 .tag-text {
