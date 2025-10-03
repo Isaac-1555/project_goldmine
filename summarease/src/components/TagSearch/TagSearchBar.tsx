@@ -155,8 +155,10 @@ export const TagSearchBar: React.FC<TagSearchBarProps> = ({
 
   const handleSuggestionSelect = (suggestion: SearchSuggestion) => {
     if (suggestion.type === 'tag') {
-      if (!selectedTags.includes(suggestion.name)) {
-        const newTags = [...selectedTags, suggestion.name]
+      // Ensure tag is lowercase for consistency
+      const tagName = suggestion.name.toLowerCase()
+      if (!selectedTags.includes(tagName)) {
+        const newTags = [...selectedTags, tagName]
         setSelectedTags(newTags)
         onSearchTagsChange?.(newTags)
       }

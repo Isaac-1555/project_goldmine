@@ -119,10 +119,13 @@ export async function searchFilesByTags(
       throw new Error('User not authenticated')
     }
 
+    // Ensure tags are lowercase for consistent searching
+    const lowerCaseTags = tags.map(tag => tag.toLowerCase())
+
     const { data, error } = await supabase
       .rpc('search_files_by_tags', {
         user_uuid: user.user.id,
-        tag_names: tags,
+        tag_names: lowerCaseTags,
         search_logic: logic.toLowerCase()
       })
 
@@ -168,10 +171,13 @@ export async function searchFilesByMixedCriteria(
       throw new Error('User not authenticated')
     }
 
+    // Ensure tags are lowercase for consistent searching
+    const lowerCaseTags = tags.map(tag => tag.toLowerCase())
+    
     const { data, error } = await supabase
       .rpc('search_files_by_mixed_criteria', {
         user_uuid: user.user.id,
-        tag_names: tags.length > 0 ? tags : [],
+        tag_names: lowerCaseTags.length > 0 ? lowerCaseTags : [],
         filename_terms: filenames.length > 0 ? filenames : [],
         tag_search_logic: tagLogic.toLowerCase()
       })
