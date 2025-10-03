@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
 import { Plus, AlertCircle, CheckCircle, X } from 'lucide-react'
-import { addCustomTagsToFile } from '../../lib/api'
+import { addCustomTagsToFile, type Tag } from '../../lib/api'
 import './TagEditor.css'
 
 interface TagEditorProps {
   fileId: string
-  existingTags: { id: string; name: string }[]
-  onTagsAdded: (newTags: { id: string; name: string }[]) => void
+  existingTags: Tag[]
+  onTagsAdded: (newTags: Tag[]) => void
   disabled?: boolean
 }
 
@@ -44,7 +44,10 @@ export const TagEditor: React.FC<TagEditorProps> = ({
     }
     
     // Check if tag already exists (case insensitive)
-    if (existingTags.some(tag => tag.name.toLowerCase() === trimmed.toLowerCase())) {
+    if (existingTags.some(tag => {
+      const tagName = typeof tag === 'string' ? tag : tag.name
+      return tagName.toLowerCase() === trimmed.toLowerCase()
+    })) {
       return 'This tag already exists'
     }
     

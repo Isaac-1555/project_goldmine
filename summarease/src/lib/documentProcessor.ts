@@ -1,7 +1,7 @@
 // Client-side document processing using specialized libraries
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { Tag } from './api'
+import type { Tag } from './types'
 // @ts-ignore
 import * as mammoth from 'mammoth'
 import * as pdfjsLib from 'pdfjs-dist'
@@ -124,7 +124,7 @@ export async function processDocumentClientSide(file: File, autoTags: boolean = 
   extractedText: string
   summary: string
   tags: Tag[]
-}>
+}> {
   if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your-gemini-api-key') {
     throw new Error('Gemini API key not configured. Please set VITE_GEMINI_API_KEY in your .env file')
   }

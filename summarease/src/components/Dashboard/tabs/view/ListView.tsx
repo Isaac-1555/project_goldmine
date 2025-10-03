@@ -532,11 +532,21 @@ export const ListView: React.FC<ListViewProps> = ({
                       <div className="file-tags">
                         <Tag className="tags-icon" />
                         <div className="tags-list">
-                          {file.tags.map((tag, index) => (
-                            <span key={index} className="tag">
-                              {tag}
-                            </span>
-                          ))}
+                          {file.tags.map((tag, index) => {
+                            // Handle both old string format and new Tag object format
+                            const tagName = typeof tag === 'string' ? tag : tag.name
+                            const tagType = typeof tag === 'string' ? 'general' : tag.type
+                            
+                            return (
+                              <span 
+                                key={index} 
+                                className={`tag tag-${tagType}`}
+                                title={`${tagType} tag`}
+                              >
+                                {tagName}
+                              </span>
+                            )
+                          })}
                         </div>
                       </div>
                     )}

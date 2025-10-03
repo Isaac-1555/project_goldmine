@@ -389,15 +389,32 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
   const handleDeleteTag = async (tagId: string) => {
     if (!fileDetails?.file.id) return
 
+    // Find the tag to delete and get its actual information
+    const tagToDelete = fileDetails.tags.find((tag, index) => {
+      const currentTagId = typeof tag === 'string' ? `tag-${index}` : (tag.id || `tag-${index}`)
+      return currentTagId === tagId
+    })
+
+    if (!tagToDelete) {
+      setError('Tag not found')
+      return
+    }
+
+    // For the API call, we need the actual tag name
+    const tagName = typeof tagToDelete === 'string' ? tagToDelete : tagToDelete.name
+
     try {
       setDeletingTag(tagId)
-      const result = await removeTagFromFile(fileDetails.file.id, tagId)
+      const result = await removeTagFromFile(fileDetails.file.id, tagName)
       
       if (result.success) {
         // Remove the tag from the local state immediately
         setFileDetails(prev => prev ? {
           ...prev,
-          tags: prev.tags.filter(tag => tag.id !== tagId)
+          tags: prev.tags.filter((tag, index) => {
+            const currentTagId = typeof tag === 'string' ? `tag-${index}` : (tag.id || `tag-${index}`)
+            return currentTagId !== tagId
+          })
         } : null)
         setShowDeleteTagConfirm(null)
       } else {
@@ -741,20 +758,27 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
               <div className="tags-section">
                 <h4 className="tags-section-title">Current Tags</h4>
                 <div className="tags-grid">
-                  {fileDetails.tags.map((tag) => (
-                    <div key={tag.id} className="tag-item">
-                      <Tag className="tag-icon" />
-                      <span className="tag-name">{tag.name}</span>
-                      <button
-                        className="tag-delete-button"
-                        onClick={() => setShowDeleteTagConfirm(tag.id)}
-                        title={`Remove "${tag.name}" tag`}
-                        aria-label={`Remove ${tag.name} tag`}
-                      >
-                        <X className="tag-delete-icon" />
-                      </button>
-                    </div>
-                  ))}
+                  {fileDetails.tags.map((tag, index) => {
+                    // Handle both old string format and new Tag object format
+                    const tagName = typeof tag === 'string' ? tag : tag.name
+                    const tagType = typeof tag === 'string' ? 'general' : tag.type
+                    const tagId = typeof tag === 'string' ? `tag-${index}` : (tag.id || `tag-${index}`)
+                    
+                    return (
+                      <div key={tagId} className={`tag-item tag-item-${tagType}`}>
+                        <Tag className={`tag-icon tag-icon-${tagType}`} />
+                        <span className="tag-name" title={`${tagType} tag`}>{tagName}</span>
+                        <button
+                          className="tag-delete-button"
+                          onClick={() => setShowDeleteTagConfirm(tagId)}
+                          title={`Remove "${tagName}" tag`}
+                          aria-label={`Remove ${tagName} tag`}
+                        >
+                          <X className="tag-delete-icon" />
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             ) : (
@@ -802,7 +826,16 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
         <div className="modal-overlay">
           <div className="delete-modal">
             <h3>Remove Tag</h3>
-            <p>Are you sure you want to remove the tag "{fileDetails?.tags.find(t => t.id === showDeleteTagConfirm)?.name}"? This will not affect other files with this tag.</p>
+            <p>Are you sure you want to remove the tag "{fileDetails?.tags.find((t, idx) => {
+              const tagId = typeof t === 'string' ? `tag-${idx}` : (t.id || `tag-${idx}`)
+              return tagId === showDeleteTagConfirm
+            }) ? (() => {
+              const foundTag = fileDetails.tags.find((t, idx) => {
+                const tagId = typeof t === 'string' ? `tag-${idx}` : (t.id || `tag-${idx}`)
+                return tagId === showDeleteTagConfirm
+              })
+              return typeof foundTag === 'string' ? foundTag : foundTag?.name
+            })() : 'Unknown'}"? This will not affect other files with this tag.</p>
             <div className="modal-actions">
               <button
                 onClick={() => setShowDeleteTagConfirm(null)}

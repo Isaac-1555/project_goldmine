@@ -450,11 +450,39 @@
 
 .tag {
   padding: 0.25rem 0.5rem;
-  background: var(--color-info-bg);
-  color: var(--accent-primary);
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+/* General tags - Blue theme */
+.tag-general {
+  background: var(--general-tag-bg, #eff6ff);
+  border-color: var(--general-tag-border, #bfdbfe);
+  color: var(--general-tag-text, #1e40af);
+}
+
+/* Specific tags - Green theme */
+.tag-specific {
+  background: var(--specific-tag-bg, #f0fdf4);
+  border-color: var(--specific-tag-border, #bbf7d0);
+  color: var(--specific-tag-text, #166534);
+}
+
+/* User added tags - Purple theme */
+.tag-user_added {
+  background: var(--user-tag-bg, #fdf4ff);
+  border-color: var(--user-tag-border, #e9d5ff);
+  color: var(--user-tag-text, #7c2d12);
+}
+
+/* Fallback for unknown tag types */
+.tag:not(.tag-general):not(.tag-specific):not(.tag-user_added) {
+  background: var(--color-info-bg);
+  color: var(--accent-primary);
+  border-color: transparent;
 }
 
 /* File Summary */

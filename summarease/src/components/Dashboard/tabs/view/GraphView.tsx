@@ -218,9 +218,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
     // Create tag nodes when in search mode
     if (isSearching && searchedTags && searchedTags.length > 0) {
       searchedTags.forEach((tagName, index) => {
-        const relatedFiles = sourceFiles.filter(file => 
-          file.tags && file.tags.includes(tagName)
-        )
+        const relatedFiles = sourceFiles.filter(file => {
+          const names = (file.tags || []).map(t => (typeof t === 'string' ? t : t.name))
+          return names.includes(tagName)
+        })
         
         // Calculate position for tag nodes in a circular arrangement in center
         const tagCount = searchedTags.length
@@ -251,16 +252,17 @@ export const GraphView: React.FC<GraphViewProps> = ({
       
       if (isSearching && searchedTags && searchedTags.length > 0) {
         // In tag-centered mode: position files radially around their primary tag
-        const primaryTag = file.tags?.find(tag => searchedTags.includes(tag))
+        const fileTagNames = (file.tags || []).map(t => (typeof t === 'string' ? t : t.name))
+        const primaryTag = fileTagNames.find(tag => searchedTags.includes(tag))
         if (primaryTag) {
-          // const tagIndex = searchedTags.indexOf(primaryTag)
           const tagNode = newNodes.find(n => n.id === `tag-${primaryTag}`)
           
           if (tagNode && tagNode.x !== undefined && tagNode.y !== undefined) {
             // Position files in a circle around their tag
-            const filesForTag = sourceFiles.filter(f => 
-              f.tags && f.tags.includes(primaryTag)
-            )
+            const filesForTag = sourceFiles.filter(f => {
+              const names = (f.tags || []).map(t => (typeof t === 'string' ? t : t.name))
+              return names.includes(primaryTag)
+            })
             const fileIndex = filesForTag.indexOf(file)
             const fileAngle = (fileIndex * 2 * Math.PI) / filesForTag.length
             const fileRadius = 120 + Math.random() * 80 // Add some randomness
@@ -287,7 +289,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
         id: file.id,
         title: file.title || file.filename || 'Untitled',
         type: 'file',
-        tags: file.tags || [],
+        tags: (file.tags || []).map(t => (typeof t === 'string' ? t : t.name)),
         folderId: file.folder_id,
         folderName: file.folder_name,
         fileType: file.file_type,
@@ -302,7 +304,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
     // Create tag-file links when in search mode
     if (isSearching && searchedTags && searchedTags.length > 0) {
       sourceFiles.forEach(file => {
-        const fileTags = file.tags || []
+        const fileTags = (file.tags || []).map(t => (typeof t === 'string' ? t : t.name))
         fileTags.forEach(tag => {
           if (searchedTags.includes(tag)) {
             newLinks.push({
@@ -321,8 +323,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
       for (let j = i + 1; j < sourceFiles.length; j++) {
         const fileA = sourceFiles[i]
         const fileB = sourceFiles[j]
-        const tagsA = fileA.tags || []
-        const tagsB = fileB.tags || []
+        const tagsA = (fileA.tags || []).map(t => (typeof t === 'string' ? t : t.name))
+        const tagsB = (fileB.tags || []).map(t => (typeof t === 'string' ? t : t.name))
         const sharedTags = tagsA.filter(tag => tagsB.includes(tag))
         
         if (sharedTags.length > 0) {

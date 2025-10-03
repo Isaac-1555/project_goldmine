@@ -1,11 +1,10 @@
 import { supabase } from './supabase'
 import { processDocumentClientSide, extractTextOnly } from './documentProcessor'
 import { processAudioTranscript } from './audioProcessor'
+import type { Tag } from './types'
 
-export interface Tag {
-  name: string
-  type: 'general' | 'specific' | 'user_added'
-}
+// Re-export Tag for backwards compatibility
+export type { Tag } from './types'
 
 export interface FileWithMetadata {
   id: string
@@ -565,7 +564,7 @@ export async function addTagsToSummary(summaryId: string, tags: Tag[]): Promise<
 /**
  * Add custom tags to a file by finding its latest summary
  */
-export async function addCustomTagsToFile(fileId: string, tagNames: string[]): Promise<{ success: boolean; error?: string; addedTags?: Tag[] }>
+export async function addCustomTagsToFile(fileId: string, tagNames: string[]): Promise<{ success: boolean; error?: string; addedTags?: Tag[] }> {
   try {
     // Get the latest summary for this file
     const { data: latestSummary, error: summaryError } = await supabase
@@ -671,7 +670,7 @@ export async function addCustomTagsToFile(fileId: string, tagNames: string[]): P
 /**
  * Remove a tag from a file's latest summary
  */
-export async function removeTagFromFile(fileId: string, tagId: string): Promise<{ success: boolean; error?: string }> {
+export async function removeTagFromFile(fileId: string, tagName: string): Promise<{ success: boolean; error?: string }> {
   try {
     // Get the latest summary for this file
     const { data: latestSummary, error: summaryError } = await supabase
@@ -690,12 +689,27 @@ export async function removeTagFromFile(fileId: string, tagId: string): Promise<
       return { success: false, error: 'No summary found for this file.' }
     }
 
+    // Find the tag by name to get its ID
+    const { data: tag, error: tagError } = await supabase
+      .from('tags')
+      .select('id')
+      .eq('name', tagName.trim().toLowerCase())
+      .maybeSingle()
+
+    if (tagError) {
+      throw tagError
+    }
+
+    if (!tag) {
+      return { success: false, error: 'Tag not found.' }
+    }
+
     // Remove the tag link
     const { error: deleteError } = await supabase
       .from('summary_tags')
       .delete()
       .eq('summary_id', latestSummary.id)
-      .eq('tag_id', tagId)
+      .eq('tag_id', tag.id)
 
     if (deleteError) {
       throw deleteError
@@ -866,6 +880,7 @@ export async function regenerateSummary(fileId: string, autoTags?: boolean): Pro
     const shouldGenerateTags = autoTags !== undefined ? autoTags : true
     const config = { autoTags: shouldGenerateTags }
     const { summary, tags } = await processAudioTranscript(combined, config)
+    const typedTags: Tag[] = (tags || []).map((name: string) => ({ name, type: 'general' as const }))
 
     // Find existing summary to update instead of creating new one
     const { data: existingSummaries, error: fetchError } = await supabase
@@ -936,9 +951,9 @@ export async function regenerateSummary(fileId: string, autoTags?: boolean): Pro
     }
 
     // Save new tags (only if tags were generated)
-    if (shouldGenerateTags && tags?.length) {
+    if (shouldGenerateTags && typedTags.length) {
       try {
-        await addTagsToSummary(summaryId, tags)
+        await addTagsToSummary(summaryId, typedTags)
       } catch (tagError) {
         // Rollback on tag creation failure
         if (isNewSummary) {
@@ -958,7 +973,7 @@ export async function regenerateSummary(fileId: string, autoTags?: boolean): Pro
       }
     }
 
-    return { success: true, summaryId, summary_text: summary, tags }
+    return { success: true, summaryId, summary_text: summary, tags: typedTags }
   } catch (error: any) {
     console.error('Error regenerating summary:', error)
     return { success: false, error: error.message || 'Failed to regenerate summary' }
