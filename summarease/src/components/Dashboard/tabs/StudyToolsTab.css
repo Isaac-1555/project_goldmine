@@ -1108,6 +1108,16 @@
   transform: scale(1.2);
 }
 
+.progress-ellipsis {
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0 0.25rem;
+  user-select: none;
+  letter-spacing: 0.1em;
+}
+
 /* ===================================== */
 /* QUIZ RESULTS STYLES */
 /* ===================================== */

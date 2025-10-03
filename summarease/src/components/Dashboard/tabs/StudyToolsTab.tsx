@@ -558,6 +558,90 @@ export const StudyToolsTab: React.FC = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Helper function to render progress dots with sliding window
+  const renderProgressDots = () => {
+    if (!quizState.currentQuiz?.questions) return null
+    
+    const totalQuestions = quizState.currentQuiz.questions.length
+    const currentIndex = quizState.currentQuestionIndex
+    const MAX_VISIBLE_DOTS = 9 // Show maximum 9 dots at a time
+    
+    // If total questions <= MAX_VISIBLE_DOTS, show all dots
+    if (totalQuestions <= MAX_VISIBLE_DOTS) {
+      return (
+        <>
+          {quizState.currentQuiz.questions.map((_, index) => (
+            <div
+              key={index}
+              className={`progress-dot ${
+                index === currentIndex ? 'current' : ''
+              } ${
+                quizState.userAnswers[index] !== undefined ? 'answered' : ''
+              }`}
+            />
+          ))}
+        </>
+      )
+    }
+    
+    // Sliding window logic
+    const dotsToShow: (number | 'ellipsis-start' | 'ellipsis-end')[] = []
+    const windowSize = 7 // Show 7 dots in the window
+    const sideBuffer = Math.floor(windowSize / 2) // 3 dots on each side of current
+    
+    // Calculate the window boundaries
+    let startIndex = Math.max(0, currentIndex - sideBuffer)
+    let endIndex = Math.min(totalQuestions - 1, currentIndex + sideBuffer)
+    
+    // Adjust if we're near the start or end
+    if (startIndex === 0) {
+      endIndex = Math.min(totalQuestions - 1, windowSize - 1)
+    } else if (endIndex === totalQuestions - 1) {
+      startIndex = Math.max(0, totalQuestions - windowSize)
+    }
+    
+    // Add leading ellipsis if needed
+    if (startIndex > 0) {
+      dotsToShow.push('ellipsis-start')
+    }
+    
+    // Add visible dots
+    for (let i = startIndex; i <= endIndex; i++) {
+      dotsToShow.push(i)
+    }
+    
+    // Add trailing ellipsis if needed
+    if (endIndex < totalQuestions - 1) {
+      dotsToShow.push('ellipsis-end')
+    }
+    
+    return (
+      <>
+        {dotsToShow.map((item, idx) => {
+          if (item === 'ellipsis-start' || item === 'ellipsis-end') {
+            return (
+              <div key={item} className="progress-ellipsis">
+                ...
+              </div>
+            )
+          }
+          
+          const index = item as number
+          return (
+            <div
+              key={index}
+              className={`progress-dot ${
+                index === currentIndex ? 'current' : ''
+              } ${
+                quizState.userAnswers[index] !== undefined ? 'answered' : ''
+              }`}
+            />
+          )
+        })}
+      </>
+    )
+  }
+
   // Render left sidebar
   const renderLeftSidebar = () => {
     if (view === 'menu') {
@@ -1072,16 +1156,7 @@ export const StudyToolsTab: React.FC = () => {
               </button>
 
               <div className="progress-dots">
-                {quizState.currentQuiz.questions.map((_, index) => (
-                  <div
-                    key={index}
-                    className={`progress-dot ${
-                      index === quizState.currentQuestionIndex ? 'current' : ''
-                    } ${
-                      quizState.userAnswers[index] !== undefined ? 'answered' : ''
-                    }`}
-                  />
-                ))}
+                {renderProgressDots()}
               </div>
 
               <button
