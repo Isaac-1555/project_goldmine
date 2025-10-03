@@ -945,7 +945,7 @@ export const StudyToolsTab: React.FC = () => {
                       <div className="file-tags-inner">
                         {file.tags && file.tags.length > 0 ? (
                           file.tags.map((tag, index) => (
-                            <span key={index} className="tag">{tag}</span>
+                            <span key={index} className="tag">{typeof tag === 'string' ? tag : (tag?.name || String(tag))}</span>
                           ))
                         ) : (
                           <span className="tag no-tags">No tags</span>
@@ -1004,7 +1004,7 @@ export const StudyToolsTab: React.FC = () => {
                       <div className="file-tags-inner">
                         {file.tags && file.tags.length > 0 ? (
                           file.tags.map((tag, index) => (
-                            <span key={index} className="tag">{tag}</span>
+                            <span key={index} className="tag">{typeof tag === 'string' ? tag : (tag?.name || String(tag))}</span>
                           ))
                         ) : (
                           <span className="tag no-tags">No tags</span>
@@ -1045,7 +1045,7 @@ export const StudyToolsTab: React.FC = () => {
 
           <div className="question-content">
             <div className="question-text">
-              <h3>{currentQuestion.question}</h3>
+              <h3>{String(currentQuestion.question || '')}</h3>
             </div>
 
             <div className="answer-options">
@@ -1056,7 +1056,7 @@ export const StudyToolsTab: React.FC = () => {
                   onClick={() => handleAnswerSelect(index)}
                 >
                   <span className="option-letter">{String.fromCharCode(65 + index)}</span>
-                  <span className="option-text">{option}</span>
+                  <span className="option-text">{String(option || '')}</span>
                 </button>
               ))}
             </div>
@@ -1156,7 +1156,7 @@ export const StudyToolsTab: React.FC = () => {
                           {isCorrect ? '✓' : '✗'}
                         </span>
                       </div>
-                      <p className="question-text">{question.question}</p>
+                      <p className="question-text">{String(question.question || '')}</p>
                       <div className="answer-options">
                         {question.options.map((option, optionIndex) => {
                           const isUserAnswer = userAnswer === optionIndex
@@ -1172,7 +1172,7 @@ export const StudyToolsTab: React.FC = () => {
                               }`}
                             >
                               <span className="option-letter">{String.fromCharCode(65 + optionIndex)}</span>
-                              <span className="option-text">{option}</span>
+                              <span className="option-text">{String(option || '')}</span>
                               {isCorrectAnswer && <span className="indicator correct">✓</span>}
                               {isUserAnswer && !isCorrectAnswer && <span className="indicator incorrect">✗</span>}
                             </div>
@@ -1222,7 +1222,7 @@ export const StudyToolsTab: React.FC = () => {
                 aria-live="polite"
               >
                 <h3 style={{ margin: 0 }}>
-                  {isFlipped ? (card as any).answer_text || (card as any).back : (card as any).question_text || (card as any).front}
+                  {isFlipped ? String(card.answer_text || '') : String(card.question_text || '')}
                 </h3>
               </div>
             </div>
