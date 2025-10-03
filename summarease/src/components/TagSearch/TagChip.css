@@ -3,30 +3,60 @@
   align-items: center;
   gap: 0.375rem;
   padding: 0.375rem 0.5rem;
-  background: var(--primary-bg, #eff6ff);
-  border: 1px solid var(--primary-border, #bfdbfe);
   border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--primary-text, #1e40af);
   transition: all 0.2s ease;
   max-width: 200px;
+  border: 1px solid;
 }
 
-.tag-chip.filename-chip {
-  background: var(--info-bg, #f0f9ff);
-  border-color: var(--info-border, #bae6fd);
-  color: var(--info-text, #0c4a6e);
+/* General tags - Blue theme */
+.general-tag-chip {
+  background: var(--general-tag-bg, #eff6ff);
+  border-color: var(--general-tag-border, #bfdbfe);
+  color: var(--general-tag-text, #1e40af);
 }
 
-.tag-chip:hover {
-  background: var(--primary-hover, #dbeafe);
-  border-color: var(--primary-border-hover, #93c5fd);
+.general-tag-chip:hover {
+  background: var(--general-tag-hover, #dbeafe);
+  border-color: var(--general-tag-border-hover, #93c5fd);
 }
 
-.tag-chip.filename-chip:hover {
-  background: var(--info-hover, #e0f2fe);
-  border-color: var(--info-border-hover, #7dd3fc);
+/* Specific tags - Green theme */
+.specific-tag-chip {
+  background: var(--specific-tag-bg, #f0fdf4);
+  border-color: var(--specific-tag-border, #bbf7d0);
+  color: var(--specific-tag-text, #166534);
+}
+
+.specific-tag-chip:hover {
+  background: var(--specific-tag-hover, #dcfce7);
+  border-color: var(--specific-tag-border-hover, #86efac);
+}
+
+/* User added tags - Purple/Orange theme */
+.user-added-tag-chip {
+  background: var(--user-tag-bg, #fdf4ff);
+  border-color: var(--user-tag-border, #e9d5ff);
+  color: var(--user-tag-text, #7c2d12);
+}
+
+.user-added-tag-chip:hover {
+  background: var(--user-tag-hover, #fae8ff);
+  border-color: var(--user-tag-border-hover, #d8b4fe);
+}
+
+/* Filename chips - Cyan theme */
+.filename-chip {
+  background: var(--filename-bg, #f0f9ff);
+  border-color: var(--filename-border, #bae6fd);
+  color: var(--filename-text, #0c4a6e);
+}
+
+.filename-chip:hover {
+  background: var(--filename-hover, #e0f2fe);
+  border-color: var(--filename-border-hover, #7dd3fc);
 }
 
 .chip-icon {
@@ -36,7 +66,20 @@
 }
 
 .chip-icon.filename-chip-icon {
-  color: var(--info-text, #0c4a6e);
+  color: var(--filename-text, #0c4a6e);
+}
+
+/* Icon colors for different tag types */
+.general-tag-chip .chip-icon {
+  color: var(--general-tag-text, #1e40af);
+}
+
+.specific-tag-chip .chip-icon {
+  color: var(--specific-tag-text, #166534);
+}
+
+.user-added-tag-chip .chip-icon {
+  color: var(--user-tag-text, #7c2d12);
 }
 
 .tag-text {
@@ -57,7 +100,6 @@
   border: none;
   border-radius: 3px;
   cursor: pointer;
-  color: var(--primary-text, #1e40af);
   opacity: 0.7;
   transition: all 0.2s ease;
   flex-shrink: 0;
@@ -65,8 +107,40 @@
 
 .tag-remove-button:hover {
   opacity: 1;
-  background: var(--primary-text, #1e40af);
   color: white;
+}
+
+/* Remove button colors for different tag types */
+.general-tag-chip .tag-remove-button {
+  color: var(--general-tag-text, #1e40af);
+}
+
+.general-tag-chip .tag-remove-button:hover {
+  background: var(--general-tag-text, #1e40af);
+}
+
+.specific-tag-chip .tag-remove-button {
+  color: var(--specific-tag-text, #166534);
+}
+
+.specific-tag-chip .tag-remove-button:hover {
+  background: var(--specific-tag-text, #166534);
+}
+
+.user-added-tag-chip .tag-remove-button {
+  color: var(--user-tag-text, #7c2d12);
+}
+
+.user-added-tag-chip .tag-remove-button:hover {
+  background: var(--user-tag-text, #7c2d12);
+}
+
+.filename-chip .tag-remove-button {
+  color: var(--filename-text, #0c4a6e);
+}
+
+.filename-chip .tag-remove-button:hover {
+  background: var(--filename-text, #0c4a6e);
 }
 
 .tag-remove-button:focus {

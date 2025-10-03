@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { type FileWithMetadata, getUserFiles } from './api'
+import { type FileWithMetadata, getUserFiles, type Tag } from './api'
 
 export interface TagSuggestion {
   name: string
@@ -110,7 +110,7 @@ async function clientFilterFilesByTags(tags: string[], logic: 'AND' | 'OR'): Pro
   const lcTags = tags.map(t => t.toLowerCase())
   const files = await getUserFiles()
   return files.filter(f => {
-    const fileTags = (f.tags || []).map(t => (t || '').toLowerCase())
+    const fileTags = (f.tags || []).map(t => (typeof t === 'string' ? t : t.name).toLowerCase())
     if (logic === 'AND') {
       return lcTags.every(t => fileTags.includes(t))
     }
@@ -151,18 +151,34 @@ export async function searchFilesByTags(
       return clientFilterFilesByTags(tags, logic)
     }
 
-    const mapped = (data || []).map((file: any) => ({
-      id: file.file_id,
-      title: file.title,
-      file_type: file.file_type,
-      status: file.status,
-      created_at: file.created_at,
-      folder_name: file.folder_name,
-      summary_text: file.summary_text,
-      summary: file.summary_text, // Alias for compatibility
-      tags: file.tags || [],
-      filename: file.title // Use title as filename fallback
-    }))
+    const mapped = (data || []).map((file: any) => {
+      // Handle JSONB tags format from new RPC functions
+      let processedTags: Tag[] = []
+      if (file.tags) {
+        if (Array.isArray(file.tags) && file.tags.length > 0) {
+          if (typeof file.tags[0] === 'object' && file.tags[0].name) {
+            // New JSONB format
+            processedTags = file.tags
+          } else {
+            // Fallback for old string[] format
+            processedTags = file.tags.map((name: string) => ({ name, type: 'general' as const }))
+          }
+        }
+      }
+      
+      return {
+        id: file.file_id,
+        title: file.title,
+        file_type: file.file_type,
+        status: file.status,
+        created_at: file.created_at,
+        folder_name: file.folder_name,
+        summary_text: file.summary_text,
+        summary: file.summary_text, // Alias for compatibility
+        tags: processedTags,
+        filename: file.title // Use title as filename fallback
+      }
+    })
 
     // If RPC unexpectedly returns no rows, fall back to client-side filtering
     if (mapped.length === 0) {
@@ -214,18 +230,34 @@ export async function searchFilesByMixedCriteria(
       return []
     }
 
-    const mapped = (data || []).map((file: any) => ({
-      id: file.file_id,
-      title: file.title,
-      file_type: file.file_type,
-      status: file.status,
-      created_at: file.created_at,
-      folder_name: file.folder_name,
-      summary_text: file.summary_text,
-      summary: file.summary_text, // Alias for compatibility
-      tags: file.tags || [],
-      filename: file.title // Use title as filename fallback
-    }))
+    const mapped = (data || []).map((file: any) => {
+      // Handle JSONB tags format from new RPC functions
+      let processedTags: Tag[] = []
+      if (file.tags) {
+        if (Array.isArray(file.tags) && file.tags.length > 0) {
+          if (typeof file.tags[0] === 'object' && file.tags[0].name) {
+            // New JSONB format
+            processedTags = file.tags
+          } else {
+            // Fallback for old string[] format
+            processedTags = file.tags.map((name: string) => ({ name, type: 'general' as const }))
+          }
+        }
+      }
+      
+      return {
+        id: file.file_id,
+        title: file.title,
+        file_type: file.file_type,
+        status: file.status,
+        created_at: file.created_at,
+        folder_name: file.folder_name,
+        summary_text: file.summary_text,
+        summary: file.summary_text, // Alias for compatibility
+        tags: processedTags,
+        filename: file.title // Use title as filename fallback
+      }
+    })
 
     // If RPC returns no rows but we do have tags (and no filename terms), use client-side filtering
     if (mapped.length === 0 && lowerCaseTags.length > 0 && filenames.length === 0) {

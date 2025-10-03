@@ -1,6 +1,7 @@
 // Client-side document processing using specialized libraries
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { Tag } from './api'
 // @ts-ignore
 import * as mammoth from 'mammoth'
 import * as pdfjsLib from 'pdfjs-dist'
@@ -11,11 +12,119 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'your-gemini-api-key'
 
+// Helper function to build tag generation prompt
+function buildTagGenerationPrompt(content: string, contentType: string, subjectArea: string = 'General'): string {
+  // In a browser environment, we'll inline the template
+  // In a Node.js environment, we could read from file
+  const template = `
+Generate categorized tags for the following content. You must return EXACTLY the specified number of tags in each category, formatted as a JSON object.
+
+### TAG CATEGORIZATION REQUIREMENTS:
+
+#### GENERAL TAGS (3-5 tags required):
+- Broad subject areas and disciplines
+- High-level conceptual categories
+- Academic fields and domains
+- Universal themes that apply across contexts
+- Examples: "computer science", "architecture", "business", "engineering", "healthcare"
+
+#### SPECIFIC TAGS (6-8 tags required):
+- Detailed technical terms and concepts
+- Specific tools, technologies, or methodologies
+- Named entities, brands, or proper nouns
+- Implementation-specific details
+- Examples: "react", "javascript", "tallest building", "machine learning", "financial analysis"
+
+### FORMATTING REQUIREMENTS:
+
+1. **Output Format**: Return tags as a valid JSON object with this exact structure:
+\`\`\`json
+{
+  "general": ["tag1", "tag2", "tag3"],
+  "specific": ["tag4", "tag5", "tag6", "tag7", "tag8", "tag9"]
+}
+\`\`\`
+
+2. **Tag Format Rules**:
+   - All tags must be lowercase
+   - Use simple phrases (1-3 words maximum)
+   - No special characters except hyphens and spaces
+   - Be descriptive but concise
+   - Avoid redundancy between categories
+
+3. **Content Coverage**:
+   - Tags should comprehensively represent the content
+   - Cover main topics, subtopics, and key concepts
+   - Include both theoretical and practical aspects
+   - Balance breadth (general) with depth (specific)
+
+### CONTENT TO ANALYZE:
+
+${content}
+
+### ADDITIONAL CONTEXT:
+- Content Type: ${contentType}
+- Subject Area: ${subjectArea}
+
+### OUTPUT INSTRUCTIONS:
+
+Return ONLY the JSON object with the categorized tags. Do not include any other text, explanations, or formatting. The JSON must be valid and parseable.
+
+Expected output format:
+\`\`\`json
+{
+  "general": ["tag1", "tag2", "tag3", "tag4"],
+  "specific": ["tag5", "tag6", "tag7", "tag8", "tag9", "tag10", "tag11"]
+}
+\`\`\`
+`
+  
+  return template
+}
+
+// Helper function to determine subject area from file name and content
+function determineSubjectArea(fileName: string, content: string): string {
+  const lowerFileName = fileName.toLowerCase()
+  const lowerContent = content.toLowerCase().substring(0, 500) // First 500 chars for quick analysis
+  
+  // Check file name patterns
+  if (lowerFileName.includes('web') || lowerFileName.includes('html') || lowerFileName.includes('css') || lowerFileName.includes('js')) {
+    return 'Web Development'
+  }
+  if (lowerFileName.includes('architecture') || lowerFileName.includes('building') || lowerFileName.includes('design')) {
+    return 'Architecture'
+  }
+  if (lowerFileName.includes('business') || lowerFileName.includes('market') || lowerFileName.includes('finance')) {
+    return 'Business'
+  }
+  if (lowerFileName.includes('science') || lowerFileName.includes('research') || lowerFileName.includes('study')) {
+    return 'Science'
+  }
+  
+  // Check content patterns
+  const patterns = {
+    'Computer Science': ['programming', 'algorithm', 'software', 'code', 'development', 'javascript', 'python', 'react', 'api'],
+    'Architecture': ['building', 'design', 'construction', 'architectural', 'structure', 'tower', 'monument'],
+    'Business': ['business', 'market', 'financial', 'revenue', 'profit', 'strategy', 'management', 'analysis'],
+    'Engineering': ['engineering', 'technical', 'system', 'process', 'methodology', 'implementation'],
+    'Healthcare': ['health', 'medical', 'treatment', 'patient', 'clinical', 'therapeutic'],
+    'Education': ['learning', 'student', 'academic', 'educational', 'curriculum', 'teaching']
+  }
+  
+  for (const [area, keywords] of Object.entries(patterns)) {
+    if (keywords.some(keyword => lowerContent.includes(keyword))) {
+      return area
+    }
+  }
+  
+  return 'General'
+}
+
 export async function processDocumentClientSide(file: File, autoTags: boolean = true): Promise<{
   extractedText: string
   summary: string
-  tags: string[]
-}> {
+  tags: Tag[]
+}>
   if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your-gemini-api-key') {
     throw new Error('Gemini API key not configured. Please set VITE_GEMINI_API_KEY in your .env file')
   }
@@ -66,25 +175,44 @@ export async function processDocumentClientSide(file: File, autoTags: boolean = 
   const summaryResult = await model.generateContent(summaryPrompt)
   const summary = summaryResult.response.text()
 
-  // Extract tags (only if autoTags is enabled)
-  let tags: string[] = []
+  // Extract categorized tags (only if autoTags is enabled)
+  let tags: Tag[] = []
   if (autoTags) {
-    const tagsPrompt = `
-      Extract 3-7 relevant keywords or tags from the following text. 
-      These should be:
-      - Single words or short phrases (2-3 words max)
-      - Relevant to the main topics and themes
-      - Useful for categorization and search
-      - Lowercase
-      
-      Return only the tags separated by commas, nothing else.
-      
-      Text: ${extractedText}
-    `
+    try {
+      // Determine subject area from file name or content
+      const subjectArea = determineSubjectArea(file.name, extractedText)
+      const tagsPrompt = buildTagGenerationPrompt(extractedText, file.type, subjectArea)
 
-    const tagsResult = await model.generateContent(tagsPrompt)
-    const tagsText = tagsResult.response.text().trim()
-    tags = tagsText.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag.length > 0)
+      const tagsResult = await model.generateContent(tagsPrompt)
+      const tagsText = tagsResult.response.text().trim()
+      
+      // Parse the JSON response
+      const parsedTags = JSON.parse(tagsText)
+      
+      // Convert to Tag objects
+      const generalTags: Tag[] = (parsedTags.general || []).map((name: string) => ({
+        name: name.toLowerCase(),
+        type: 'general' as const
+      }))
+      
+      const specificTags: Tag[] = (parsedTags.specific || []).map((name: string) => ({
+        name: name.toLowerCase(),
+        type: 'specific' as const
+      }))
+      
+      tags = [...generalTags, ...specificTags]
+    } catch (error) {
+      console.error('Error parsing tag generation response:', error)
+      // Fallback to simple tag generation if JSON parsing fails
+      const fallbackPrompt = `Extract 5-8 relevant keywords from this text, return as comma-separated lowercase terms: ${extractedText.substring(0, 1000)}`
+      const fallbackResult = await model.generateContent(fallbackPrompt)
+      const fallbackTags = fallbackResult.response.text().trim().split(',')
+        .map(tag => tag.trim().toLowerCase())
+        .filter(tag => tag.length > 0)
+        .map(name => ({ name, type: 'general' as const }))
+      
+      tags = fallbackTags
+    }
   }
 
   return {

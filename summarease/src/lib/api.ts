@@ -2,6 +2,11 @@ import { supabase } from './supabase'
 import { processDocumentClientSide, extractTextOnly } from './documentProcessor'
 import { processAudioTranscript } from './audioProcessor'
 
+export interface Tag {
+  name: string
+  type: 'general' | 'specific' | 'user_added'
+}
+
 export interface FileWithMetadata {
   id: string
   file_id?: string // From RPC function
@@ -15,7 +20,7 @@ export interface FileWithMetadata {
   folder_name?: string
   summary_text?: string
   summary?: string
-  tags?: string[]
+  tags?: Tag[] // Updated to use Tag interface
   // For local notebooks
   localNotebookData?: {
     notes: string
@@ -82,18 +87,37 @@ export async function getUserFiles(): Promise<FileWithMetadata[]> {
     }
 
     // Map the RPC results to our interface
-    return (data || []).map((file: any) => ({
-      id: file.file_id,
-      title: file.title,
-      file_type: file.file_type,
-      status: file.status,
-      created_at: file.created_at,
-      folder_name: file.folder_name,
-      summary_text: file.summary_text,
-      summary: file.summary_text, // Alias for compatibility
-      tags: file.tags || [],
-      filename: file.title // Use title as filename fallback
-    }))
+    return (data || []).map((file: any) => {
+      // Handle both old format (string[]) and new format (Tag[])
+      const tags = file.tags || []
+      let processedTags: Tag[] = []
+      
+      if (Array.isArray(tags)) {
+        if (tags.length > 0 && typeof tags[0] === 'object' && tags[0].name) {
+          // New format: array of Tag objects from JSONB
+          processedTags = tags
+        } else {
+          // Old format: array of strings, convert to general tags
+          processedTags = tags.map((tagName: string) => ({
+            name: tagName,
+            type: 'general' as const
+          }))
+        }
+      }
+      
+      return {
+        id: file.file_id,
+        title: file.title,
+        file_type: file.file_type,
+        status: file.status,
+        created_at: file.created_at,
+        folder_name: file.folder_name,
+        summary_text: file.summary_text,
+        summary: file.summary_text, // Alias for compatibility
+        tags: processedTags,
+        filename: file.title // Use title as filename fallback
+      }
+    })
   } catch (error: any) {
     console.error('Error fetching user files:', error)
     return []
@@ -143,7 +167,10 @@ export async function getFileDetails(fileId: string) {
       .order('created_at', { ascending: false })
 
     const latestSummary = (summariesArr && summariesArr.length > 0) ? summariesArr[0] : null
-    const latestTags = latestSummary?.summary_tags?.map((st: any) => st.tags) || []
+    const latestTags: Tag[] = latestSummary?.summary_tags?.map((st: any) => ({
+      name: st.tags.name,
+      type: st.tags.type || 'general'
+    })) || []
 
     return {
       file,
@@ -213,7 +240,10 @@ export async function getNotebookDetails(fileId: string) {
       .order('created_at', { ascending: false })
 
     const latestSummary = (summariesArr && summariesArr.length > 0) ? summariesArr[0] : null
-    const latestTags = latestSummary?.summary_tags?.map((st: any) => st.tags) || []
+    const latestTags: Tag[] = latestSummary?.summary_tags?.map((st: any) => ({
+      name: st.tags.name,
+      type: st.tags.type || 'general'
+    })) || []
 
     return {
       file,
@@ -487,39 +517,22 @@ export async function createRecording(title: string, transcriptText: string = ''
 /**
  * Save tags for a summary (internal helper)
  */
-async function saveTags(summaryId: string, tags: string[]): Promise<void> {
-  for (const tagName of tags) {
-    const name = (tagName || '').trim()
+async function saveTags(summaryId: string, tags: Tag[]): Promise<void> {
+  for (const tag of tags) {
+    const name = (tag.name || '').trim()
+    const type = tag.type || 'general'
     if (!name) continue
     try {
-      // Check if tag exists, create if not
-      let { data: existingTag, error: tagSelectError } = await supabase
-        .from('tags')
-        .select('id')
-        .eq('name', name)
-        .maybeSingle()
+      // Use the new RPC function to create tags with type
+      const { data: tagId, error: tagCreateError } = await supabase
+        .rpc('create_tag_with_type', {
+          tag_name: name,
+          tag_type: type
+        })
 
-      if (tagSelectError) {
-        console.error('Error checking tag:', tagSelectError)
+      if (tagCreateError) {
+        console.error('Error creating/getting tag:', tagCreateError)
         continue
-      }
-
-      let tagId: string
-
-      if (existingTag) {
-        tagId = existingTag.id
-      } else {
-        const { data: newTag, error: tagInsertError } = await supabase
-          .from('tags')
-          .insert({ name })
-          .select('id')
-          .single()
-
-        if (tagInsertError) {
-          console.error('Error creating tag:', tagInsertError)
-          continue
-        }
-        tagId = newTag.id
       }
 
       // Link tag to summary (ignore duplicates)
@@ -545,14 +558,14 @@ async function saveTags(summaryId: string, tags: string[]): Promise<void> {
 /**
  * Public: add (custom) tags to an existing summary
  */
-export async function addTagsToSummary(summaryId: string, tags: string[]): Promise<void> {
+export async function addTagsToSummary(summaryId: string, tags: Tag[]): Promise<void> {
   await saveTags(summaryId, tags)
 }
 
 /**
  * Add custom tags to a file by finding its latest summary
  */
-export async function addCustomTagsToFile(fileId: string, tagNames: string[]): Promise<{ success: boolean; error?: string; addedTags?: { id: string; name: string }[] }> {
+export async function addCustomTagsToFile(fileId: string, tagNames: string[]): Promise<{ success: boolean; error?: string; addedTags?: Tag[] }>
   try {
     // Get the latest summary for this file
     const { data: latestSummary, error: summaryError } = await supabase
@@ -595,7 +608,7 @@ export async function addCustomTagsToFile(fileId: string, tagNames: string[]): P
       return { success: false, error: 'All provided tags already exist for this file.' }
     }
 
-    const addedTags: { id: string; name: string }[] = []
+    const addedTags: Tag[] = []
 
     // Process each new tag
     for (const tagName of newTagNames) {
@@ -615,27 +628,19 @@ export async function addCustomTagsToFile(fileId: string, tagNames: string[]): P
           continue
         }
 
-        let tagId: string
-        let tagRecord: { id: string; name: string }
+        // Use the RPC function to create user-added tag with type
+        const { data: tagId, error: tagCreateError } = await supabase
+          .rpc('create_tag_with_type', {
+            tag_name: name,
+            tag_type: 'user_added'
+          })
 
-        if (existingTag) {
-          tagId = existingTag.id
-          tagRecord = existingTag
-        } else {
-          // Create new tag
-          const { data: newTag, error: tagInsertError } = await supabase
-            .from('tags')
-            .insert({ name })
-            .select('id, name')
-            .single()
-
-          if (tagInsertError) {
-            console.error('Error creating tag:', tagInsertError)
-            continue
-          }
-          tagId = newTag.id
-          tagRecord = newTag
+        if (tagCreateError) {
+          console.error('Error creating tag:', tagCreateError)
+          continue
         }
+
+        const tagRecord: Tag = { name, type: 'user_added' }
 
         // Link tag to summary
         const { error: linkError } = await supabase
