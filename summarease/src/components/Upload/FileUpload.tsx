@@ -46,17 +46,32 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onClos
     const allowedTypes = [
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/msword'
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+      'audio/mpeg',
+      'audio/mp3'
     ]
     
-    if (!allowedTypes.includes(file.type)) {
-      setError('Please upload a PDF or Word document (.pdf, .docx, .doc)')
+    const isValidType = allowedTypes.includes(file.type) || 
+                        file.name.toLowerCase().endsWith('.pptx') ||
+                        file.name.toLowerCase().endsWith('.mp3')
+    
+    if (!isValidType) {
+      setError('Please upload a PDF, DOCX, PPTX, image (PNG/JPG), or audio (MP3) file')
       return
     }
     
-    // Validate file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB')
+    // Validate file size - different limits for audio
+    const maxSize = file.type.startsWith('audio/') || file.name.toLowerCase().endsWith('.mp3')
+      ? 30 * 1024 * 1024  // 30MB for audio
+      : 10 * 1024 * 1024  // 10MB for documents and images
+    
+    if (file.size > maxSize) {
+      const limitText = maxSize === 30 * 1024 * 1024 ? '30MB' : '10MB'
+      setError(`File size must be less than ${limitText}`)
       return
     }
     
@@ -89,9 +104,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onClos
       if (uploadError) throw uploadError
 
       // Determine file type
-      let fileType: 'pdf' | 'docx' = 'pdf'
+      let fileType: 'pdf' | 'docx' | 'pptx' | 'image' | 'audio' = 'pdf'
       if (selectedFile.type.includes('word') || selectedFile.name.endsWith('.docx') || selectedFile.name.endsWith('.doc')) {
         fileType = 'docx'
+      } else if (selectedFile.type.includes('presentation') || selectedFile.name.endsWith('.pptx')) {
+        fileType = 'pptx'
+      } else if (selectedFile.type.startsWith('image/')) {
+        fileType = 'image'
+      } else if (selectedFile.type.startsWith('audio/') || selectedFile.name.endsWith('.mp3')) {
+        fileType = 'audio'
       }
 
       // Create file record in database
@@ -158,17 +179,17 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onClos
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="upload-icon" />
-            <h3>Drop your document here</h3>
+            <h3>Drop your file here</h3>
             <p>or click to browse files</p>
             <div className="supported-formats">
-              <span>Supported: PDF, Word (.docx, .doc)</span>
-              <span>Max size: 10MB</span>
+              <span>Supported: PDF, DOCX, PPTX, PNG, JPG, MP3</span>
+              <span>Max size: 10MB (30MB for audio)</span>
             </div>
             
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.docx,.doc"
+              accept=".pdf,.docx,.doc,.pptx,.png,.jpg,.jpeg,.mp3"
               onChange={handleFileInputChange}
               style={{ display: 'none' }}
             />

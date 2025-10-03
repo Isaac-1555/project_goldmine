@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 // @ts-ignore
 import * as mammoth from 'mammoth'
 import * as pdfjsLib from 'pdfjs-dist'
+import PizZip from 'pizzip'
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
@@ -21,7 +22,7 @@ export async function processDocumentClientSide(file: File, autoTags: boolean = 
 
   console.log(`Processing ${file.type} file: ${file.name}`)
 
-  // Extract text using appropriate library
+  // Extract text or content using appropriate method
   let extractedText: string
   
   if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
@@ -29,8 +30,15 @@ export async function processDocumentClientSide(file: File, autoTags: boolean = 
     extractedText = await extractTextFromDocx(file)
   } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
     extractedText = await extractTextFromPdf(file)
+  } else if (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+             file.name.toLowerCase().endsWith('.pptx')) {
+    extractedText = await extractTextFromPptx(file)
+  } else if (file.type.startsWith('image/')) {
+    extractedText = await processImage(file)
+  } else if (file.type.startsWith('audio/') || file.name.toLowerCase().endsWith('.mp3')) {
+    extractedText = await processAudio(file)
   } else {
-    throw new Error('Unsupported file type. Please upload PDF or DOCX files.')
+    throw new Error('Unsupported file type. Please upload PDF, DOCX, PPTX, image, or audio files.')
   }
 
   if (!extractedText.trim()) {
@@ -87,14 +95,23 @@ export async function processDocumentClientSide(file: File, autoTags: boolean = 
 }
 
 export async function extractTextOnly(file: File): Promise<string> {
-  // Extract text only without requiring the Gemini API key
+  // Extract text only without requiring the Gemini API key (for some file types)
   let extractedText = ''
   if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.toLowerCase().endsWith('.docx')) {
     extractedText = await extractTextFromDocx(file)
   } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
     extractedText = await extractTextFromPdf(file)
+  } else if (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+             file.name.toLowerCase().endsWith('.pptx')) {
+    extractedText = await extractTextFromPptx(file)
+  } else if (file.type.startsWith('image/')) {
+    // Images require Gemini API, so call processImage
+    extractedText = await processImage(file)
+  } else if (file.type.startsWith('audio/') || file.name.toLowerCase().endsWith('.mp3')) {
+    // Audio requires Gemini API, so call processAudio
+    extractedText = await processAudio(file)
   } else {
-    throw new Error('Unsupported file type. Please upload PDF or DOCX files.')
+    throw new Error('Unsupported file type. Please upload PDF, DOCX, PPTX, image, or audio files.')
   }
   return extractedText
 }
@@ -133,4 +150,165 @@ async function extractTextFromPdf(file: File): Promise<string> {
     console.error('Error extracting text from PDF:', error)
     throw new Error('Failed to extract text from PDF file')
   }
+}
+
+async function extractTextFromPptx(file: File): Promise<string> {
+  try {
+    console.log('Extracting text from PPTX using PizZip...')
+    const arrayBuffer = await file.arrayBuffer()
+    const zip = new PizZip(arrayBuffer)
+    
+    let fullText = ''
+    let slideNumber = 0
+    
+    // PPTX files store slides in ppt/slides/slide{n}.xml
+    // We'll extract text from slide XML files
+    Object.keys(zip.files).forEach((filename) => {
+      if (filename.startsWith('ppt/slides/slide') && filename.endsWith('.xml')) {
+        slideNumber++
+        const slideXml = zip.files[filename].asText()
+        
+        // Extract text from <a:t> tags (text runs in PowerPoint)
+        const textMatches = slideXml.match(/<a:t[^>]*>([^<]+)<\/a:t>/g)
+        
+        if (textMatches) {
+          const slideText = textMatches
+            .map(match => match.replace(/<[^>]+>/g, ''))
+            .join(' ')
+            .trim()
+          
+          if (slideText) {
+            fullText += `\n\n--- Slide ${slideNumber} ---\n${slideText}`
+          }
+        }
+      }
+    })
+    
+    console.log(`PPTX extraction successful: ${fullText.length} characters from ${slideNumber} slides`)
+    return fullText.trim()
+  } catch (error) {
+    console.error('Error extracting text from PPTX:', error)
+    throw new Error('Failed to extract text from PPTX file')
+  }
+}
+
+async function processImage(file: File): Promise<string> {
+  try {
+    console.log('Processing image with Gemini Vision API...')
+    
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your-gemini-api-key') {
+      throw new Error('Gemini API key not configured')
+    }
+    
+    // Convert image to base64
+    const base64Image = await fileToBase64(file)
+    
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              {
+                text: "Please analyze this image and provide a detailed description of its content. If the image contains text, transcribe it. If it contains diagrams, charts, or other visual information, describe them in detail. Be comprehensive and specific."
+              },
+              {
+                inline_data: {
+                  mime_type: file.type,
+                  data: base64Image.split(',')[1] // Remove data URL prefix
+                }
+              }
+            ]
+          }]
+        })
+      }
+    )
+    
+    if (!response.ok) {
+      throw new Error(`Gemini API request failed: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    
+    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+      const description = data.candidates[0].content.parts[0].text.trim()
+      console.log(`Image processing successful: ${description.length} characters`)
+      return description
+    } else {
+      throw new Error('No description generated from image')
+    }
+  } catch (error) {
+    console.error('Error processing image:', error)
+    throw new Error('Failed to process image file')
+  }
+}
+
+async function processAudio(file: File): Promise<string> {
+  try {
+    console.log('Processing audio with Gemini API...')
+    
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your-gemini-api-key') {
+      throw new Error('Gemini API key not configured')
+    }
+    
+    // Convert audio to base64
+    const base64Audio = await fileToBase64(file)
+    
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              {
+                text: "Please transcribe this audio file. Provide only the transcript text without any additional commentary or formatting."
+              },
+              {
+                inline_data: {
+                  mime_type: file.type,
+                  data: base64Audio.split(',')[1] // Remove data URL prefix
+                }
+              }
+            ]
+          }]
+        })
+      }
+    )
+    
+    if (!response.ok) {
+      throw new Error(`Gemini API request failed: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    
+    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+      const transcript = data.candidates[0].content.parts[0].text.trim()
+      console.log(`Audio transcription successful: ${transcript.length} characters`)
+      return transcript
+    } else {
+      throw new Error('No transcript generated from audio')
+    }
+  } catch (error) {
+    console.error('Error processing audio:', error)
+    throw new Error('Failed to transcribe audio file')
+  }
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result)
+      } else {
+        reject(new Error('Failed to convert file to base64'))
+      }
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
 }

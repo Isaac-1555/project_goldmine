@@ -26,15 +26,35 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (file: File) => {
-    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword']
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+      'audio/mpeg',
+      'audio/mp3'
+    ]
     
-    if (!allowedTypes.includes(file.type)) {
-      setError('Please select a PDF or DOCX file')
+    const isValidType = allowedTypes.includes(file.type) || 
+                        file.name.toLowerCase().endsWith('.pptx') ||
+                        file.name.toLowerCase().endsWith('.mp3')
+    
+    if (!isValidType) {
+      setError('Please select a PDF, DOCX, PPTX, image (PNG/JPG), or audio (MP3) file')
       return
     }
 
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
-      setError('File size must be less than 10MB')
+    // Different size limits for different file types
+    const maxSize = file.type.startsWith('audio/') || file.name.toLowerCase().endsWith('.mp3') 
+      ? 30 * 1024 * 1024  // 30MB for audio
+      : 10 * 1024 * 1024  // 10MB for documents and images
+    
+    if (file.size > maxSize) {
+      const limitText = maxSize === 30 * 1024 * 1024 ? '30MB' : '10MB'
+      setError(`File size must be less than ${limitText}`)
       return
     }
 
@@ -148,13 +168,13 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="upload-icon" />
-              <h4>Upload PDF or DOCX</h4>
+              <h4>Upload Document, Image, or Audio</h4>
               <p>Drag and drop your file here, or click to browse</p>
-              <p className="file-info">Maximum file size: 10MB</p>
+              <p className="file-info">PDF, DOCX, PPTX, PNG, JPG, MP3 • Max: 10MB (30MB for audio)</p>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.docx,.doc"
+                accept=".pdf,.docx,.doc,.pptx,.png,.jpg,.jpeg,.mp3"
                 onChange={handleFileInputChange}
                 style={{ display: 'none' }}
               />

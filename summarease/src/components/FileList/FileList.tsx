@@ -44,6 +44,10 @@ export const FileList: React.FC<FileListProps> = ({ onFileSelect, selectedFileId
         return '📄'
       case 'docx':
         return '📝'
+      case 'pptx':
+        return '📊'
+      case 'image':
+        return '🖼️'
       default:
         return '📄'
     }

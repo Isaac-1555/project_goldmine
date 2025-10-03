@@ -280,16 +280,22 @@ export async function uploadFile(file: File, title?: string, folderId?: string |
       throw new Error('User not authenticated')
     }
 
-    // Determine file type based on file extension
+    // Determine file type based on file extension and MIME type
     const fileExtension = file.name.split('.').pop()?.toLowerCase()
-    let fileType: 'pdf' | 'docx' | 'audio'
+    let fileType: 'pdf' | 'docx' | 'pptx' | 'image' | 'audio'
     
     if (fileExtension === 'pdf') {
       fileType = 'pdf'
     } else if (fileExtension === 'docx' || fileExtension === 'doc') {
       fileType = 'docx'
+    } else if (fileExtension === 'pptx' || file.type.includes('presentation')) {
+      fileType = 'pptx'
+    } else if (file.type.startsWith('image/') || ['png', 'jpg', 'jpeg'].includes(fileExtension || '')) {
+      fileType = 'image'
+    } else if (file.type.startsWith('audio/') || fileExtension === 'mp3') {
+      fileType = 'audio'
     } else {
-      throw new Error('Unsupported file type. Please upload PDF or DOCX files.')
+      throw new Error('Unsupported file type. Please upload PDF, DOCX, PPTX, image, or audio files.')
     }
 
     // Process document client-side as temporary workaround
