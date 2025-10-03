@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { type FileWithMetadata } from './api'
+import { type FileWithMetadata, getUserFiles } from './api'
 
 export interface TagSuggestion {
   name: string
@@ -103,6 +103,22 @@ export async function getCombinedSuggestions(searchTerm: string): Promise<Search
 }
 
 /**
+ * Helper: client-side filtering using file metadata (fallback when RPC yields no results)
+ */
+async function clientFilterFilesByTags(tags: string[], logic: 'AND' | 'OR'): Promise<FileWithMetadata[]> {
+  if (tags.length === 0) return []
+  const lcTags = tags.map(t => t.toLowerCase())
+  const files = await getUserFiles()
+  return files.filter(f => {
+    const fileTags = (f.tags || []).map(t => (t || '').toLowerCase())
+    if (logic === 'AND') {
+      return lcTags.every(t => fileTags.includes(t))
+    }
+    return lcTags.some(t => fileTags.includes(t))
+  })
+}
+
+/**
  * Search files by selected tags with AND/OR logic
  */
 export async function searchFilesByTags(
@@ -131,11 +147,11 @@ export async function searchFilesByTags(
 
     if (error) {
       console.error('Error searching files by tags:', error)
-      return []
+      // Fallback to client-side filtering
+      return clientFilterFilesByTags(tags, logic)
     }
 
-    // Map the RPC results to our FileWithMetadata interface
-    return (data || []).map((file: any) => ({
+    const mapped = (data || []).map((file: any) => ({
       id: file.file_id,
       title: file.title,
       file_type: file.file_type,
@@ -147,6 +163,13 @@ export async function searchFilesByTags(
       tags: file.tags || [],
       filename: file.title // Use title as filename fallback
     }))
+
+    // If RPC unexpectedly returns no rows, fall back to client-side filtering
+    if (mapped.length === 0) {
+      return clientFilterFilesByTags(tags, logic)
+    }
+
+    return mapped
   } catch (error) {
     console.error('Error in searchFilesByTags:', error)
     return []
@@ -184,11 +207,14 @@ export async function searchFilesByMixedCriteria(
 
     if (error) {
       console.error('Error searching files by mixed criteria:', error)
+      // If only tags are provided, fall back client-side; otherwise return empty for now
+      if (lowerCaseTags.length > 0 && filenames.length === 0) {
+        return clientFilterFilesByTags(lowerCaseTags, tagLogic)
+      }
       return []
     }
 
-    // Map the RPC results to our FileWithMetadata interface
-    return (data || []).map((file: any) => ({
+    const mapped = (data || []).map((file: any) => ({
       id: file.file_id,
       title: file.title,
       file_type: file.file_type,
@@ -200,6 +226,13 @@ export async function searchFilesByMixedCriteria(
       tags: file.tags || [],
       filename: file.title // Use title as filename fallback
     }))
+
+    // If RPC returns no rows but we do have tags (and no filename terms), use client-side filtering
+    if (mapped.length === 0 && lowerCaseTags.length > 0 && filenames.length === 0) {
+      return clientFilterFilesByTags(lowerCaseTags, tagLogic)
+    }
+
+    return mapped
   } catch (error) {
     console.error('Error in searchFilesByMixedCriteria:', error)
     return []
