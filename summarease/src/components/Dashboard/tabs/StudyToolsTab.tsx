@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { BookOpen, Brain, ArrowLeft, Search, X, Clock, Play, BarChart3, HelpCircle, ChevronRight, ChevronLeft, Trash2 } from 'lucide-react'
 import { getUserFiles, type FileWithMetadata } from '../../../lib/api'
-import { 
+import {
   createSimpleQuiz, 
   getUserSimpleQuizzes, 
   getSimpleQuizById, 
@@ -11,10 +11,24 @@ import {
   type SimpleQuiz,
   type SimpleQuizAttempt
 } from '../../../lib/quizServiceSimple'
+import {
+  createFlashcardSet,
+  getUserFlashcardSets,
+  getFlashcardSetById,
+  submitFlashcardReviews,
+  deleteFlashcardSet,
+  computePerSourceMax,
+  type FlashcardSet,
+  type Flashcard,
+  type FlashcardType,
+  type GenerateFlashcardsOptions
+} from '../../../lib/flashcardsServiceV2'
 import './StudyToolsTab.css'
 
 type QuestionType = 'mcq' | 'true-false' | 'fill-blank' | 'short-answer'
 type ViewState = 'menu' | 'quiz-select' | 'quiz-taking' | 'quiz-results' | 'flashcard-select' | 'flashcards'
+
+type FlashcardQuestionType = 'term-definition' | 'qa' | 'cloze'
 
 interface QuizState {
   currentQuiz: SimpleQuizSet | null
@@ -40,6 +54,21 @@ export const StudyToolsTab: React.FC = () => {
 
   // Quiz-specific state
   const [quizSets, setQuizSets] = useState<SimpleQuizSet[]>([])
+
+  // Flashcards-specific state
+  const [flashcardSets, setFlashcardSets] = useState<FlashcardSet[]>([])
+  const [flashcardSetsLoading, setFlashcardSetsLoading] = useState(false)
+  const [selectedFlashcardTypes, setSelectedFlashcardTypes] = useState<FlashcardQuestionType[]>(['term-definition','qa','cloze'])
+  const [autoOpenNewFlashcards, setAutoOpenNewFlashcards] = useState(() => {
+    const saved = localStorage.getItem('summarease_auto_open_flashcards')
+    return saved !== null ? JSON.parse(saved) : true
+  })
+  const [perSourceDefaultCount, setPerSourceDefaultCount] = useState<number>(10)
+  const [perSourceMaxCount, setPerSourceMaxCount] = useState<number>(10)
+  const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false)
+  const [currentFlashcardSet, setCurrentFlashcardSet] = useState<FlashcardSet | null>(null)
+  const [flashcardIndex, setFlashcardIndex] = useState(0)
+  const [isFlipped, setIsFlipped] = useState(false)
   const [quizSetsLoading, setQuizSetsLoading] = useState(false)
   const [quizState, setQuizState] = useState<QuizState>({
     currentQuiz: null,
@@ -70,9 +99,10 @@ export const StudyToolsTab: React.FC = () => {
     }
   }, [view])
 
-  // Load quiz sets on component mount and after quiz creation
+  // Load quiz and flashcard sets on component mount
   useEffect(() => {
     loadQuizSets()
+    loadFlashcardSets()
   }, [])
 
   // Filter files based on search query
@@ -143,6 +173,18 @@ export const StudyToolsTab: React.FC = () => {
     }
   }
 
+  const loadFlashcardSets = async () => {
+    try {
+      setFlashcardSetsLoading(true)
+      const sets = await getUserFlashcardSets()
+      setFlashcardSets(sets)
+    } catch (err) {
+      console.error('Error loading flashcard sets:', err)
+    } finally {
+      setFlashcardSetsLoading(false)
+    }
+  }
+
   // Get unique tags from all files
   const getAllTags = () => {
     const allTags = files.flatMap(file => file.tags || [])
@@ -187,6 +229,18 @@ export const StudyToolsTab: React.FC = () => {
     if (type === 'mcq') {
       setSelectedQuestionTypes(['mcq'])
     }
+  }
+
+  const handleFlashcardTypeToggle = (type: FlashcardQuestionType) => {
+    setSelectedFlashcardTypes(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    )
+  }
+
+  const toggleAutoOpenFlashcards = () => {
+    const newValue = !autoOpenNewFlashcards
+    setAutoOpenNewFlashcards(newValue)
+    localStorage.setItem('summarease_auto_open_flashcards', JSON.stringify(newValue))
   }
 
   const handleGenerateQuiz = async () => {
@@ -255,6 +309,53 @@ export const StudyToolsTab: React.FC = () => {
       setError(err.message || 'Failed to generate quiz')
     } finally {
       setIsGeneratingQuiz(false)
+    }
+  }
+
+  const handleGenerateFlashcards = async () => {
+    if (selectedFiles.length === 0) {
+      setError('Please select at least one file')
+      return
+    }
+    try {
+      setIsGeneratingFlashcards(true)
+      setError(null)
+      // Compute per-source max from first selected summary (approx)
+      const summaryTexts = selectedFiles.map(f => f.summary_text || f.summary || '').filter(Boolean)
+      const fileIds = selectedFiles.map(f => f.id)
+      if (summaryTexts.length === 0) {
+        setError('Selected files have no summary content')
+        return
+      }
+      // Use first text to estimate max; could be refined to per-file UI
+      const max = computePerSourceMax(summaryTexts[0])
+      setPerSourceMaxCount(max)
+
+      const title = selectedFiles.length === 1 
+        ? `Flashcards: ${selectedFiles[0].title || selectedFiles[0].filename}`
+        : `Flashcards: ${selectedFiles.length} Files`
+
+      const options: GenerateFlashcardsOptions = {
+        types: selectedFlashcardTypes as FlashcardType[],
+        perSourceDefault: perSourceDefaultCount,
+        perSourceMax: max,
+        includeImages: false
+      }
+      const set = await createFlashcardSet(summaryTexts, fileIds, title, options)
+      await loadFlashcardSets()
+      setSelectedFiles([])
+      setSearchQuery('')
+      if (autoOpenNewFlashcards) {
+        showNotification(`Flashcards "${title}" created! Opening...`, 2000)
+        setTimeout(() => handleStartFlashcards(set.id), 400)
+      } else {
+        showNotification(`Flashcards "${title}" created. Find it in the sidebar.`, 4000)
+      }
+    } catch (err: any) {
+      console.error('Error generating flashcards:', err)
+      setError(err.message || 'Failed to generate flashcards')
+    } finally {
+      setIsGeneratingFlashcards(false)
     }
   }
 
@@ -363,6 +464,79 @@ export const StudyToolsTab: React.FC = () => {
 
   // Remove handleCompleteQuiz as we now complete directly in handleNextQuestion
 
+  const handleStartFlashcards = async (setId: string) => {
+    try {
+      const set = await getFlashcardSetById(setId)
+      if (!set) throw new Error('Flashcards not found')
+      setCurrentFlashcardSet(set)
+      setFlashcardIndex(0)
+      setIsFlipped(false)
+      setView('flashcards')
+    } catch (err: any) {
+      setError(err.message || 'Failed to open flashcards')
+    }
+  }
+
+  const handleDeleteFlashcards = async (summaryId: string) => {
+    if (!window.confirm('Are you sure you want to delete this flashcard set? This action cannot be undone.')) return
+    try {
+      await deleteFlashcardSet(summaryId)
+      await loadFlashcardSets()
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete flashcards')
+    }
+  }
+
+  const handleFlashNext = () => {
+    if (!currentFlashcardSet) return
+    setIsFlipped(false)
+    setFlashcardIndex(i => Math.min(i + 1, currentFlashcardSet.cards.length - 1))
+  }
+
+  // Keyboard shortcuts for flashcards view
+  useEffect(() => {
+    if (view !== 'flashcards') return
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      const tag = target?.tagName
+      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable
+      if (isTyping) return
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault()
+        setIsFlipped(f => !f)
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        handleFlashPrev()
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        handleFlashNext()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [view, currentFlashcardSet])
+
+  const handleFlashPrev = () => {
+    setIsFlipped(false)
+    setFlashcardIndex(i => Math.max(0, i - 1))
+  }
+
+  const handleFlashMark = async (ease: 'again' | 'good') => {
+    const card = currentFlashcardSet?.cards[flashcardIndex]
+    if (!card) return
+    try {
+      await submitFlashcardReviews([{ card_id: card.id, ease }])
+      if (ease === 'good') {
+        handleFlashNext()
+      } else {
+        // keep in place but flip back
+        setIsFlipped(false)
+      }
+    } catch (err) {
+      console.error('review failed', err)
+    }
+  }
+
   const handleBackToMenu = () => {
     setView('menu')
     setSelectedFiles([])
@@ -386,8 +560,8 @@ export const StudyToolsTab: React.FC = () => {
 
   // Render left sidebar
   const renderLeftSidebar = () => {
-    if (view === 'menu' || view === 'flashcard-select' || view === 'flashcards') {
-      return null // No sidebar for these views
+    if (view === 'menu') {
+      return null
     }
 
     return (
@@ -435,7 +609,7 @@ export const StudyToolsTab: React.FC = () => {
           </div>
         </div>
 
-        {/* Question Type Selection */}
+        {/* Question Type Selection (Quiz) */}
         {view === 'quiz-select' && (
           <div className="sidebar-section">
             <h3>Question Types</h3>
@@ -476,6 +650,46 @@ export const StudyToolsTab: React.FC = () => {
           </div>
         )}
 
+        {/* Flashcard Filters & Settings */}
+        {view === 'flashcard-select' && (
+          <div className="sidebar-section">
+            <h3>Flashcard Types</h3>
+            <div className="question-type-checkboxes">
+              {(['term-definition','qa','cloze'] as FlashcardQuestionType[]).map((t) => (
+                <label key={t} className="checkbox-label">
+                  <input type="checkbox" checked={selectedFlashcardTypes.includes(t)} onChange={() => handleFlashcardTypeToggle(t)} />
+                  {t === 'term-definition' ? 'Term/Definition' : t === 'qa' ? 'Q/A' : 'Cloze'}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Flashcard Settings */}
+        {view === 'flashcard-select' && (
+          <div className="sidebar-section">
+            <h3>Flashcard Settings</h3>
+            <label className="checkbox-label">
+              <input type="checkbox" checked={autoOpenNewFlashcards} onChange={toggleAutoOpenFlashcards} />
+              Auto-open new sets
+            </label>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+                Cards per source (default):
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={perSourceMaxCount}
+                value={perSourceDefaultCount}
+                onChange={(e) => setPerSourceDefaultCount(Math.max(1, Math.min(perSourceMaxCount, Number(e.target.value))))}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid var(--border-primary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              />
+              <p className="settings-description">Max based on content length: {perSourceMaxCount}</p>
+            </div>
+          </div>
+        )}
+
         {/* Quiz Settings */}
         {view === 'quiz-select' && (
           <div className="sidebar-section">
@@ -497,6 +711,30 @@ export const StudyToolsTab: React.FC = () => {
           </div>
         )}
         
+        {/* Generate Flashcards Button */}
+        {view === 'flashcard-select' && (
+          <div className="sidebar-section">
+            <button
+              className={`generate-quiz-button ${selectedFiles.length === 0 ? 'disabled' : ''}`}
+              onClick={handleGenerateFlashcards}
+              disabled={isGeneratingFlashcards || selectedFiles.length === 0}
+            >
+              {isGeneratingFlashcards ? (
+                <>
+                  <div className="loading-spinner small"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <BookOpen />
+                  Generate Flashcards ({selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected)
+                </>
+              )}
+            </button>
+            {error && <div className="error-message">{error}</div>}
+          </div>
+        )}
+
         {/* Generate Quiz Button */}
         {view === 'quiz-select' && (
           <div className="sidebar-section">
@@ -526,15 +764,52 @@ export const StudyToolsTab: React.FC = () => {
 
   // Render right sidebar
   const renderRightSidebar = () => {
-    if (view === 'menu' || view === 'flashcard-select' || view === 'flashcards') {
-      return null // No sidebar for these views
+    if (view === 'menu') {
+      return null
     }
+
+    // Right sidebar switches title/content based on view
+    const isFlashSelect = view === 'flashcard-select' || view === 'flashcards'
 
     return (
       <div className="quiz-right-sidebar">
         <div className="sidebar-section">
-          <h3>Previous Quizzes</h3>
-          {quizSetsLoading ? (
+          <h3>{isFlashSelect ? 'Previous Flashcard Sets' : 'Previous Quizzes'}</h3>
+          {isFlashSelect ? (
+            flashcardSetsLoading ? (
+              <div className="loading-container small">
+                <div className="loading-spinner small"></div>
+                <p>Loading sets...</p>
+              </div>
+            ) : flashcardSets.length === 0 ? (
+              <div className="empty-state small">
+                <p>No flashcard sets yet. Generate your first set!</p>
+              </div>
+            ) : (
+              <div className="previous-quizzes-list">
+                {flashcardSets.map((set) => (
+                  <div key={set.id} className="quiz-item">
+                    <div className="quiz-item-content">
+                      <div className="quiz-title-row">
+                        <h4>{set.title}</h4>
+                      </div>
+                      <p>{set.cards.length} cards</p>
+                      <span className="quiz-date">{new Date(set.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className="quiz-item-actions">
+                      <button className="retake-quiz-button" onClick={() => handleStartFlashcards(set.id)} title="Open">
+                        <Play />
+                      </button>
+                      <button className="delete-quiz-button" onClick={(e) => { e.stopPropagation(); handleDeleteFlashcards(set.summary_id) }} title="Delete">
+                        <Trash2 />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (
+            quizSetsLoading ? (
             <div className="loading-container small">
               <div className="loading-spinner small"></div>
               <p>Loading quizzes...</p>
@@ -587,7 +862,8 @@ export const StudyToolsTab: React.FC = () => {
                 )
               })}
             </div>
-          )}
+          )
+        )}
         </div>
       </div>
     )
@@ -635,6 +911,65 @@ export const StudyToolsTab: React.FC = () => {
             </button>
             <h2>Select Content for Quiz</h2>
             <p>Choose summaries to generate quiz questions from</p>
+          </div>
+
+          {loading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Loading your content...</p>
+            </div>
+          ) : files.length === 0 ? (
+            <div className="empty-state">
+              <p>No processed content available. Upload and process some content first.</p>
+            </div>
+          ) : (
+            <div className="file-selection">
+              {filteredFiles.map((file) => {
+                const isSelected = selectedFiles.some(f => f.id === file.id)
+                return (
+                  <div
+                    key={file.id}
+                    className={`selectable-file-card ${isSelected ? 'selected' : ''}`}
+                    onClick={() => handleFileToggle(file)}
+                  >
+                    <div className="file-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleFileToggle(file)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <h3>{file.title || file.filename}</h3>
+                    <div className="file-tags">
+                      <div className="file-tags-inner">
+                        {file.tags && file.tags.length > 0 ? (
+                          file.tags.map((tag, index) => (
+                            <span key={index} className="tag">{tag}</span>
+                          ))
+                        ) : (
+                          <span className="tag no-tags">No tags</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    if (view === 'flashcard-select') {
+      return (
+        <div className="quiz-main-content">
+          <div className="quiz-content-header">
+            <button className="back-button" onClick={handleBackToMenu}>
+              <ArrowLeft />
+            </button>
+            <h2>Select Content for Flashcards</h2>
+            <p>Choose summaries to generate flashcards from</p>
           </div>
 
           {loading ? (
@@ -863,7 +1198,52 @@ export const StudyToolsTab: React.FC = () => {
       )
     }
 
-    // Fallback for other views (flashcards, etc.)
+    // Flashcards player view
+    if (view === 'flashcards' && currentFlashcardSet) {
+      const card = currentFlashcardSet.cards[flashcardIndex]
+      return (
+        <div className="quiz-taking-container">
+          <div className="quiz-header">
+            <button className="back-button" onClick={handleBackToMenu}>
+              <ArrowLeft />
+            </button>
+            <div className="quiz-progress">
+              <h2>{currentFlashcardSet.title}</h2>
+              <div className="progress-info">
+                <span>Card {flashcardIndex + 1} of {currentFlashcardSet.cards.length}</span>
+              </div>
+            </div>
+          </div>
+          <div className="question-content" style={{ alignItems: 'center' }}>
+            <div className="question-text" style={{ width: '100%', maxWidth: 900 }}>
+              <div
+                onClick={() => setIsFlipped(f => !f)}
+                className={`flashcard-card ${isFlipped ? 'back' : 'front'}`}
+                aria-live="polite"
+              >
+                <h3 style={{ margin: 0 }}>
+                  {isFlipped ? (card as any).answer_text || (card as any).back : (card as any).question_text || (card as any).front}
+                </h3>
+              </div>
+            </div>
+            <div className="question-navigation">
+              <button className="nav-button" onClick={handleFlashPrev} disabled={flashcardIndex === 0}>
+                <ChevronLeft /> Previous
+              </button>
+              <button className="nav-button" onClick={() => setIsFlipped(f => !f)}>
+                {isFlipped ? 'Show Front' : 'Flip'}
+              </button>
+              <button className="nav-button primary" onClick={() => handleFlashNext()} disabled={flashcardIndex === currentFlashcardSet.cards.length - 1}>
+                Next <ChevronRight />
+              </button>
+            </div>
+            <p className="kb-hint">Tip: press Space to flip; use ← → to navigate.</p>
+          </div>
+        </div>
+      )
+    }
+
+    // Fallback
     return (
       <div className="coming-soon-placeholder">
         <HelpCircle className="placeholder-icon" />
