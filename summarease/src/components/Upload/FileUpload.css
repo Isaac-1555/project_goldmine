@@ -206,18 +206,12 @@
   align-items: center;
   gap: 0.5rem;
   padding: 1rem 1.5rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #dc2626;
+  background: var(--color-error-bg);
+  border: 1px solid var(--border-error);
+  color: var(--color-error);
   border-radius: 6px;
   margin: 0 1.5rem 1.5rem 1.5rem;
   font-size: 0.875rem;
-}
-
-[data-theme="dark"] .error-message {
-  background: #450a0a;
-  border-color: #7f1d1d;
-  color: #fca5a5;
 }
 
 .error-icon {

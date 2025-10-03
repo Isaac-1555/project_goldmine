@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { Upload, X, FileText, AlertCircle } from 'lucide-react'
+import { Upload, FileText, AlertCircle } from 'lucide-react'
 import { uploadFile } from '../../lib/api'
 import './FileUploadModal.css'
 
@@ -146,9 +146,6 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
       <div className="upload-modal">
         <div className="modal-header">
           <h3>Upload Document</h3>
-          <button onClick={handleClose} className="close-button">
-            <X />
-          </button>
         </div>
 
         <div className="modal-content">
@@ -191,8 +188,9 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
                   onClick={() => setSelectedFile(null)}
                   className="remove-file"
                   disabled={uploading}
+                  title="Remove file"
                 >
-                  <X />
+                  ×
                 </button>
               </div>
 
