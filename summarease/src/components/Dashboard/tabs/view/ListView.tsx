@@ -141,7 +141,7 @@ export const ListView: React.FC<ListViewProps> = ({
 
   const loadLocalNotebooks = () => {
     try {
-      const localData = JSON.parse(localStorage.getItem('summarease-local-notebooks') || '[]')
+      const localData = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
       // Show only the latest local notebook
       const latestNotebook = localData.length > 0 
         ? [localData.sort((a: any, b: any) => new Date(b.lastSaved).getTime() - new Date(a.lastSaved).getTime())[0]]
@@ -187,9 +187,9 @@ export const ListView: React.FC<ListViewProps> = ({
       setDeletingId(fileId)
       if (isLocal) {
         // Delete from localStorage
-        const existingLocal = JSON.parse(localStorage.getItem('summarease-local-notebooks') || '[]')
+        const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
         const filtered = existingLocal.filter((item: any) => item.id !== fileId)
-        localStorage.setItem('summarease-local-notebooks', JSON.stringify(filtered))
+        localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(filtered))
         loadLocalNotebooks()
       } else {
         const ok = await deleteFile(fileId)

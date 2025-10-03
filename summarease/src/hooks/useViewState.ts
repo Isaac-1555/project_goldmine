@@ -139,8 +139,8 @@ const getDefaultState = (): ViewTabState => ({
 
 // localStorage keys
 const STORAGE_KEYS = {
-  VIEW_STATE: 'summarease-view-state',
-  VIEW_PREFERENCES: 'summarease-view-preferences'
+  VIEW_STATE: 'sat-brain-view-state',
+  VIEW_PREFERENCES: 'sat-brain-view-preferences'
 }
 
 /**

@@ -10,7 +10,7 @@ export interface UserSummarySettings {
   lengthPreference: SummaryConfig['lengthPreference'];
 }
 
-const SETTINGS_KEY = 'summarease_summary_settings';
+const SETTINGS_KEY = 'sat-brain_summary_settings';
 
 const defaultSettings: UserSummarySettings = {
   includeInfographics: false,

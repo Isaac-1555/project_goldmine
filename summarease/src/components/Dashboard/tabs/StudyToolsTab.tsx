@@ -60,7 +60,7 @@ export const StudyToolsTab: React.FC = () => {
   const [flashcardSetsLoading, setFlashcardSetsLoading] = useState(false)
   const [selectedFlashcardTypes, setSelectedFlashcardTypes] = useState<FlashcardQuestionType[]>(['term-definition','qa','cloze'])
   const [autoOpenNewFlashcards, setAutoOpenNewFlashcards] = useState(() => {
-    const saved = localStorage.getItem('summarease_auto_open_flashcards')
+    const saved = localStorage.getItem('sat-brain_auto_open_flashcards')
     return saved !== null ? JSON.parse(saved) : true
   })
   const [perSourceDefaultCount, setPerSourceDefaultCount] = useState<number>(10)
@@ -88,7 +88,7 @@ export const StudyToolsTab: React.FC = () => {
   
   // User preference for auto-opening quizzes (default: true for better UX)
   const [autoOpenNewQuiz, setAutoOpenNewQuiz] = useState(() => {
-    const saved = localStorage.getItem('summarease_auto_open_quiz')
+    const saved = localStorage.getItem('sat-brain_auto_open_quiz')
     return saved !== null ? JSON.parse(saved) : true
   })
 
@@ -143,7 +143,7 @@ export const StudyToolsTab: React.FC = () => {
   const toggleAutoOpenQuiz = () => {
     const newValue = !autoOpenNewQuiz
     setAutoOpenNewQuiz(newValue)
-    localStorage.setItem('summarease_auto_open_quiz', JSON.stringify(newValue))
+    localStorage.setItem('sat-brain_auto_open_quiz', JSON.stringify(newValue))
   }
 
   const loadFiles = async () => {
@@ -240,7 +240,7 @@ export const StudyToolsTab: React.FC = () => {
   const toggleAutoOpenFlashcards = () => {
     const newValue = !autoOpenNewFlashcards
     setAutoOpenNewFlashcards(newValue)
-    localStorage.setItem('summarease_auto_open_flashcards', JSON.stringify(newValue))
+    localStorage.setItem('sat-brain_auto_open_flashcards', JSON.stringify(newValue))
   }
 
   const handleGenerateQuiz = async () => {

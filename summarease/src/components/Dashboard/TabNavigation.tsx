@@ -22,7 +22,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, onTabCh
       <div className="navbar-content">
         <div className="navbar-brand">
           <div className="logo-placeholder"></div>
-          <h1 className="app-title">Summarease</h1>
+          <h1 className="app-title">Sat-Brain</h1>
         </div>
         <div className="tab-container">
           {tabs.map((tab) => {

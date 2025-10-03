@@ -62,8 +62,8 @@ const INITIAL_STATE: NotebookState = {
 }
 
 const STORAGE_KEYS = {
-  NOTEBOOK_STATE: 'summarease-notebook-state',
-  LOCAL_NOTEBOOKS: 'summarease-local-notebooks'
+  NOTEBOOK_STATE: 'sat-brain-notebook-state',
+  LOCAL_NOTEBOOKS: 'sat-brain-local-notebooks'
 }
 
 export const useNotebookState = (): [NotebookState, NotebookActions] => {

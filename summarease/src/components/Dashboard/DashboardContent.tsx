@@ -10,7 +10,7 @@ export const DashboardContent: React.FC = () => {
   return (
     <div className="dashboard-content">
       <div className="dashboard-header">
-        <h1>Welcome to SummarEase</h1>
+        <h1>Welcome to Sat-Brain</h1>
         <p>Transform your content into knowledge with AI-powered summaries and insights</p>
       </div>
 
@@ -66,7 +66,7 @@ export const DashboardContent: React.FC = () => {
       </div>
 
       <div className="features-overview">
-        <h2>What you can do with SummarEase</h2>
+        <h2>What you can do with Sat-Brain</h2>
         <div className="features-grid">
           <div className="feature-item">
             <h4>🎤 Audio Transcription</h4>

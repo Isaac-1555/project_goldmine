@@ -70,7 +70,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
       <div className="auth-card">
         <div className="auth-header">
           <h1>Create your account</h1>
-          <p>Get started with SummarEase today</p>
+          <p>Get started with Sat-Brain today</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">

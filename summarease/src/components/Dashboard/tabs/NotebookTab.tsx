@@ -428,7 +428,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       }
       
       // Save to localStorage
-      const existingLocal = JSON.parse(localStorage.getItem('summarease-local-notebooks') || '[]')
+      const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
       const existingIndex = existingLocal.findIndex((item: any) => item.id === localData.id)
       
       if (existingIndex >= 0) {
@@ -437,7 +437,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         existingLocal.push(localData)
       }
       
-      localStorage.setItem('summarease-local-notebooks', JSON.stringify(existingLocal))
+      localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(existingLocal))
       
       setIsLocalSave(true)
       setLocalSaveId(localData.id)
@@ -492,7 +492,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           }
           
           // Update in localStorage
-          const existingLocal = JSON.parse(localStorage.getItem('summarease-local-notebooks') || '[]')
+          const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
           const existingIndex = existingLocal.findIndex((item: any) => item.id === editingFileId)
           
           if (existingIndex >= 0) {
@@ -501,7 +501,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
             existingLocal.push(localData)
           }
           
-          localStorage.setItem('summarease-local-notebooks', JSON.stringify(existingLocal))
+          localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(existingLocal))
           
           alert('Local notebook updated successfully!')
           onExitEdit?.()
@@ -612,9 +612,9 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         // Clear local storage and reset form
         if (localSaveId) {
           try {
-            const existingLocal = JSON.parse(localStorage.getItem('summarease-local-notebooks') || '[]')
+            const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
             const filtered = existingLocal.filter((item: any) => item.id !== localSaveId)
-            localStorage.setItem('summarease-local-notebooks', JSON.stringify(filtered))
+            localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(filtered))
           } catch (error) {
             console.error('Error removing local save:', error)
           }

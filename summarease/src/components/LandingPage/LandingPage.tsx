@@ -20,7 +20,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin }) =
         <div className="nav-container">
           <div className="nav-logo">
             <Brain className="logo-icon" />
-            <span>SummarEase</span>
+            <span>Sat-Brain</span>
           </div>
           <div className="nav-links">
             <button onClick={scrollToFeatures} className="nav-link">

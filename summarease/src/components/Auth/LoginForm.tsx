@@ -34,7 +34,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
       <div className="auth-card">
         <div className="auth-header">
           <h1>Welcome back</h1>
-          <p>Sign in to your SummarEase account</p>
+          <p>Sign in to your Sat-Brain account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
