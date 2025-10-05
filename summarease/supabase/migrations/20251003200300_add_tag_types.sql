@@ -16,6 +16,11 @@ ALTER TABLE public.tags ALTER COLUMN type SET NOT NULL;
 -- Add index for better performance when filtering by tag type
 CREATE INDEX IF NOT EXISTS idx_tags_type ON public.tags(type);
 
+-- Drop and recreate functions to change return type from TEXT[] to JSONB
+DROP FUNCTION IF EXISTS public.get_user_files_with_metadata(UUID);
+DROP FUNCTION IF EXISTS public.get_knowledge_graph_data(UUID);
+DROP FUNCTION IF EXISTS search_files_by_tags(UUID, TEXT[], TEXT);
+
 -- Update the get_user_files_with_metadata function to include tag types
 CREATE OR REPLACE FUNCTION public.get_user_files_with_metadata(user_uuid UUID)
 RETURNS TABLE (

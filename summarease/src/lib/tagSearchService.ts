@@ -119,6 +119,19 @@ async function clientFilterFilesByTags(tags: string[], logic: 'AND' | 'OR'): Pro
 }
 
 /**
+ * Helper: client-side filtering by filename terms (case-insensitive, contains)
+ */
+async function clientFilterFilesByFilenames(terms: string[]): Promise<FileWithMetadata[]> {
+  if (terms.length === 0) return []
+  const lcTerms = terms.map(t => t.toLowerCase())
+  const files = await getUserFiles()
+  return files.filter(f => {
+    const title = (f.title || f.filename || '').toLowerCase()
+    return lcTerms.some(term => title.includes(term))
+  })
+}
+
+/**
  * Search files by selected tags with AND/OR logic
  */
 export async function searchFilesByTags(
@@ -223,9 +236,24 @@ export async function searchFilesByMixedCriteria(
 
     if (error) {
       console.error('Error searching files by mixed criteria:', error)
-      // If only tags are provided, fall back client-side; otherwise return empty for now
+      // Fallbacks when RPC fails
       if (lowerCaseTags.length > 0 && filenames.length === 0) {
+        // Tags only
         return clientFilterFilesByTags(lowerCaseTags, tagLogic)
+      }
+      if (lowerCaseTags.length === 0 && filenames.length > 0) {
+        // Filenames only
+        return clientFilterFilesByFilenames(filenames)
+      }
+      if (lowerCaseTags.length > 0 && filenames.length > 0) {
+        // Both criteria: OR logic between filename match and tag match
+        const [byTags, byNames] = await Promise.all([
+          clientFilterFilesByTags(lowerCaseTags, tagLogic),
+          clientFilterFilesByFilenames(filenames)
+        ])
+        const dedup: Record<string, FileWithMetadata> = {}
+        ;[...byTags, ...byNames].forEach(f => { dedup[f.id] = f })
+        return Object.values(dedup)
       }
       return []
     }
@@ -259,9 +287,23 @@ export async function searchFilesByMixedCriteria(
       }
     })
 
-    // If RPC returns no rows but we do have tags (and no filename terms), use client-side filtering
-    if (mapped.length === 0 && lowerCaseTags.length > 0 && filenames.length === 0) {
-      return clientFilterFilesByTags(lowerCaseTags, tagLogic)
+    // If RPC returns no rows, provide client-side fallbacks
+    if (mapped.length === 0) {
+      if (lowerCaseTags.length > 0 && filenames.length === 0) {
+        return clientFilterFilesByTags(lowerCaseTags, tagLogic)
+      }
+      if (lowerCaseTags.length === 0 && filenames.length > 0) {
+        return clientFilterFilesByFilenames(filenames)
+      }
+      if (lowerCaseTags.length > 0 && filenames.length > 0) {
+        const [byTags, byNames] = await Promise.all([
+          clientFilterFilesByTags(lowerCaseTags, tagLogic),
+          clientFilterFilesByFilenames(filenames)
+        ])
+        const dedup: Record<string, FileWithMetadata> = {}
+        ;[...byTags, ...byNames].forEach(f => { dedup[f.id] = f })
+        return Object.values(dedup)
+      }
     }
 
     return mapped
