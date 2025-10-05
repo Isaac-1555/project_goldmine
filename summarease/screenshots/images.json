@@ -1,0 +1,44 @@
+{
+  "images": [
+    {
+      "name": "desktop_hero",
+      "path": "screenshots/desktop-hero.svg",
+      "width": 1440,
+      "height": 900,
+      "alt": "Sat-Brain landing hero placeholder with brand gradient and CTA.",
+      "suggested_replacement_prompt": "High-fidelity desktop app mockup of Sat-Brain showing a PDF summary and Q&A panel. Clean UI, minimal chrome, subtle gradient background in #3b82f6. 2400×1600, WebP, <=300KB."
+    },
+    {
+      "name": "desktop_fullpage",
+      "path": "screenshots/desktop-fullpage.svg",
+      "width": 1440,
+      "height": 2400,
+      "alt": "Sat-Brain full-page landing placeholder with brand gradient.",
+      "suggested_replacement_prompt": "Full-page capture of Sat-Brain landing: hero with headline and CTA, features grid (4 cards), pricing table, and FAQ. Clean UI, 1440×2400, WebP, <=400KB."
+    },
+    {
+      "name": "mobile_hero",
+      "path": "screenshots/mobile-hero.svg",
+      "width": 390,
+      "height": 844,
+      "alt": "Sat-Brain mobile hero placeholder with brand gradient and CTA.",
+      "suggested_replacement_prompt": "Mobile mockup of Sat-Brain hero showing headline and CTA over subtle gradient in #3b82f6. 1080×1920, WebP, <=200KB."
+    },
+    {
+      "name": "mobile_fullpage",
+      "path": "screenshots/mobile-fullpage.svg",
+      "width": 390,
+      "height": 2200,
+      "alt": "Sat-Brain full-page mobile landing placeholder.",
+      "suggested_replacement_prompt": "Full mobile page capture with hero, features, pricing, and FAQ. 1440×3168, WebP, <=300KB."
+    },
+    {
+      "name": "og_image",
+      "path": "screenshots/og-image-1200x630.svg",
+      "width": 1200,
+      "height": 630,
+      "alt": "Open Graph share image placeholder: Sat-Brain — AI document summarizer for students.",
+      "suggested_replacement_prompt": "Social share image (1200×630) featuring Sat-Brain logo/title over brand gradient, legible on small previews. WebP/PNG, <=300KB."
+    }
+  ]
+}

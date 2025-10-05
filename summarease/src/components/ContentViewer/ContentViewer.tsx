@@ -456,9 +456,21 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
   if (loading) {
     return (
       <div className="content-viewer">
-        <div className="loading-content">
-          <div className="loading-spinner"></div>
-          <p>Loading content...</p>
+        <div className="content-viewer-loading loading-overlay" role="status" aria-live="polite">
+          <div className="loading-center">
+            <div className="loading-spinner" aria-hidden="true"></div>
+            <p className="loading-text">Preparing your summary…</p>
+          </div>
+          <div className="skeleton-container" aria-hidden="true">
+            <div className="skeleton skeleton-title"></div>
+            <div className="skeleton skeleton-line"></div>
+            <div className="skeleton skeleton-line"></div>
+            <div className="skeleton skeleton-line short"></div>
+            <div className="skeleton skeleton-block"></div>
+            <div className="skeleton skeleton-line"></div>
+            <div className="skeleton skeleton-line"></div>
+            <div className="skeleton skeleton-line short"></div>
+          </div>
         </div>
       </div>
     )

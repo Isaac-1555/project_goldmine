@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="390" height="2200" viewBox="0 0 390 2200" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>Sat-Brain full-page placeholder (mobile)</title>
+  <desc>Placeholder for a full-page mobile capture representation.</desc>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="390" height="2200" fill="url(#g)"/>
+  <g fill="#ffffff" fill-opacity="0.08">
+    <circle cx="320" cy="160" r="80"/>
+    <circle cx="100" cy="1100" r="140"/>
+    <circle cx="320" cy="1900" r="120"/>
+  </g>
+  <g fill="#ffffff" text-anchor="middle" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <text x="195" y="320" font-size="36" font-weight="700">Sat-Brain</text>
+    <text x="195" y="360" font-size="16" font-weight="500">Full-page Placeholder — Mobile</text>
+  </g>
+</svg>
