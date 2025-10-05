@@ -160,17 +160,19 @@
 }
 
 .tag-node {
-  transition: all 0.15s ease-out;
+  /* Only animate visual properties. Avoid transform/position changes that fight the D3 simulation. */
+  transition: fill 0.15s ease-out, stroke 0.15s ease-out, filter 0.15s ease-out;
   transform-origin: center;
+  will-change: filter;
 }
 
 .tag-node:hover {
+  /* Removed scale on hover to prevent jitter when the simulation nudges the node. */
   filter: drop-shadow(0 4px 12px rgba(139, 92, 246, 0.3));
-  transform: scale(1.05);
 }
 
 .tag-node-inner {
-  transition: all 0.15s ease-out;
+  transition: opacity 0.15s ease-out;
   pointer-events: none;
 }
 
