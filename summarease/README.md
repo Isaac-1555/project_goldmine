@@ -67,3 +67,15 @@ export default tseslint.config([
   },
 ])
 ```
+
+## Charts panel (auto-suggested infographics)
+
+- Location: ContentViewer summary tab. Shows a Charts section under the summary text.
+- How it works: The frontend parses the summary to detect chartable patterns (numbers, percentages, years) and recommends a chart. No numbers → it may show a structural tiers chart.
+- Tech: Vega-Lite via vega-embed. Download as PNG/SVG.
+- Persistence: your selection is stored locally per summary for now. We can wire it to Supabase later.
+
+Developer notes
+- Code: src/lib/viz/* for extraction/templates; src/components/Charts/* for UI.
+- Styling: src/components/Charts/Charts.css
+- Add templates or change defaults in vegaTemplates.ts.

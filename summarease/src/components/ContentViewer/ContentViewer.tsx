@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react'
-import { Edit3, Pencil, Sparkles, Save, X, FileText, MessageSquare, Tag, Clock, ArrowLeft, Trash2, File as FileIcon, Eye } from 'lucide-react'
+import { Edit3, Pencil, Sparkles, Save, X, FileText, MessageSquare, Tag as TagIcon, Clock, ArrowLeft, Trash2, File as FileIcon, Eye } from 'lucide-react'
 import { StatusIndicator } from '../FileStatus/StatusIndicator'
-import { getFileDetails, updateSummary, deleteFile, regenerateSummary, removeTagFromFile, type FileWithMetadata } from '../../lib/api'
+import { getFileDetails, updateSummary, deleteFile, regenerateSummary, removeTagFromFile, type FileWithMetadata, type Tag as TagType } from '../../lib/api'
 import { useSettingsConfig } from '../../hooks/useSettingsConfig'
 import { supabase } from '../../lib/supabase'
 import { CodeBlockRenderer } from '../ContentBlocks/CodeBlockRenderer'
 import { MathBlockRenderer } from '../ContentBlocks/MathBlockRenderer'
 import { TagEditor } from '../TagEditor'
 import './ContentViewer.css'
+import { ChartGallery } from '../Charts/ChartGallery'
 
 interface ContentViewerProps {
   file: FileWithMetadata
@@ -37,10 +38,7 @@ interface FileDetails {
     summary_text: string
     created_at?: string
   }>
-  tags: Array<{
-    id: string
-    name: string
-  }>
+  tags: TagType[]
   notes?: {
     id: string
     content: string
@@ -50,7 +48,7 @@ interface FileDetails {
 }
 
 export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDelete }) => {
-  const { settings } = useSettingsConfig()
+  const { settings, getSummaryConfig } = useSettingsConfig()
   const [fileDetails, setFileDetails] = useState<FileDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -378,7 +376,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
     })
   }
 
-  const handleTagsAdded = (newTags: { id: string; name: string }[]) => {
+  const handleTagsAdded = (newTags: TagType[]) => {
     // Update the fileDetails state to include the new tags
     setFileDetails(prev => prev ? {
       ...prev,
@@ -552,7 +550,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
           className={`tab ${activeTab === 'tags' ? 'active' : ''}`}
           onClick={() => setActiveTab('tags')}
         >
-          <Tag className="tab-icon" />
+          <TagIcon className="tab-icon" />
           Tags ({fileDetails.tags.length})
         </button>
       </div>
@@ -577,7 +575,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                           try {
                             setRegenerating(true)
                             setError('') // Clear any previous errors
-                            const res = await regenerateSummary(fileDetails!.file.id, settings.autoTags)
+const res = await regenerateSummary(fileDetails!.file.id, getSummaryConfig())
                             if (res.success && res.summary_text) {
                               // Refresh file details from backend to get updated data
                               await loadFileDetails(fileDetails!.file.id)
@@ -629,9 +627,17 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                     placeholder="Enter your summary..."
                   />
                 ) : (
-                  <div className="summary-text">
-                    {renderSummaryText(fileDetails.summary.summary_text)}
-                  </div>
+                  <>
+                    <div className="summary-text">
+                      {renderSummaryText(fileDetails.summary.summary_text)}
+                    </div>
+                    {settings.includeInfographics && (
+                      <ChartGallery
+                        summaryId={fileDetails.summary.id}
+                        summaryText={fileDetails.summary.summary_text}
+                      />
+                    )}
+                  </>
                 )}
               </>
             ) : (
@@ -759,10 +765,10 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
 
         {activeTab === 'tags' && (
           <div className="tags-content">
-            <TagEditor
+                  <TagEditor
               fileId={fileDetails.file.id}
-              existingTags={fileDetails.tags}
-              onTagsAdded={handleTagsAdded}
+              existingTags={fileDetails.tags as any}
+              onTagsAdded={handleTagsAdded as any}
               disabled={fileDetails.file.status === 'processing'}
             />
             
@@ -771,32 +777,32 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                 <h4 className="tags-section-title">Current Tags</h4>
                 <div className="tags-grid">
                   {fileDetails.tags.map((tag, index) => {
-                    // Handle both old string format and new Tag object format
-                    const tagName = typeof tag === 'string' ? tag : tag.name
-                    const tagType = typeof tag === 'string' ? 'general' : tag.type
-                    const tagId = typeof tag === 'string' ? `tag-${index}` : (tag.id || `tag-${index}`)
-                    
-                    return (
-                      <div key={tagId} className={`tag-item tag-item-${tagType}`}>
-                        <Tag className={`tag-icon tag-icon-${tagType}`} />
-                        <span className="tag-name" title={`${tagType} tag`}>{tagName}</span>
-                        <button
-                          className="tag-delete-button"
-                          onClick={() => setShowDeleteTagConfirm(tagId)}
-                          title={`Remove "${tagName}" tag`}
-                          aria-label={`Remove ${tagName} tag`}
-                        >
-                          <X className="tag-delete-icon" />
-                        </button>
-                      </div>
-                    )
-                  })}
+                      const anyTag: any = tag as any
+                      const tagName = anyTag?.name ?? String(tag)
+                      const tagType = anyTag?.type ?? 'general'
+                      const tagId = anyTag?.id ? String(anyTag.id) : `tag-${index}`
+                      
+                      return (
+                        <div key={tagId} className={`tag-item tag-item-${tagType}`}>
+                        <TagIcon className={`tag-icon tag-icon-${tagType}`} />
+                          <span className="tag-name" title={`${tagType} tag`}>{tagName}</span>
+                          <button
+                            className="tag-delete-button"
+                            onClick={() => setShowDeleteTagConfirm(tagId)}
+                            title={`Remove \"${tagName}\" tag`}
+                            aria-label={`Remove ${tagName} tag`}
+                          >
+                            <X className="tag-delete-icon" />
+                          </button>
+                        </div>
+                      )
+                    })}
                 </div>
               </div>
             ) : (
               <div className="no-tags-message">
                 <div className="no-tags-content">
-                  <Tag className="no-tags-icon" />
+                  <TagIcon className="no-tags-icon" />
                   <p>No tags yet</p>
                   <span>Add tags above to organize and categorize this content.</span>
                 </div>

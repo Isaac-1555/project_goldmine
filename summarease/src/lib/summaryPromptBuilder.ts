@@ -97,20 +97,24 @@ When the content would benefit from visual representation, include infographic d
 
 \`\`\`infographic
 // Specify the type of visualization needed
-// Type: [flowchart|mindmap|timeline|comparison|hierarchy|process]
+// Type: [flowchart|mindmap|timeline|comparison|hierarchy|process|chart]
 // Title: Brief title for the infographic
 // Description: What the infographic should show
 // Elements: List the key components or data points
 // Relationships: How elements connect or relate
+// Data: For charts only, provide data either as:
+//   - Bullet pairs like "Label: 12" or "Label (34%)"
+//   - OR a JSON array: [{ "name": "Label", "value": 12 }, ...]
 \`\`\`
 
 Examples of when to include infographics:
 - Process flows or algorithms (use flowchart)
 - Concept relationships (use mindmap)
 - Historical sequences or project timelines (use timeline)
-- Comparing multiple items or concepts (use comparison chart)
+- Comparing multiple items or concepts (use comparison)
 - Organizational structures or taxonomies (use hierarchy)
 - Step-by-step procedures (use process diagram)
+- Numerical data or trends (use chart; prefer bars/lines unless part-to-whole → donut)
 
 Ensure infographics are:
 - Directly relevant to the content

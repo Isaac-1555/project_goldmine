@@ -850,7 +850,9 @@ export async function updateNotebookContent(
  * Regenerate the latest summary for a file by recomputing from current transcript, notes, and documents.
  * Updates the existing summary instead of creating a new one to avoid duplicates.
  */
-export async function regenerateSummary(fileId: string, autoTags?: boolean): Promise<{ success: boolean; summaryId?: string; summary_text?: string; tags?: string[]; error?: string }> {
+import type { SummaryConfig } from '../types/summaryTypes'
+
+export async function regenerateSummary(fileId: string, configIn?: Partial<SummaryConfig>): Promise<{ success: boolean; summaryId?: string; summary_text?: string; tags?: Tag[]; error?: string }> {
   try {
     // Fetch latest notebook-style details (works for audio/notebook files)
     const details = await getNotebookDetails(fileId)
@@ -876,9 +878,9 @@ export async function regenerateSummary(fileId: string, autoTags?: boolean): Pro
       return { success: false, error: 'No content available to summarize' }
     }
 
-    // Use provided autoTags setting or default to true for backward compatibility
-    const shouldGenerateTags = autoTags !== undefined ? autoTags : true
-    const config = { autoTags: shouldGenerateTags }
+// Use provided config or sensible defaults
+    const shouldGenerateTags = configIn?.autoTags !== undefined ? configIn.autoTags : true
+    const config = { ...configIn, autoTags: shouldGenerateTags }
     const { summary, tags } = await processAudioTranscript(combined, config)
     const typedTags: Tag[] = (tags || []).map((name: string) => ({ name, type: 'general' as const }))
 
@@ -1180,5 +1182,71 @@ export async function moveFileToFolder(fileId: string, folderId: string | null):
   } catch (error: any) {
     console.error('Error moving file to folder:', error)
     return false
+  }
+}
+
+// =============================================================================
+// CHART SPECS PERSISTENCE (SUPABASE)
+// =============================================================================
+
+export interface ChartSpecRow {
+  id: string
+  summary_id: string
+  recommended_type: string | null
+  chosen_type: string
+  spec_json: any
+  dataset_json: any | null
+  theme: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Fetch chart spec for a summary (null if none). */
+export async function getChartSpecForSummary(summaryId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('chart_specs')
+      .select('*')
+      .eq('summary_id', summaryId)
+      .maybeSingle()
+
+    if (error) throw error
+    return data as ChartSpecRow | null
+  } catch (e) {
+    console.warn('getChartSpecForSummary failed (table may not exist yet):', e)
+    return null
+  }
+}
+
+/** Upsert chart spec for a summary. */
+export async function upsertChartSpecForSummary(params: {
+  summaryId: string
+  recommendedType?: string
+  chosenType: string
+  spec: any
+  dataset?: any
+  theme?: string
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const payload = {
+      summary_id: params.summaryId,
+      recommended_type: params.recommendedType || null,
+      chosen_type: params.chosenType,
+      spec_json: params.spec,
+      dataset_json: params.dataset || null,
+      theme: params.theme || null,
+      updated_at: new Date().toISOString(),
+    }
+
+    // Use upsert on unique(summary_id)
+    const { error } = await supabase
+      .from('chart_specs')
+      .upsert(payload, { onConflict: 'summary_id' })
+
+    if (error) throw error
+    return { success: true }
+  } catch (e: any) {
+    console.warn('upsertChartSpecForSummary failed (table may not exist yet):', e?.message || e)
+    return { success: false, error: e?.message || 'Failed to save chart spec' }
   }
 }
