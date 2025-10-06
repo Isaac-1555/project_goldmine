@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
-import { Mic, Brain, BookOpen, ArrowRight, Sparkles, Play, Upload, CheckCircle, GitBranch } from 'lucide-react'
+import { Mic, BookOpen, ArrowRight, Sparkles, Play, Upload, CheckCircle, GitBranch } from 'lucide-react'
+import { SatBrainMark } from '../brand/SatBrainMark'
 import './LandingPage.css'
 
 // Allow custom element without TS complaints
@@ -91,6 +92,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
       document.head.appendChild(canonical)
     }
     canonical.href = `${window.location.origin}/`
+  }, [])
+
+  // Align the Quick Start card top to the hero title top for consistent visual rhythm
+  useEffect(() => {
+    const alignCard = () => {
+      const root = document.querySelector('.landing-remix') as HTMLElement | null
+      const title = document.querySelector('.landing-remix .hero-title') as HTMLElement | null
+      const visual = document.querySelector('.landing-remix .hero-visual') as HTMLElement | null
+      const card = document.querySelector('.landing-remix .qs-card') as HTMLElement | null
+      if (!root || !title || !visual || !card) return
+      const titleTop = title.getBoundingClientRect().top
+      const visualTop = visual.getBoundingClientRect().top
+      const offset = Math.max(0, Math.round(titleTop - visualTop))
+      card.style.setProperty('--qs-top', `${offset}px`)
+    }
+    alignCard()
+    window.addEventListener('resize', alignCard)
+    return () => window.removeEventListener('resize', alignCard)
   }, [])
 
   return (
@@ -226,7 +245,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
         @media (prefers-reduced-motion: reduce){.landing-remix .spline-wrap{display:none}}
 
         /* Quick Start card */
-        .landing-remix .qs-card{position:absolute;right:12px;top:12px;width:380px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:24px;box-shadow:0 24px 60px rgba(0,0,0,.55);backdrop-filter:blur(14px);padding:16px 18px;overflow:hidden}
+        .landing-remix .qs-card{position:absolute;right:12px;top:var(--qs-top,100px);width:380px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:24px;box-shadow:0 24px 60px rgba(0,0,0,.55);backdrop-filter:blur(14px);padding:16px 18px;overflow:hidden}
         .landing-remix .qs-header{display:flex;align-items:center;margin-bottom:8px}
         .landing-remix .qs-chip{font-size:12px;color:#a5b4fc;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);border-radius:999px;padding:4px 10px}
         .landing-remix .qs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -281,7 +300,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
         <nav className="landing-nav">
         <div className="nav-container">
           <div className="nav-logo">
-            <Brain className="logo-icon" />
+            <SatBrainMark className="logo-icon" theme="mono" variant="f" detail="low" />
             <span>Sat‑Brain</span>
           </div>
           <div className="nav-links">
@@ -359,7 +378,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
                       <span>Summary & key points</span>
                     </li>
                     <li className="qs-item">
-                      <Brain size={16} />
+                      <SatBrainMark variant="f" theme="mono" size={16} detail="low" />
                       <span>Flashcards & quiz</span>
                     </li>
                     <li className="qs-item">
@@ -404,7 +423,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
             </div>
             <div className="features-grid features-mock row-bottom">
               <div className="feature-card">
-                <div className="feature-icon"><Brain /></div>
+                <div className="feature-icon"><SatBrainMark variant="f" theme="mono" size={24} detail="low" /></div>
                 <h3 className="feature-title">Study tools: flashcards & quizzes</h3>
                 <p className="feature-description">generate MCQs and flashcards from summaries; review with spaced repetition</p>
               </div>
@@ -450,7 +469,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
               </div>
             </div>
             <div className="how-card">
-              <Brain className="how-icon" />
+              <SatBrainMark variant="f" theme="mono" className="how-icon" size={28} detail="low" />
               <div>
                 <h3>AI summarizes</h3>
                 <p>Get clean notes, key points, and tasks automatically.</p>

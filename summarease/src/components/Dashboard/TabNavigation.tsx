@@ -1,6 +1,7 @@
 import React from 'react'
 import { NotebookPen, Mic, Eye, BookOpen, Settings } from 'lucide-react'
 import './TabNavigation.css'
+import { SatBrainMark } from '../brand/SatBrainMark'
 
 export type TabType = 'notebook' | 'view' | 'study-tools' | 'settings'
 
@@ -21,7 +22,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, onTabCh
     <nav className="tab-navigation">
       <div className="navbar-content">
         <div className="navbar-brand">
-          <div className="logo-placeholder"></div>
+          <SatBrainMark size={28} theme="mono" variant="f" detail="low" />
           <h1 className="app-title">Sat-Brain</h1>
         </div>
         <div className="tab-container">

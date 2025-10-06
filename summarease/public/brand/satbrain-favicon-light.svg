@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-label="Sat‑Brain favicon (light mode)" role="img">
+  <g fill="#000" stroke="#000">
+    <!-- network lines -->
+    <line x1="8.2" y1="8.0" x2="7.0" y2="10.0" stroke-width="0.8" stroke-opacity="0.5"/>
+    <line x1="8.4" y1="11.6" x2="9.6" y2="9.8" stroke-width="0.8" stroke-opacity="0.5"/>
+    <line x1="9.1" y1="13.0" x2="10.0" y2="14.6" stroke-width="0.8" stroke-opacity="0.5"/>
+    <line x1="15.8" y1="8.0" x2="17.0" y2="10.0" stroke-width="0.8" stroke-opacity="0.5"/>
+    <line x1="15.6" y1="11.6" x2="14.4" y2="9.8" stroke-width="0.8" stroke-opacity="0.5"/>
+    <line x1="14.9" y1="13.0" x2="14.0" y2="14.6" stroke-width="0.8" stroke-opacity="0.5"/>
+    <line x1="12.0" y1="9.2" x2="12.0" y2="12.0" stroke-width="0.8" stroke-opacity="0.5"/>
+    <line x1="12.0" y1="12.0" x2="12.0" y2="14.8" stroke-width="0.8" stroke-opacity="0.5"/>
+    <!-- dotted orbit -->
+    <circle cx="20.4" cy="12.2" r="0.6"/>
+    <circle cx="18.4" cy="15.2" r="0.6"/>
+    <circle cx="15.0" cy="17.2" r="0.6"/>
+    <circle cx="12.0" cy="18.2" r="0.6"/>
+    <circle cx="9.0" cy="17.2" r="0.6"/>
+    <circle cx="5.6" cy="15.2" r="0.6"/>
+    <circle cx="3.6" cy="12.2" r="0.6"/>
+    <circle cx="5.6" cy="9.2" r="0.6"/>
+    <circle cx="9.0" cy="7.2" r="0.6"/>
+    <circle cx="12.0" cy="6.2" r="0.6"/>
+    <circle cx="15.0" cy="7.2" r="0.6"/>
+    <circle cx="18.4" cy="9.2" r="0.6"/>
+    <!-- nodes -->
+    <circle cx="8.2" cy="8.0" r="1.0"/>
+    <circle cx="7.0" cy="10.0" r="1.0"/>
+    <circle cx="8.4" cy="11.6" r="1.0"/>
+    <circle cx="9.6" cy="9.8" r="1.0"/>
+    <circle cx="10.0" cy="14.6" r="1.0"/>
+    <circle cx="15.8" cy="8.0" r="1.0"/>
+    <circle cx="17.0" cy="10.0" r="1.0"/>
+    <circle cx="15.6" cy="11.6" r="1.0"/>
+    <circle cx="14.4" cy="9.8" r="1.0"/>
+    <circle cx="14.0" cy="14.6" r="1.0"/>
+    <circle cx="12.0" cy="9.2" r="1.0"/>
+    <circle cx="12.0" cy="12.0" r="1.0"/>
+    <circle cx="12.0" cy="14.8" r="1.0"/>
+  </g>
+</svg>

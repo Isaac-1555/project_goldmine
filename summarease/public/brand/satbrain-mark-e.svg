@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sat‑Brain mark E (neural nodes brain + ring)">
+  <defs>
+    <linearGradient id="sbGradE" x1="3" y1="21" x2="21" y2="3" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <!-- Ring behind -->
+  <ellipse cx="12" cy="12.2" rx="8.3" ry="6.0" stroke="url(#sbGradE)" stroke-width="1.2" opacity="0.35" fill="none"/>
+  <!-- Node cluster forming a brain silhouette (no center dot) -->
+  <g fill="url(#sbGradE)">
+    <circle cx="9.0" cy="7.9" r="0.9"/>
+    <circle cx="7.6" cy="10.0" r="0.9"/>
+    <circle cx="8.6" cy="12.0" r="0.9"/>
+    <circle cx="10.2" cy="13.2" r="0.9"/>
+    <circle cx="15.0" cy="7.9" r="0.9"/>
+    <circle cx="16.4" cy="10.0" r="0.9"/>
+    <circle cx="15.4" cy="12.0" r="0.9"/>
+    <circle cx="13.8" cy="13.2" r="0.9"/>
+  </g>
+  <!-- Suggest gyri with light strokes -->
+  <path d="M10.4 9.2c-.9.5-1.5 1.2-1.5 2.1c0 1.2 1 2.1 2.4 2.7" stroke="url(#sbGradE)" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M13.6 9.2c.9.5 1.5 1.2 1.5 2.1c0 1.2-1 2.1-2.4 2.7" stroke="url(#sbGradE)" stroke-width="1.4" stroke-linecap="round"/>
+  <!-- Tiny satellite node off-ring as a nod -->
+  <circle cx="19.2" cy="7.4" r="0.9" fill="url(#sbGradE)"/>
+</svg>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { BookOpen, Brain, ArrowLeft, Search, X, Clock, Play, BarChart3, HelpCircle, ChevronRight, ChevronLeft, Trash2 } from 'lucide-react'
+import { BookOpen, ArrowLeft, Search, X, Clock, Play, BarChart3, HelpCircle, ChevronRight, ChevronLeft, Trash2 } from 'lucide-react'
+import { SatBrainMark } from '../../brand/SatBrainMark'
 import { getUserFiles, type FileWithMetadata } from '../../../lib/api'
 import {
   createSimpleQuiz, 
@@ -834,7 +835,7 @@ export const StudyToolsTab: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <Brain />
+                  <SatBrainMark variant="f" theme="mono" size={16} detail="low" />
                   Generate Quiz ({selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected)
                 </>
               )}
@@ -966,7 +967,7 @@ export const StudyToolsTab: React.FC = () => {
           <div className="study-tools-menu">
             <div className="tool-card" onClick={() => setView('quiz-select')}>
               <div className="tool-icon">
-                <Brain />
+                <SatBrainMark variant="f" theme="mono" size={18} detail="low" />
               </div>
               <h3>Quizzes</h3>
               <p>Test your knowledge with AI-generated multiple choice questions</p>

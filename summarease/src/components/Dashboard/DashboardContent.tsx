@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Upload, Mic, FileText, Brain } from 'lucide-react'
+import { Upload, Mic, FileText } from 'lucide-react'
+import { SatBrainMark } from '../brand/SatBrainMark'
 import { FileUpload } from '../Upload/FileUpload'
 import { AudioRecorder } from '../Recording/AudioRecorder'
 import './DashboardContent.css'
@@ -56,7 +57,7 @@ export const DashboardContent: React.FC = () => {
 
           <div className="action-card">
             <div className="card-icon">
-              <Brain />
+              <SatBrainMark variant="f" theme="mono" size={20} detail="low" />
             </div>
             <h3>Knowledge Graph</h3>
             <p>Explore connections between your content in an interactive graph</p>
