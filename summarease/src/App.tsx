@@ -33,6 +33,7 @@ function AppContent() {
             <LandingPage 
               onSignUp={() => navigate('/signup')}
               onLogin={() => navigate('/login')}
+              splineUrl={import.meta.env.VITE_SPLINE_SCENE_URL as any}
             />
           )
         } 
