@@ -53,59 +53,44 @@ Create a comprehensive study summary from the following educational content. Fol
 
 #### CODE BLOCKS:
 ${finalConfig.includeCodeExamples ? `
-Any code snippets, commands, or programming examples MUST be formatted in copyable code blocks:
+Any programming code snippets or shell commands should be formatted in copyable fenced code blocks. Do NOT use code blocks for non-code content.
+
+Example format:
 
 \`\`\`[language]
 // Code here with proper syntax highlighting
-// Each code block should be complete and runnable
-// Include necessary imports/dependencies
 \`\`\`
 
-- Use appropriate language identifier (python, javascript, java, etc.)
+- Use an appropriate language identifier (python, javascript, bash, etc.)
 - Ensure proper indentation is preserved
-- Include inline comments for clarity
+- Include inline comments for clarity when helpful
 - Make code blocks self-contained when possible
 ` : 'Minimize code examples and focus on conceptual understanding.'}
 
 #### MATHEMATICAL CONTENT:
 ${finalConfig.includeMathDerivations ? `
-Mathematical formulas, equations, and expressions MUST be in copyable math blocks:
+Use LaTeX for mathematical expressions. Prefer inline $...$ or display $$...$$ blocks. Do NOT use fenced code blocks for math.
 
-\`\`\`math
-// LaTeX formatted equations
-// Example: \\frac{d}{dx}(x^2) = 2x
-// Each formula on its own line for clarity
-\`\`\`
-
+Guidelines:
 - Use LaTeX notation for all mathematical expressions
-- Separate complex equations into steps
-- Include variable definitions
-- Group related formulas together
+- Use inline $a^2 + b^2 = c^2$ for short expressions
+- Use display math with $$ ... $$ for multi-line derivations
+- Separate complex equations into steps and define variables
 ` : 'Include only essential formulas without detailed derivations.'}
 
-#### SPECIAL CONTENT BOXES:
-For other copyable content (chemical formulas, data tables, terminal commands):
-
-\`\`\`special
-// Special content that needs exact copying
-// Such as: configuration files, JSON data, terminal commands
-// Preserve exact formatting and spacing
-\`\`\`
+#### SPECIAL CONTENT:
+Only use fenced code blocks when content truly requires exact copying (e.g., shell commands, JSON, YAML, config files). Use an appropriate language tag like bash, json, or yaml. Do NOT wrap ordinary prose or lists in code fences.
 
 ${finalConfig.includeInfographics ? `#### INFOGRAPHICS AND VISUAL CONTENT:
-When the content would benefit from visual representation, include infographic descriptions:
+When the content would benefit from visual representation, add a plain-text Infographic Specification section (no code block):
 
-\`\`\`infographic
-// Specify the type of visualization needed
-// Type: [flowchart|mindmap|timeline|comparison|hierarchy|process|chart]
-// Title: Brief title for the infographic
-// Description: What the infographic should show
-// Elements: List the key components or data points
-// Relationships: How elements connect or relate
-// Data: For charts only, provide data either as:
-//   - Bullet pairs like "Label: 12" or "Label (34%)"
-//   - OR a JSON array: [{ "name": "Label", "value": 12 }, ...]
-\`\`\`
+Infographic Spec:
+- Type: [flowchart|mindmap|timeline|comparison|hierarchy|process|chart]
+- Title: <brief title>
+- Description: <what the graphic should show>
+- Elements: <bullet list of key components or data points>
+- Relationships: <how elements connect or relate>
+- Data: <for charts only, provide either bullet pairs like "Label: 12" or a JSON array such as [{ "name": "Label", "value": 12 }]>
 
 Examples of when to include infographics:
 - Process flows or algorithms (use flowchart)
@@ -174,10 +159,10 @@ Key takeaway: [One sentence capturing the most important point]
 
 3. **Technical Content Handling**:
    ${finalConfig.includeCodeExamples || finalConfig.includeMathDerivations ? `
-   - ALWAYS use code blocks for any code (even single lines)
-   - ALWAYS use math blocks for formulas
-   - NEVER write code or formulas in plain text
-   - Preserve exact syntax and formatting
+   - Use fenced code blocks ONLY for actual programming code or shell commands
+   - For math, use inline $...$ or display $$...$$ LaTeX (no fenced code blocks)
+   - Do NOT place non-code content (e.g., outlines, infographic specs) inside code fences
+   - Preserve exact syntax and formatting when code blocks are used
    ` : '- Focus on conceptual understanding of technical content'}
 
 4. **Clarity Requirements**:

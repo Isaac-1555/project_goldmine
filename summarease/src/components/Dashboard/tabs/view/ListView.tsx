@@ -73,8 +73,22 @@ export const ListView: React.FC<ListViewProps> = ({
   useEffect(() => {
     if (!openTagsFor) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenTagsFor(null) }
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      const popover = document.querySelector(`.tags-popover[data-file-id="${openTagsFor}"]`)
+      const clickedInsidePopover = popover ? popover.contains(target) : false
+      const moreBtn = target.closest('.tag-more-chip') as HTMLElement | null
+      const clickedMoreForSame = moreBtn?.getAttribute('data-file-id') === openTagsFor
+      if (!clickedInsidePopover && !clickedMoreForSame) {
+        setOpenTagsFor(null)
+      }
+    }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onMouseDown)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onMouseDown)
+    }
   }, [openTagsFor])
   
   // Use external state management if provided, otherwise fall back to internal state
@@ -574,6 +588,7 @@ export const ListView: React.FC<ListViewProps> = ({
                               {hidden.length > 0 && (
                                 <button
                                   className="tag tag-more-chip"
+                                  data-file-id={file.id}
                                   onClick={(e) => { e.stopPropagation(); setOpenTagsFor(file.id); setTagFilter('') }}
                                   aria-haspopup="dialog"
                                   aria-expanded={openTagsFor === file.id}
@@ -584,7 +599,7 @@ export const ListView: React.FC<ListViewProps> = ({
                               )}
                               {/* Popover */}
                               {openTagsFor === file.id && (
-                                <div className="tags-popover" role="dialog" aria-label="All tags" onClick={(e) => e.stopPropagation()}>
+                                <div className="tags-popover" data-file-id={file.id} role="dialog" aria-label="All tags" onClick={(e) => e.stopPropagation()}>
                                   <div className="tags-popover-header">
                                     <input
                                       className="tags-popover-search"
@@ -595,11 +610,40 @@ export const ListView: React.FC<ListViewProps> = ({
                                     />
                                     <button className="tags-popover-close" aria-label="Close" onClick={() => setOpenTagsFor(null)}>×</button>
                                   </div>
-                                  <div className="tags-popover-list">
-                                    {(tagFilter ? allTags.filter(t => t.name.includes(tagFilter.toLowerCase())) : allTags).map((t, i) => (
-                                      <span key={`full-${i}`} className={`tag tag-${t.type}`}>{t.name}</span>
-                                    ))}
-                                  </div>
+                                  {(() => {
+                                    const list = tagFilter ? allTags.filter(t => t.name.includes(tagFilter.toLowerCase())) : allTags
+                                    const general = list.filter(t => t.type === 'general')
+                                    const specific = list.filter(t => t.type === 'specific')
+                                    const userAdded = list.filter(t => t.type === 'user_added')
+                                    return (
+                                      <div className="tags-popover-list">
+                                        {general.length > 0 && (
+                                          <div className="tags-section">
+                                            <div className="tags-section-title">General ({general.length})</div>
+                                            <div className="tags-section-grid">
+                                              {general.map((t, i) => <span key={`g-${i}`} className={`tag tag-${t.type}`}>{t.name}</span>)}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {specific.length > 0 && (
+                                          <div className="tags-section">
+                                            <div className="tags-section-title">Specific ({specific.length})</div>
+                                            <div className="tags-section-grid">
+                                              {specific.map((t, i) => <span key={`s-${i}`} className={`tag tag-${t.type}`}>{t.name}</span>)}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {userAdded.length > 0 && (
+                                          <div className="tags-section">
+                                            <div className="tags-section-title">Custom ({userAdded.length})</div>
+                                            <div className="tags-section-grid">
+                                              {userAdded.map((t, i) => <span key={`u-${i}`} className={`tag tag-${t.type}`}>{t.name}</span>)}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
                               )}
                             </div>
