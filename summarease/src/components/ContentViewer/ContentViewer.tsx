@@ -9,6 +9,8 @@ import { MathBlockRenderer } from '../ContentBlocks/MathBlockRenderer'
 import { TagEditor } from '../TagEditor'
 import './ContentViewer.css'
 import { ChartGallery } from '../Charts/ChartGallery'
+import { InfographicGallery } from '../Infographics/InfographicGallery'
+import '../Infographics/Infographics.css'
 import { sanitizeTagName, isJunkTagName } from '../../lib/tagUtils'
 
 interface ContentViewerProps {
@@ -638,6 +640,12 @@ const res = await regenerateSummary(fileDetails!.file.id, getSummaryConfig())
                         summaryText={fileDetails.summary.summary_text}
                       />
                     )}
+                    {/* Infographic Gallery - Visual representations like mind maps, pyramids, cycles */}
+                    <InfographicGallery
+                      summaryId={fileDetails.summary.id}
+                      summaryText={fileDetails.summary.summary_text}
+                      autoGenerate={settings.autoGenerateInfographic || false}
+                    />
                   </>
                 )}
               </>

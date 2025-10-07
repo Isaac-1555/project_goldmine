@@ -852,8 +852,11 @@ export async function updateNotebookContent(
 /**
  * Regenerate the latest summary for a file by recomputing from current transcript, notes, and documents.
  * Updates the existing summary instead of creating a new one to avoid duplicates.
+ * Optionally generates infographics if enabled in config.
  */
 import type { SummaryConfig } from '../types/summaryTypes'
+import { generateMindMap, generateInfographic } from './infographicService'
+import { saveInfographicSpec } from './infographicStorage'
 
 export async function regenerateSummary(fileId: string, configIn?: Partial<SummaryConfig>): Promise<{ success: boolean; summaryId?: string; summary_text?: string; tags?: Tag[]; error?: string }> {
   try {
@@ -978,6 +981,35 @@ export async function regenerateSummary(fileId: string, configIn?: Partial<Summa
             .eq('id', summaryId)
         }
         throw tagError
+      }
+    }
+
+    // Generate infographic if enabled
+    if (configIn?.includeInfographics || configIn?.autoGenerateInfographic) {
+      try {
+        console.log('Generating infographic for summary...', summaryId);
+        
+        let infographicResult;
+        if (configIn?.preferredInfographicType && configIn.preferredInfographicType !== 'auto') {
+          // Generate specific type
+          infographicResult = await generateInfographic(summary, {
+            summaryId,
+            preferredType: configIn.preferredInfographicType as any
+          });
+        } else {
+          // Auto-detect best type (mind map is default)
+          infographicResult = await generateMindMap(summary, summaryId);
+        }
+        
+        if (infographicResult.success && infographicResult.spec) {
+          saveInfographicSpec(infographicResult.spec);
+          console.log('Infographic generated:', infographicResult.spec.type, infographicResult.spec.title);
+        } else {
+          console.warn('Infographic generation failed:', infographicResult.error);
+        }
+      } catch (infographicError) {
+        // Don't fail the entire summary regeneration if infographic fails
+        console.error('Error generating infographic (non-fatal):', infographicError);
       }
     }
 

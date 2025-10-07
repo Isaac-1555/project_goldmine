@@ -77,6 +77,8 @@ export interface SummaryConfig {
   includeCodeExamples?: boolean;
   includeMathDerivations?: boolean;
   includeInfographics?: boolean;
+  autoGenerateInfographic?: boolean; // Auto-generate on summary creation
+  preferredInfographicType?: 'mindmap' | 'cycle' | 'pyramid' | 'timeline' | 'comparison' | 'process' | 'hierarchy' | 'auto'; // Specific type preference ('auto' lets AI choose)
   autoTags?: boolean;
   llmProvider?: 'gemini' | 'openai' | 'claude' | 'anthropic';
   specialRequirements?: string;
@@ -189,4 +191,7 @@ export interface SummaryDisplayPreferences {
   copyButtonBehavior: 'always' | 'hover';
   showLineNumbers: boolean;
   enableSyntaxHighlighting: boolean;
+  showInfographics?: boolean; // Display infographics alongside summaries
+  infographicSize?: 'small' | 'medium' | 'large'; // Preferred infographic size
+  autoGenerateInfographics?: boolean; // Auto-generate infographics for new summaries
 }

@@ -70,6 +70,15 @@
   margin-bottom: 0;
 }
 
+.form-group.sub-setting {
+  margin-left: 2rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--border-primary);
+  background: var(--bg-tertiary);
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
 .form-group label {
   display: block;
   font-size: 0.875rem;

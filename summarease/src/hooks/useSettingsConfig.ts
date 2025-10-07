@@ -3,6 +3,8 @@ import type { SummaryConfig } from '../types/summaryTypes';
 
 export interface UserSummarySettings {
   includeInfographics: boolean;
+  autoGenerateInfographic?: boolean;
+  preferredInfographicType?: 'mindmap' | 'cycle' | 'pyramid' | 'timeline' | 'comparison' | 'process' | 'hierarchy' | 'auto';
   autoTags: boolean;
   llmProvider: 'gemini' | 'openai' | 'claude' | 'anthropic';
   subjectArea: SummaryConfig['subjectArea'];
@@ -14,6 +16,8 @@ const SETTINGS_KEY = 'sat-brain_summary_settings';
 
 const defaultSettings: UserSummarySettings = {
   includeInfographics: false,
+  autoGenerateInfographic: true,
+  preferredInfographicType: 'auto',
   autoTags: true,
   llmProvider: 'gemini',
   subjectArea: 'General',
@@ -63,6 +67,8 @@ export function useSettingsConfig() {
       academicLevel: settings.academicLevel,
       lengthPreference: settings.lengthPreference,
       includeInfographics: settings.includeInfographics,
+      autoGenerateInfographic: settings.autoGenerateInfographic,
+      preferredInfographicType: settings.preferredInfographicType,
       autoTags: settings.autoTags,
       llmProvider: settings.llmProvider,
       includeCodeExamples: true, // Default true for now

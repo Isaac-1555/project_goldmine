@@ -139,6 +139,66 @@ export const SettingsTab: React.FC = () => {
               </p>
             </div>
 
+            {/* Auto-Generate Infographics Toggle */}
+            {settings.includeInfographics && (
+              <>
+                <div className="form-group sub-setting">
+                  <label htmlFor="auto-generate-infographics" className="toggle-label">
+                    <span>Auto-Generate Infographics</span>
+                    <div className="info-tooltip">
+                      <Info className="info-icon" />
+                      <span className="tooltip-text">
+                        Automatically create visual diagrams when generating or regenerating summaries
+                      </span>
+                    </div>
+                  </label>
+                  <div className="toggle-container">
+                    <label className="toggle-switch">
+                      <input
+                        id="auto-generate-infographics"
+                        type="checkbox"
+                        checked={settings.autoGenerateInfographic || false}
+                        onChange={(e) => updateSetting('autoGenerateInfographic', e.target.checked)}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                    <span className="toggle-status">
+                      {settings.autoGenerateInfographic ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <p className="input-help">
+                    When enabled, infographics are generated automatically alongside summaries
+                  </p>
+                </div>
+
+                {/* Preferred Infographic Type */}
+                <div className="form-group sub-setting">
+                  <label htmlFor="infographic-type">Preferred Infographic Type</label>
+                  <div className="select-wrapper">
+                    <select
+                      id="infographic-type"
+                      value={settings.preferredInfographicType || 'auto'}
+                      onChange={(e) => updateSetting('preferredInfographicType', e.target.value as any)}
+                      className="settings-select"
+                    >
+                      <option value="auto">Auto (Let AI Choose)</option>
+                      <option value="mindmap">Mind Map</option>
+                      <option value="pyramid">Pyramid / Hierarchy</option>
+                      <option value="cycle">Cycle Diagram</option>
+                      <option value="timeline">Timeline</option>
+                      <option value="comparison">Comparison</option>
+                      <option value="process">Process Flow</option>
+                      <option value="hierarchy">Organization Chart</option>
+                    </select>
+                    <ChevronDown className="select-icon" />
+                  </div>
+                  <p className="input-help">
+                    AI will prefer this type, but may choose another if more suitable
+                  </p>
+                </div>
+              </>
+            )}
+
             {/* Auto Tags Toggle */}
             <div className="form-group">
               <label htmlFor="auto-tags-toggle" className="toggle-label">

@@ -46,3 +46,71 @@ export interface ChartSuggestion {
   label: string;
   spec: any; // Vega-Lite spec
 }
+
+// ============================================
+// INFOGRAPHIC TYPES (Napkin.ai-style visuals)
+// ============================================
+
+export type InfographicType = 
+  | 'mindmap'      // Central idea with branching concepts
+  | 'cycle'        // Circular flow diagram with arrows
+  | 'pyramid'      // Hierarchical levels (base to apex)
+  | 'timeline'     // Chronological sequence of events
+  | 'comparison'   // Side-by-side feature comparison
+  | 'process'      // Sequential steps in a workflow
+  | 'hierarchy';   // Tree-like organizational structure
+
+export interface InfographicNode {
+  id: string;
+  label: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  level?: number;        // For hierarchical structures (0=center/top, 1=primary, etc.)
+  position?: number;     // For ordered sequences (timeline, process)
+  children?: string[];   // IDs of child nodes (for tree structures)
+  metadata?: Record<string, any>; // Additional custom data
+}
+
+export interface InfographicConnection {
+  from: string;
+  to: string;
+  label?: string;
+  type?: 'arrow' | 'line' | 'dotted' | 'dashed';
+  bidirectional?: boolean;
+  style?: Record<string, any>; // Custom styling
+}
+
+export interface InfographicSpec {
+  id: string;
+  summaryId: string;
+  type: InfographicType;
+  title: string;
+  subtitle?: string;
+  nodes: InfographicNode[];
+  connections?: InfographicConnection[];
+  layout?: {
+    width?: number;
+    height?: number;
+    orientation?: 'horizontal' | 'vertical' | 'radial';
+  };
+  style?: {
+    theme?: 'light' | 'dark' | 'auto';
+    colorScheme?: string[];
+    fontSize?: number;
+  };
+  metadata: {
+    suggestedBy: 'ai' | 'user';
+    confidence: number; // 0..1
+    reasoning?: string; // Why this type was chosen
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+export interface InfographicGenerationResult {
+  success: boolean;
+  spec?: InfographicSpec;
+  error?: string;
+  suggestions?: InfographicType[]; // Alternative types that might work
+}
