@@ -9,6 +9,7 @@ import { MathBlockRenderer } from '../ContentBlocks/MathBlockRenderer'
 import { TagEditor } from '../TagEditor'
 import './ContentViewer.css'
 import { ChartGallery } from '../Charts/ChartGallery'
+import { sanitizeTagName, isJunkTagName } from '../../lib/tagUtils'
 
 interface ContentViewerProps {
   file: FileWithMetadata
@@ -776,27 +777,30 @@ const res = await regenerateSummary(fileDetails!.file.id, getSummaryConfig())
               <div className="tags-section">
                 <h4 className="tags-section-title">Current Tags</h4>
                 <div className="tags-grid">
-                  {fileDetails.tags.map((tag, index) => {
+                  {fileDetails.tags
+                    .map((tag, index) => {
                       const anyTag: any = tag as any
-                      const tagName = anyTag?.name ?? String(tag)
+                      const rawName = anyTag?.name ?? String(tag)
+                      const tagName = sanitizeTagName(rawName)
                       const tagType = anyTag?.type ?? 'general'
                       const tagId = anyTag?.id ? String(anyTag.id) : `tag-${index}`
-                      
-                      return (
-                        <div key={tagId} className={`tag-item tag-item-${tagType}`}>
+                      return { tagName, tagType, tagId }
+                    })
+                    .filter(({ tagName }) => tagName && !isJunkTagName(tagName))
+                    .map(({ tagName, tagType, tagId }) => (
+                      <div key={tagId} className={`tag-item tag-item-${tagType}`}>
                         <TagIcon className={`tag-icon tag-icon-${tagType}`} />
-                          <span className="tag-name" title={`${tagType} tag`}>{tagName}</span>
-                          <button
-                            className="tag-delete-button"
-                            onClick={() => setShowDeleteTagConfirm(tagId)}
-                            title={`Remove \"${tagName}\" tag`}
-                            aria-label={`Remove ${tagName} tag`}
-                          >
-                            <X className="tag-delete-icon" />
-                          </button>
-                        </div>
-                      )
-                    })}
+                        <span className="tag-name" title={`${tagType} tag`}>{tagName}</span>
+                        <button
+                          className="tag-delete-button"
+                          onClick={() => setShowDeleteTagConfirm(tagId)}
+                          title={`Remove \"${tagName}\" tag`}
+                          aria-label={`Remove ${tagName} tag`}
+                        >
+                          <X className="tag-delete-icon" />
+                        </button>
+                      </div>
+                    ))}
                 </div>
               </div>
             ) : (

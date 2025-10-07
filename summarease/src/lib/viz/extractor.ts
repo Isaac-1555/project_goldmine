@@ -217,14 +217,3 @@ function extractFromInfographicBlocks(text: string): VisualizationCandidate[] {
   }
   return candidates
 }
-  const tiers: { text: string; indent: number }[] = []
-  for (const line of lines) {
-    const m = line.match(/^(\s*)([-•\*]|\d+\.)\s+(.+)$/)
-    if (m) {
-      tiers.push({ text: sanitizeLabel(m[3]), indent: m[1].length })
-    }
-  }
-  // Prefer top-level bullets as tiers
-  const topLevel = tiers.filter(t => t.indent === Math.min(...tiers.map(t => t.indent)))
-  return topLevel.map(t => t.text)
-}

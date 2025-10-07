@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { FileText, Tag, Calendar, Edit3, Trash2, Filter, X, Settings, FolderPlus, Move } from 'lucide-react'
 import { getUserFiles, deleteFile, type FileWithMetadata, getUserFolders, createFolder, updateFolder, deleteFolder, moveFileToFolder, type Folder } from '../../../../lib/api'
 import './ListView.css'
+import { sanitizeTagName, isJunkTagName } from '../../../../lib/tagUtils'
 
 interface ListViewProps {
   onFileSelect: (file: FileWithMetadata) => void
@@ -52,6 +53,29 @@ export const ListView: React.FC<ListViewProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showConfirm, setShowConfirm] = useState<{ id: string; title: string; isLocal?: boolean } | null>(null)
+
+  // Tag popover state
+  const [openTagsFor, setOpenTagsFor] = useState<string | null>(null)
+  const [tagFilter, setTagFilter] = useState('')
+  const [maxVisibleTags, setMaxVisibleTags] = useState(8)
+
+  useEffect(() => {
+    const calc = () => {
+      if (typeof window === 'undefined') return
+      const w = window.innerWidth
+      setMaxVisibleTags(w <= 768 ? 3 : w <= 1024 ? 5 : 8)
+    }
+    calc()
+    window.addEventListener('resize', calc)
+    return () => window.removeEventListener('resize', calc)
+  }, [])
+
+  useEffect(() => {
+    if (!openTagsFor) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenTagsFor(null) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [openTagsFor])
   
   // Use external state management if provided, otherwise fall back to internal state
   const [internalSelectedFolderFilter, setInternalSelectedFolderFilter] = useState<string | null>(null)
@@ -529,25 +553,58 @@ export const ListView: React.FC<ListViewProps> = ({
                     </div>
                     
                     {file.tags && file.tags.length > 0 && (
-                      <div className="file-tags">
+                      <div className="file-tags" onClick={(e) => e.stopPropagation()}>
                         <Tag className="tags-icon" />
-                        <div className="tags-list">
-                          {file.tags.map((tag, index) => {
-                            // Handle both old string format and new Tag object format
-                            const tagName = typeof tag === 'string' ? tag : tag.name
-                            const tagType = typeof tag === 'string' ? 'general' : tag.type
-                            
-                            return (
-                              <span 
-                                key={index} 
-                                className={`tag tag-${tagType}`}
-                                title={`${tagType} tag`}
-                              >
-                                {tagName}
-                              </span>
-                            )
-                          })}
-                        </div>
+                        {(() => {
+                          const allTags = file.tags
+                            .map((tag) => {
+                              const rawName = typeof tag === 'string' ? tag : tag.name
+                              const tagName = sanitizeTagName(rawName)
+                              const tagType = typeof tag === 'string' ? 'general' : tag.type
+                              return { name: tagName, type: tagType as 'general' | 'specific' | 'user_added' }
+                            })
+                            .filter(({ name }) => name && !isJunkTagName(name))
+                          const visible = allTags.slice(0, maxVisibleTags)
+                          const hidden = allTags.slice(maxVisibleTags)
+                          return (
+                            <div className="tags-list with-more">
+                              {visible.map((t, i) => (
+                                <span key={i} className={`tag tag-${t.type}`}>{t.name}</span>
+                              ))}
+                              {hidden.length > 0 && (
+                                <button
+                                  className="tag tag-more-chip"
+                                  onClick={(e) => { e.stopPropagation(); setOpenTagsFor(file.id); setTagFilter('') }}
+                                  aria-haspopup="dialog"
+                                  aria-expanded={openTagsFor === file.id}
+                                  title={hidden.map(t => t.name).join(', ')}
+                                >
+                                  +{hidden.length} more
+                                </button>
+                              )}
+                              {/* Popover */}
+                              {openTagsFor === file.id && (
+                                <div className="tags-popover" role="dialog" aria-label="All tags" onClick={(e) => e.stopPropagation()}>
+                                  <div className="tags-popover-header">
+                                    <input
+                                      className="tags-popover-search"
+                                      placeholder="Filter tags..."
+                                      value={tagFilter}
+                                      onChange={(e) => setTagFilter(e.target.value)}
+                                      autoFocus
+                                    />
+                                    <button className="tags-popover-close" aria-label="Close" onClick={() => setOpenTagsFor(null)}>×</button>
+                                  </div>
+                                  <div className="tags-popover-list">
+                                    {(tagFilter ? allTags.filter(t => t.name.includes(tagFilter.toLowerCase())) : allTags).map((t, i) => (
+                                      <span key={`full-${i}`} className={`tag tag-${t.type}`}>{t.name}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })()}
                       </div>
                     )}
                     

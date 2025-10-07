@@ -405,6 +405,7 @@
   transition: all 0.2s;
   position: relative;
   group: tag-item;
+  max-width: 300px;
 }
 
 .tag-item:hover {
@@ -424,6 +425,10 @@
   font-weight: 500;
   font-size: 0.875rem;
   flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
 }
 
 .tag-delete-button {

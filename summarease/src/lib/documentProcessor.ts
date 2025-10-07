@@ -6,81 +6,14 @@ import type { Tag } from './types'
 import * as mammoth from 'mammoth'
 import * as pdfjsLib from 'pdfjs-dist'
 import PizZip from 'pizzip'
+import { buildTagGenerationPrompt } from './tagPromptBuilder'
+import { sanitizeTagName, isJunkTagName } from './tagUtils'
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'your-gemini-api-key'
 
-// Helper function to build tag generation prompt
-function buildTagGenerationPrompt(content: string, contentType: string, subjectArea: string = 'General'): string {
-  // In a browser environment, we'll inline the template
-  // In a Node.js environment, we could read from file
-  const template = `
-Generate categorized tags for the following content. You must return EXACTLY the specified number of tags in each category, formatted as a JSON object.
-
-### TAG CATEGORIZATION REQUIREMENTS:
-
-#### GENERAL TAGS (3-5 tags required):
-- Broad subject areas and disciplines
-- High-level conceptual categories
-- Academic fields and domains
-- Universal themes that apply across contexts
-- Examples: "computer science", "architecture", "business", "engineering", "healthcare"
-
-#### SPECIFIC TAGS (6-8 tags required):
-- Detailed technical terms and concepts
-- Specific tools, technologies, or methodologies
-- Named entities, brands, or proper nouns
-- Implementation-specific details
-- Examples: "react", "javascript", "tallest building", "machine learning", "financial analysis"
-
-### FORMATTING REQUIREMENTS:
-
-1. **Output Format**: Return tags as a valid JSON object with this exact structure:
-\`\`\`json
-{
-  "general": ["tag1", "tag2", "tag3"],
-  "specific": ["tag4", "tag5", "tag6", "tag7", "tag8", "tag9"]
-}
-\`\`\`
-
-2. **Tag Format Rules**:
-   - All tags must be lowercase
-   - Use simple phrases (1-3 words maximum)
-   - No special characters except hyphens and spaces
-   - Be descriptive but concise
-   - Avoid redundancy between categories
-
-3. **Content Coverage**:
-   - Tags should comprehensively represent the content
-   - Cover main topics, subtopics, and key concepts
-   - Include both theoretical and practical aspects
-   - Balance breadth (general) with depth (specific)
-
-### CONTENT TO ANALYZE:
-
-${content}
-
-### ADDITIONAL CONTEXT:
-- Content Type: ${contentType}
-- Subject Area: ${subjectArea}
-
-### OUTPUT INSTRUCTIONS:
-
-Return ONLY the JSON object with the categorized tags. Do not include any other text, explanations, or formatting. The JSON must be valid and parseable.
-
-Expected output format:
-\`\`\`json
-{
-  "general": ["tag1", "tag2", "tag3", "tag4"],
-  "specific": ["tag5", "tag6", "tag7", "tag8", "tag9", "tag10", "tag11"]
-}
-\`\`\`
-`
-  
-  return template
-}
 
 // Helper function to determine subject area from file name and content
 function determineSubjectArea(fileName: string, content: string): string {
@@ -181,34 +114,58 @@ export async function processDocumentClientSide(file: File, autoTags: boolean = 
     try {
       // Determine subject area from file name or content
       const subjectArea = determineSubjectArea(file.name, extractedText)
-      const tagsPrompt = buildTagGenerationPrompt(extractedText, file.type, subjectArea)
+      const tagsPrompt = buildTagGenerationPrompt(extractedText, { contentType: file.type, subjectArea, academicLevel: 'Undergraduate' })
 
       const tagsResult = await model.generateContent(tagsPrompt)
-      const tagsText = tagsResult.response.text().trim()
+      let tagsText = tagsResult.response.text().trim()
+
+      // If code-fenced, strip fences
+      const fenceMatch = tagsText.match(/```(?:json)?\n([\s\S]*?)```/)
+      if (fenceMatch) {
+        tagsText = fenceMatch[1].trim()
+      }
       
-      // Parse the JSON response
-      const parsedTags = JSON.parse(tagsText)
+      // Parse the JSON response with resilience
+      const tryParse = (text: string) => {
+        try {
+          return JSON.parse(text)
+        } catch {
+          return null
+        }
+      }
+      let parsedTags = tryParse(tagsText)
+      if (!parsedTags) {
+        const jsonMatch = tagsText.match(/\{[\s\S]*\}/)
+        if (jsonMatch) parsedTags = tryParse(jsonMatch[0])
+      }
+      if (!parsedTags) throw new Error('Invalid tag JSON')
       
-      // Convert to Tag objects
-      const generalTags: Tag[] = (parsedTags.general || []).map((name: string) => ({
-        name: name.toLowerCase(),
-        type: 'general' as const
-      }))
+      // Convert to Tag objects with sanitization
+      const generalTags: Tag[] = (parsedTags.general || [])
+        .map((name: string) => sanitizeTagName(name))
+        .filter((name: string) => !!name && !isJunkTagName(name))
+        .map((name: string) => ({ name, type: 'general' as const }))
       
-      const specificTags: Tag[] = (parsedTags.specific || []).map((name: string) => ({
-        name: name.toLowerCase(),
-        type: 'specific' as const
-      }))
-      
-      tags = [...generalTags, ...specificTags]
+      const specificTags: Tag[] = (parsedTags.specific || [])
+        .map((name: string) => sanitizeTagName(name))
+        .filter((name: string) => !!name && !isJunkTagName(name))
+        .map((name: string) => ({ name, type: 'specific' as const }))
+      // Apply max caps: up to 5 general and 7 specific (12 total)
+      const MAX_GENERAL = 5
+      const MAX_SPECIFIC = 7
+      const generalCapped = generalTags.slice(0, MAX_GENERAL)
+      const specificCapped = specificTags.slice(0, MAX_SPECIFIC)
+      tags = [...generalCapped, ...specificCapped]
     } catch (error) {
       console.error('Error parsing tag generation response:', error)
       // Fallback to simple tag generation if JSON parsing fails
       const fallbackPrompt = `Extract 5-8 relevant keywords from this text, return as comma-separated lowercase terms: ${extractedText.substring(0, 1000)}`
       const fallbackResult = await model.generateContent(fallbackPrompt)
-      const fallbackTags = fallbackResult.response.text().trim().split(',')
-        .map(tag => tag.trim().toLowerCase())
-        .filter(tag => tag.length > 0)
+      const MAX_TAGS = 12
+      const fallbackTags = fallbackResult.response.text().trim().split(/[\n,]+/)
+        .map(tag => sanitizeTagName(tag))
+        .filter(tag => tag.length > 0 && !isJunkTagName(tag))
+        .slice(0, MAX_TAGS)
         .map(name => ({ name, type: 'general' as const }))
       
       tags = fallbackTags

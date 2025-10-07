@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Mic, Upload, Save, Check, Play, Pause, Square, Plus, X as XIcon } from 'lucide-react'
 import { FileUploadModal } from '../../Upload/FileUploadModal'
 import { createUnifiedContent, updateNotebookContent, addTagsToSummary } from '../../../lib/api'
+import { sanitizeTagName, isJunkTagName } from '../../../lib/tagUtils'
 import { supabase } from '../../../lib/supabase'
 import { processAudioTranscript } from '../../../lib/audioProcessor'
 import type { SummaryConfig } from '../../../types/summaryTypes'
@@ -553,9 +554,13 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
               summaryId = newSummary.id
             }
 
-            const finalTags = Array.from(new Set([...(tags || []), ...customTags]))
+            const MAX_TAGS = 12
+            const finalTags = Array.from(new Set([...(tags || []), ...customTags]
+              .map(t => sanitizeTagName(t))
+              .filter(t => t && !isJunkTagName(t))
+            )).slice(0, MAX_TAGS)
             if (summaryId && finalTags.length) {
-              await addTagsToSummary(summaryId, finalTags)
+              await addTagsToSummary(summaryId, finalTags as any)
             }
           } catch (error) {
             console.error('Failed to generate/update summary:', error)
@@ -601,7 +606,11 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
             
             const { summary, tags } = await processAudioTranscript(allContent, summaryConfig)
             console.log('📝 Summary generated:', summary.substring(0, 100) + '...')
-            const finalTags = Array.from(new Set([...(tags || []), ...customTags]))
+            const MAX_TAGS = 12
+            const finalTags = Array.from(new Set([...(tags || []), ...customTags]
+              .map(t => sanitizeTagName(t))
+              .filter(t => t && !isJunkTagName(t))
+            )).slice(0, MAX_TAGS)
             await saveProcessedContent(fileId, summary, finalTags)
             console.log('✅ Summary generated and saved successfully')
           } catch (error) {

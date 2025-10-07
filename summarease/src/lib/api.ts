@@ -516,11 +516,14 @@ export async function createRecording(title: string, transcriptText: string = ''
 /**
  * Save tags for a summary (internal helper)
  */
+import { sanitizeTagName, isJunkTagName } from './tagUtils'
+
 async function saveTags(summaryId: string, tags: Tag[]): Promise<void> {
   for (const tag of tags) {
-    const name = (tag.name || '').trim()
+    const rawName = (tag.name || '').trim()
+    const name = sanitizeTagName(rawName)
     const type = tag.type || 'general'
-    if (!name) continue
+    if (!name || isJunkTagName(name)) continue
     try {
       // Use the new RPC function to create tags with type
       const { data: tagId, error: tagCreateError } = await supabase
@@ -882,7 +885,10 @@ export async function regenerateSummary(fileId: string, configIn?: Partial<Summa
     const shouldGenerateTags = configIn?.autoTags !== undefined ? configIn.autoTags : true
     const config = { ...configIn, autoTags: shouldGenerateTags }
     const { summary, tags } = await processAudioTranscript(combined, config)
-    const typedTags: Tag[] = (tags || []).map((name: string) => ({ name, type: 'general' as const }))
+    const MAX_TAGS = 12
+    const typedTags: Tag[] = (tags || [])
+      .slice(0, MAX_TAGS)
+      .map((name: string) => ({ name, type: 'general' as const }))
 
     // Find existing summary to update instead of creating new one
     const { data: existingSummaries, error: fetchError } = await supabase

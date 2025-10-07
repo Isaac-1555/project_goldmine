@@ -1,6 +1,8 @@
 // Client-side audio processing using Web Speech API and Gemini
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { buildEnhancedSummaryPrompt } from './summaryPromptBuilder'
+import { buildTagGenerationPrompt } from './tagPromptBuilder'
+import { uniqueTags } from './tagUtils'
 import type { SummaryConfig } from '../types/summaryTypes'
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
@@ -173,22 +175,54 @@ export async function processAudioTranscript(
   // Extract tags (only if autoTags is enabled)
   let tags: string[] = []
   if (config?.autoTags !== false) {
-    const tagsPrompt = `
-      Extract 3-7 relevant keywords or tags from the following transcript. 
-      These should be:
-      - Single words or short phrases (2-3 words max)
-      - Relevant to the main topics and themes
-      - Useful for categorization and search
-      - Lowercase
-      
-      Return only the tags separated by commas, nothing else.
-      
-      Transcript: ${transcript}
-    `
+    const tagPrompt = buildTagGenerationPrompt(transcript, {
+      contentType: 'transcript',
+      subjectArea: config?.subjectArea || 'General',
+      academicLevel: config?.academicLevel || 'Undergraduate',
+    })
 
-    const tagsResult = await model.generateContent(tagsPrompt)
-    const tagsText = tagsResult.response.text().trim()
-    tags = tagsText.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag.length > 0)
+    const tagsResult = await model.generateContent(tagPrompt)
+    let tagsText = tagsResult.response.text().trim()
+
+    // If response is code-fenced, strip the fences
+    const fenceMatch = tagsText.match(/```(?:json)?\n([\s\S]*?)```/)
+    if (fenceMatch) {
+      tagsText = fenceMatch[1].trim()
+    }
+
+    // Try JSON parse; if it fails, try to extract JSON object substring
+    let combined: string[] | null = null
+    const tryParse = (text: string) => {
+      try {
+        const parsed = JSON.parse(text)
+        const general: string[] = Array.isArray(parsed?.general) ? parsed.general : []
+        const specific: string[] = Array.isArray(parsed?.specific) ? parsed.specific : []
+        return [...general, ...specific]
+      } catch {
+        return null
+      }
+    }
+
+    combined = tryParse(tagsText)
+
+    if (!combined) {
+      const jsonObjMatch = tagsText.match(/\{[\s\S]*\}/)
+      if (jsonObjMatch) {
+        combined = tryParse(jsonObjMatch[0])
+      }
+    }
+
+    const MAX_TAGS = 12
+    if (combined) {
+      tags = uniqueTags(combined, MAX_TAGS)
+    } else {
+      // Fallback: accept comma/newline-separated list
+      const rough = tagsText
+        .split(/[\n,]+/)
+        .map(s => s.trim())
+        .filter(Boolean)
+      tags = uniqueTags(rough, MAX_TAGS)
+    }
   }
 
   return {
