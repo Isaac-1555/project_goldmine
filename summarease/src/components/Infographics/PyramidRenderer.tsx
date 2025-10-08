@@ -144,11 +144,11 @@ export const PyramidRenderer: React.FC<PyramidRendererProps> = ({
   return (
     <div className="pyramid-container">
       <svg 
-        ref={svgRef} 
-        width={width} 
-        height={height}
+        ref={svgRef}
         className="pyramid-svg"
-        style={{ background: 'transparent' }}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: 'auto', background: 'transparent', display: 'block' }}
       />
     </div>
   );

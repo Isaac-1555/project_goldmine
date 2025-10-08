@@ -5,6 +5,7 @@ import { generateInfographic, suggestInfographicTypes } from '../../lib/infograp
 import type { InfographicSpec, InfographicType } from '../../lib/viz/types';
 import { Loader2, Sparkles, RefreshCw } from 'lucide-react';
 import './Infographics.css';
+import TypeDropdown from './TypeDropdown';
 
 interface InfographicGalleryProps {
   summaryId: string;
@@ -169,25 +170,23 @@ export const InfographicGallery: React.FC<InfographicGalleryProps> = ({
             disabled={isGenerating}
             title="Regenerate same type"
           >
-            <RefreshCw size={16} />
             Regenerate
           </button>
           
-          {/* Type switcher dropdown */}
-          <select
-            className="type-selector"
-            value={currentSpec!.type}
-            onChange={(e) => handleTypeSwitch(e.target.value as InfographicType)}
-            disabled={isGenerating}
-          >
-            <option value="mindmap">Mind Map</option>
-            <option value="pyramid">Pyramid</option>
-            <option value="cycle">Cycle</option>
-            <option value="timeline">Timeline</option>
-            <option value="comparison">Comparison</option>
-            <option value="process">Process</option>
-            <option value="hierarchy">Hierarchy</option>
-          </select>
+          {/* Type switcher dropdown (custom themed) */}
+          {(() => {
+            const allTypes: InfographicType[] = ['mindmap', 'pyramid', 'cycle', 'timeline', 'comparison', 'process', 'hierarchy'];
+            const options = allTypes.map(t => ({ value: t, label: formatTypeName(t) }));
+            return (
+              <TypeDropdown
+                value={currentSpec!.type}
+                onChange={(val) => handleTypeSwitch(val)}
+                options={options}
+                disabled={isGenerating}
+                ariaLabel="Infographic type"
+              />
+            );
+          })()}
         </div>
       </div>
 

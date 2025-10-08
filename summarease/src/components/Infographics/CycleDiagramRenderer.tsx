@@ -109,13 +109,19 @@ export const CycleDiagramRenderer: React.FC<CycleDiagramRendererProps> = ({
       // Node label
       const text = nodeGroup.append('text')
         .attr('text-anchor', 'middle')
-        .attr('dy', '0.35em')
+        .attr('dominant-baseline', 'middle')
+        .attr('y', 0)
         .attr('fill', '#1e293b')
         .attr('font-weight', '600')
         .attr('font-size', '13px')
         .text(node.label);
 
-      wrapText(text, 90);
+      const wasTruncated = wrapText(text, 90, 3);
+
+      // Add tooltip if truncated
+      if (wasTruncated) {
+        nodeGroup.append('title').text(node.label);
+      }
 
       // Position number
       nodeGroup.append('circle')
@@ -154,11 +160,11 @@ export const CycleDiagramRenderer: React.FC<CycleDiagramRendererProps> = ({
   return (
     <div className="cycle-diagram-container">
       <svg 
-        ref={svgRef} 
-        width={width} 
-        height={height}
+        ref={svgRef}
         className="cycle-diagram-svg"
-        style={{ background: 'transparent' }}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: 'auto', background: 'transparent', display: 'block' }}
       />
     </div>
   );
@@ -166,34 +172,52 @@ export const CycleDiagramRenderer: React.FC<CycleDiagramRendererProps> = ({
 
 function wrapText(
   text: d3.Selection<SVGTextElement, unknown, null, undefined>,
-  width: number
-) {
-  text.each(function() {
-    const text = d3.select(this);
-    const words = text.text().split(/\s+/).reverse();
-    const lineHeight = 1.1;
-    const y = text.attr('y');
-    const dy = parseFloat(text.attr('dy'));
-    
-    let word;
-    let line: string[] = [];
-    let lineNumber = 0;
-    let tspan = text.text(null).append('tspan').attr('x', 0).attr('y', y).attr('dy', dy + 'em');
+  width: number,
+  maxLines: number = 3
+): boolean {
+  let wasTruncated = false;
 
-    while (word = words.pop()) {
-      line.push(word);
-      tspan.text(line.join(' '));
-      
-      if (tspan.node()!.getComputedTextLength() > width) {
-        line.pop();
-        tspan.text(line.join(' '));
-        line = [word];
-        tspan = text.append('tspan')
+  text.each(function() {
+    const textSel = d3.select(this);
+    const original = textSel.text();
+    const words = (original || '').split(/\s+/);
+    const lineHeight = 1.1;
+
+    textSel.text('');
+    let firstTspan = textSel.append('tspan').attr('x', 0).attr('y', 0).attr('dy', '0em');
+    let tspan = firstTspan;
+    let line: string = '';
+    let linesCount = 1;
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      const testLine = line ? `${line} ${word}` : word;
+      tspan.text(testLine);
+      const tooLong = (tspan.node() as SVGTextElement).getComputedTextLength() > width;
+      if (tooLong) {
+        if (line) tspan.text(line);
+        if (linesCount >= maxLines) {
+          const currentText = tspan.text();
+          tspan.text(currentText ? currentText + '…' : word + '…');
+          linesCount = maxLines;
+          wasTruncated = true;
+          break;
+        }
+        line = word;
+        tspan = textSel.append('tspan')
           .attr('x', 0)
-          .attr('y', y)
-          .attr('dy', ++lineNumber * lineHeight + dy + 'em')
+          .attr('y', 0)
+          .attr('dy', lineHeight + 'em')
           .text(word);
+        linesCount++;
+      } else {
+        line = testLine;
       }
     }
+
+    const offset = -((linesCount - 1) * lineHeight) / 2;
+    firstTspan.attr('dy', offset + 'em');
   });
+
+  return wasTruncated;
 }

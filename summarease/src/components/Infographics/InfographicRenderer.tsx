@@ -3,7 +3,7 @@ import type { InfographicSpec } from '../../lib/viz/types';
 import { MindMapRenderer } from './MindMapRenderer';
 import { PyramidRenderer } from './PyramidRenderer';
 import { CycleDiagramRenderer } from './CycleDiagramRenderer';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, Maximize2, X } from 'lucide-react';
 
 interface InfographicRendererProps {
   spec: InfographicSpec;
@@ -21,6 +21,7 @@ export const InfographicRenderer: React.FC<InfographicRendererProps> = ({
   onExport
 }) => {
   const [isExporting, setIsExporting] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Render appropriate component based on type
   const renderInfographic = () => {
@@ -151,6 +152,14 @@ export const InfographicRenderer: React.FC<InfographicRendererProps> = ({
           <div className="infographic-controls">
             <button
               className="export-button"
+              onClick={() => setIsFullscreen(true)}
+              title="Expand"
+            >
+              <Maximize2 size={16} />
+              <span>View</span>
+            </button>
+            <button
+              className="export-button"
               onClick={() => handleExport('png')}
               disabled={isExporting}
               title="Export as PNG"
@@ -182,11 +191,7 @@ export const InfographicRenderer: React.FC<InfographicRendererProps> = ({
           <span className="metadata-item">
             Confidence: <strong>{(spec.metadata.confidence * 100).toFixed(0)}%</strong>
           </span>
-          {spec.metadata.reasoning && (
-            <span className="metadata-item metadata-reasoning" title={spec.metadata.reasoning}>
-              {spec.metadata.reasoning}
-            </span>
-          )}
+          {/* Reasoning removed from UI for cleaner layout */}
         </div>
       )}
 
@@ -194,6 +199,23 @@ export const InfographicRenderer: React.FC<InfographicRendererProps> = ({
       <div className="infographic-content">
         {renderInfographic()}
       </div>
+      {/* Fullscreen overlay */}
+      {isFullscreen && (
+        <div className="infographic-fullscreen-overlay" role="dialog" aria-modal="true">
+          <div className="infographic-fullscreen-inner">
+            <div className="infographic-fullscreen-bar">
+              <h4 className="infographic-fullscreen-title">{spec.title}</h4>
+              <button className="export-button" onClick={() => setIsFullscreen(false)} title="Close">
+                <X size={16} />
+                <span>Close</span>
+              </button>
+            </div>
+            <div className="infographic-fullscreen-content">
+              {renderInfographic()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
