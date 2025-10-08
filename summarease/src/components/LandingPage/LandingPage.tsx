@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { Mic, BookOpen, ArrowRight, Sparkles, Play, Upload, CheckCircle, GitBranch } from 'lucide-react'
+import { Mic, BookOpen, ArrowRight, Sparkles, Play, Upload, CheckCircle, GitBranch, Brain } from 'lucide-react'
 import { SatBrainMark } from '../brand/SatBrainMark'
 import './LandingPage.css'
 
@@ -378,7 +378,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
                       <span>Summary & key points</span>
                     </li>
                     <li className="qs-item">
-                      <SatBrainMark variant="f" theme="mono" size={16} detail="low" />
+                      <Brain size={16} />
                       <span>Flashcards & quiz</span>
                     </li>
                     <li className="qs-item">
@@ -423,7 +423,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
             </div>
             <div className="features-grid features-mock row-bottom">
               <div className="feature-card">
-                <div className="feature-icon"><SatBrainMark variant="f" theme="mono" size={24} detail="low" /></div>
+                <div className="feature-icon"><Brain size={24} /></div>
                 <h3 className="feature-title">Study tools: flashcards & quizzes</h3>
                 <p className="feature-description">generate MCQs and flashcards from summaries; review with spaced repetition</p>
               </div>
@@ -469,7 +469,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
               </div>
             </div>
             <div className="how-card">
-              <SatBrainMark variant="f" theme="mono" className="how-icon" size={28} detail="low" />
+              <Sparkles className="how-icon" size={28} />
               <div>
                 <h3>AI summarizes</h3>
                 <p>Get clean notes, key points, and tasks automatically.</p>
