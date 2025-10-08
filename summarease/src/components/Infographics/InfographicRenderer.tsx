@@ -3,6 +3,7 @@ import type { InfographicSpec } from '../../lib/viz/types';
 import { MindMapRenderer } from './MindMapRenderer';
 import { PyramidRenderer } from './PyramidRenderer';
 import { CycleDiagramRenderer } from './CycleDiagramRenderer';
+import { ProcessRenderer } from './ProcessRenderer';
 import { Download, Loader2, Maximize2, X } from 'lucide-react';
 
 interface InfographicRendererProps {
@@ -53,12 +54,7 @@ export const InfographicRenderer: React.FC<InfographicRendererProps> = ({
         );
       
       case 'process':
-        return (
-          <div className="infographic-placeholder">
-            <p>Process renderer coming soon...</p>
-            <pre>{JSON.stringify(spec, null, 2)}</pre>
-          </div>
-        );
+        return <ProcessRenderer spec={spec} width={width} height={height} />;
       
       default:
         return (

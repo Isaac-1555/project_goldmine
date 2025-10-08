@@ -21,11 +21,35 @@ export const CycleDiagramRenderer: React.FC<CycleDiagramRendererProps> = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
+    // Create zoomable layer
+    const zoomLayer = svg.append('g').attr('class', 'zoom-layer');
+
+    // Enable zoom & pan
+    const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.5, 3])
+      .on('zoom', (event) => {
+        zoomLayer.attr('transform', event.transform.toString());
+      });
+
+    svg.call(zoomBehavior as any);
+    
+    // Set cursor styles
+    svg.style('cursor', 'grab');
+    svg.on('mousedown', function() {
+      d3.select(this).style('cursor', 'grabbing');
+    });
+    svg.on('mouseup', function() {
+      d3.select(this).style('cursor', 'grab');
+    });
+    svg.on('mouseleave', function() {
+      d3.select(this).style('cursor', 'grab');
+    });
+
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) * 0.35;
 
-    const g = svg.append('g')
+    const g = zoomLayer.append('g')
       .attr('transform', `translate(${centerX}, ${centerY})`);
 
     // Sort nodes by position
@@ -143,7 +167,7 @@ export const CycleDiagramRenderer: React.FC<CycleDiagramRendererProps> = ({
         .text((i + 1).toString());
     });
 
-    // Title
+    // Title (outside zoom layer) - light colored for dark background
     if (spec.title) {
       svg.append('text')
         .attr('x', width / 2)
@@ -151,8 +175,19 @@ export const CycleDiagramRenderer: React.FC<CycleDiagramRendererProps> = ({
         .attr('text-anchor', 'middle')
         .attr('font-size', '20px')
         .attr('font-weight', 'bold')
-        .attr('fill', '#1e293b')
+        .attr('fill', '#e5e7eb')  // Light gray for dark background
         .text(spec.title);
+    }
+
+    // Subtitle - light colored for dark background
+    if (spec.subtitle) {
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 55)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '14px')
+        .attr('fill', '#94a3b8')  // Light gray for dark background
+        .text(spec.subtitle);
     }
 
   }, [spec, width, height]);

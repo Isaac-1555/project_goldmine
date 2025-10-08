@@ -1,4 +1,5 @@
 import type { InfographicType } from './viz/types';
+import { jsonrepair } from 'jsonrepair';
 
 /**
  * Builds a prompt for Gemini to extract the best infographic structure from summary text
@@ -129,8 +130,9 @@ Return ONLY valid JSON matching this exact schema:
 
 ## Important Guidelines:
 
+- **CRITICAL**: Every node MUST have both "id" and "label" fields
 - Keep all labels concise and readable (max 40 chars)
-- Use descriptive IDs (e.g., "central_concept", "branch_marketing", "step_planning")
+- Use descriptive snake_case IDs (e.g., "central_concept", "branch_marketing", "step_planning")
 - Only include connections array when relationships need explicit definition (cycle, process, comparison)
 - Colors should be hex codes and visually harmonious
 - Confidence should reflect how well the content fits the chosen type (0.6-1.0)
@@ -235,9 +237,24 @@ Return ONLY valid JSON in this format:
   "subtitle": "Optional subtitle",
   "confidence": 0.8,
   "reasoning": "Why this structure works",
-  "nodes": [...],
-  "connections": [...]
+  "nodes": [
+    {
+      "id": "node_1",
+      "label": "Node Label",
+      "level": 0,
+      "position": 0
+    }
+  ],
+  "connections": [
+    {
+      "from": "node_1",
+      "to": "node_2",
+      "type": "arrow"
+    }
+  ]
 }
+
+CRITICAL: Every node MUST have an "id" field!
 
 Summary Text:
 ${summaryText}
@@ -311,113 +328,286 @@ A tree-like hierarchy with:
  * Validate and clean extracted JSON from Gemini response
  */
 export function extractAndValidateJSON(responseText: string): any | null {
+  console.log('=== Starting JSON extraction ===');
+  console.log('Response length:', responseText.length, 'chars');
+  
   try {
-    // Remove markdown code blocks if present
-    let cleaned = responseText.trim();
+    // Step 1: Extract JSON from markdown or plain text
+    let cleaned = extractJsonFromResponse(responseText);
     
-    // Remove ```json or ``` wrappers
-    const jsonMatch = cleaned.match(/```json?\s*\n?([\s\S]*?)\n?```/);
-    if (jsonMatch) {
-      cleaned = jsonMatch[1];
+    if (!cleaned) {
+      console.error('❌ No JSON object found in response');
+      return tryAlternativeParsing(responseText);
     }
     
-    // Find JSON object boundaries
-    const startIdx = cleaned.indexOf('{');
-    const endIdx = cleaned.lastIndexOf('}');
+    console.log('✓ JSON extracted, length:', cleaned.length);
     
-    if (startIdx === -1 || endIdx === -1) {
-      console.error('No JSON object found in response');
-      return null;
-    }
-    
-    cleaned = cleaned.substring(startIdx, endIdx + 1);
-    
-    // Clean common JSON formatting issues
+    // Step 2: Clean common formatting issues
     cleaned = cleanJsonString(cleaned);
+    console.log('✓ JSON cleaned');
     
-    // Parse and validate
-    const parsed = JSON.parse(cleaned);
-    
-    // Basic validation
-    if (!parsed.type || !parsed.nodes || !Array.isArray(parsed.nodes)) {
-      console.error('Invalid infographic structure:', parsed);
-      return null;
+    // Step 3: Try to parse
+    let parsed: any;
+    try {
+      parsed = JSON.parse(cleaned);
+      console.log('✓ JSON parsed successfully');
+    } catch (parseError: any) {
+      console.warn('⚠️  Initial parse failed:', parseError.message);
+      console.log('Attempting JSON repair...');
+      
+      // Try to repair the JSON
+      try {
+        const repaired = jsonrepair(cleaned);
+        parsed = JSON.parse(repaired);
+        console.log('✓ JSON repaired and parsed successfully');
+      } catch (repairError) {
+        console.error('❌ JSON repair failed:', repairError);
+        logDetailedParseError(parseError, cleaned);
+        return tryAlternativeParsing(responseText);
+      }
     }
     
-    // Ensure required fields
-    if (!parsed.title) parsed.title = 'Untitled Infographic';
-    if (!parsed.confidence) parsed.confidence = 0.7;
-    if (!parsed.nodes.length) {
-      console.error('Infographic has no nodes');
-      return null;
+    // Step 4: Validate structure
+    if (!validateInfographicStructure(parsed)) {
+      console.error('❌ Invalid infographic structure');
+      return tryAlternativeParsing(responseText);
     }
     
+    // Step 5: Ensure required fields
+    normalizeInfographicData(parsed);
+    
+    console.log('✓ Validation complete, nodes:', parsed.nodes?.length);
     return parsed;
-  } catch (error) {
-    console.error('Failed to parse infographic JSON:', error);
-    console.error('Response text (first 500 chars):', responseText.substring(0, 500));
     
-    // Try alternative parsing methods
+  } catch (error: any) {
+    console.error('❌ Unexpected error in extractAndValidateJSON:', error);
     return tryAlternativeParsing(responseText);
   }
+}
+
+/**
+ * Extract JSON from response, handling markdown and extra text
+ */
+function extractJsonFromResponse(responseText: string): string | null {
+  let cleaned = responseText.trim();
+  
+  // Try to extract from markdown code blocks first
+  const codeBlockPatterns = [
+    /```json\s*\n([\s\S]*?)\n```/,
+    /```\s*\n([\s\S]*?)\n```/,
+    /`([\s\S]*?)`/
+  ];
+  
+  for (const pattern of codeBlockPatterns) {
+    const match = cleaned.match(pattern);
+    if (match) {
+      cleaned = match[1].trim();
+      break;
+    }
+  }
+  
+  // Find JSON object boundaries using bracket matching
+  const startIdx = cleaned.indexOf('{');
+  if (startIdx === -1) return null;
+  
+  // Find matching closing bracket
+  let bracketCount = 0;
+  let endIdx = -1;
+  let inString = false;
+  let escapeNext = false;
+  
+  for (let i = startIdx; i < cleaned.length; i++) {
+    const char = cleaned[i];
+    
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+    
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    
+    if (!inString) {
+      if (char === '{') bracketCount++;
+      if (char === '}') {
+        bracketCount--;
+        if (bracketCount === 0) {
+          endIdx = i;
+          break;
+        }
+      }
+    }
+  }
+  
+  if (endIdx === -1) {
+    console.warn('⚠️  Could not find matching closing bracket');
+    return null;
+  }
+  
+  return cleaned.substring(startIdx, endIdx + 1);
 }
 
 /**
  * Clean common JSON formatting issues that Gemini might produce
  */
 function cleanJsonString(jsonStr: string): string {
-  return jsonStr
-    // Remove trailing commas before closing brackets
-    .replace(/,\s*([\]}])/g, '$1')
-    // Remove comments (// or /* */)
-    .replace(/\/\/.*$/gm, '')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    // Fix single quotes to double quotes (but be careful with apostrophes)
-    .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
-    // Normalize whitespace
-    .trim();
+  let cleaned = jsonStr;
+  
+  // Remove comments (but be careful not to remove them from strings)
+  // Remove single-line comments
+  cleaned = cleaned.replace(/\/\/.*$/gm, '');
+  
+  // Remove multi-line comments
+  cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
+  
+  // Remove trailing commas before closing brackets/braces
+  // This handles multiple trailing commas
+  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+  
+  // Fix unquoted keys (but preserve strings)
+  cleaned = cleaned.replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":');
+  
+  // Fix single quotes to double quotes for property names and values
+  // This is tricky - we need to be careful with apostrophes
+  cleaned = cleaned.replace(/([{,]\s*)'([^']+)'\s*:/g, '$1"$2":');
+  
+  // Normalize line breaks within strings (they should be escaped)
+  // This is a simple approach - more robust would parse properly
+  
+  return cleaned.trim();
+}
+
+/**
+ * Validate infographic structure
+ */
+function validateInfographicStructure(parsed: any): boolean {
+  if (!parsed.type) {
+    console.error('Missing type field');
+    return false;
+  }
+  
+  if (!parsed.nodes || !Array.isArray(parsed.nodes)) {
+    console.error('Missing or invalid nodes array');
+    return false;
+  }
+  
+  if (parsed.nodes.length === 0) {
+    console.error('Empty nodes array');
+    return false;
+  }
+  
+  // Validate and fix nodes
+  for (let i = 0; i < parsed.nodes.length; i++) {
+    const node = parsed.nodes[i];
+    
+    // Must have at least a label
+    if (!node.label) {
+      console.error(`Node at index ${i} missing label:`, node);
+      return false;
+    }
+    
+    // Auto-generate ID if missing
+    if (!node.id) {
+      node.id = generateNodeId(node.label, i);
+      console.warn(`⚠️  Node at index ${i} missing id, generated: ${node.id}`);
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * Generate a node ID from label
+ */
+function generateNodeId(label: string, index: number): string {
+  // Create a snake_case id from the label
+  const baseId = label
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '') // Remove special chars
+    .replace(/\s+/g, '_') // Replace spaces with underscore
+    .substring(0, 30); // Limit length
+  
+  // Add index to ensure uniqueness
+  return `${baseId}_${index}`;
+}
+
+/**
+ * Normalize infographic data, adding missing fields
+ */
+function normalizeInfographicData(parsed: any): void {
+  if (!parsed.title) parsed.title = 'Untitled Infographic';
+  if (!parsed.confidence) parsed.confidence = 0.7;
+  if (!parsed.connections) parsed.connections = [];
+  if (!parsed.subtitle) parsed.subtitle = '';
+  if (!parsed.reasoning) parsed.reasoning = '';
+}
+
+/**
+ * Log detailed parse error for debugging
+ */
+function logDetailedParseError(error: any, jsonStr: string): void {
+  console.error('=== Detailed Parse Error ===');
+  console.error('Error message:', error.message);
+  
+  // Try to extract position from error message
+  const posMatch = error.message.match(/position (\d+)/);
+  if (posMatch) {
+    const pos = parseInt(posMatch[1]);
+    const start = Math.max(0, pos - 50);
+    const end = Math.min(jsonStr.length, pos + 50);
+    const context = jsonStr.substring(start, end);
+    const pointer = ' '.repeat(Math.min(50, pos - start)) + '^';
+    
+    console.error('Context around error position:');
+    console.error(context);
+    console.error(pointer);
+  }
+  
+  // Log the first and last parts of the JSON
+  console.error('\nJSON start (200 chars):', jsonStr.substring(0, 200));
+  console.error('\nJSON end (200 chars):', jsonStr.substring(Math.max(0, jsonStr.length - 200)));
 }
 
 /**
  * Try alternative parsing methods when standard JSON.parse fails
  */
 function tryAlternativeParsing(responseText: string): any | null {
+  console.log('=== Attempting alternative parsing ===');
+  
   try {
-    console.log('Attempting alternative JSON parsing...');
-    
-    // Try to find and extract just the essential parts
+    // Try to find and extract just the essential parts using regex
     const typeMatch = responseText.match(/"type"\s*:\s*"([^"]+)"/);
     const titleMatch = responseText.match(/"title"\s*:\s*"([^"]+)"/);
-    const nodesMatch = responseText.match(/"nodes"\s*:\s*\[([\s\S]*?)\](?:\s*,\s*"connections"|\s*,\s*"confidence"|\s*\})/);
     
-    if (!typeMatch || !nodesMatch) {
-      console.error('Could not extract essential infographic data');
+    if (!typeMatch) {
+      console.error('❌ Could not extract type field');
       return null;
     }
     
-    // Try to parse individual nodes
-    const nodeText = nodesMatch[1];
-    const nodeObjects: any[] = [];
+    // Try to extract nodes array with better bracket matching
+    const nodesArrayMatch = extractNodesArray(responseText);
     
-    // Match individual node objects
-    const nodeMatches = nodeText.matchAll(/\{([^{}]*?)\}/gs);
-    for (const match of nodeMatches) {
-      try {
-        const nodeJson = '{' + match[1] + '}';
-        const cleaned = cleanJsonString(nodeJson);
-        const node = JSON.parse(cleaned);
-        if (node.id && node.label) {
-          nodeObjects.push(node);
-        }
-      } catch (e) {
-        console.warn('Failed to parse node, skipping:', match[0]);
-      }
+    if (!nodesArrayMatch) {
+      console.error('❌ Could not extract nodes array');
+      return null;
     }
+    
+    // Parse the nodes array
+    const nodeObjects = parseNodesArray(nodesArrayMatch);
     
     if (nodeObjects.length === 0) {
-      console.error('No valid nodes could be extracted');
+      console.error('❌ No valid nodes could be extracted');
       return null;
     }
+    
+    console.log('✓ Alternative parsing succeeded, extracted', nodeObjects.length, 'nodes');
     
     // Build minimal valid infographic
     return {
@@ -428,7 +618,160 @@ function tryAlternativeParsing(responseText: string): any | null {
       confidence: 0.5
     };
   } catch (error) {
-    console.error('Alternative parsing also failed:', error);
+    console.error('❌ Alternative parsing failed:', error);
     return null;
   }
+}
+
+/**
+ * Extract nodes array from response using bracket matching
+ */
+function extractNodesArray(text: string): string | null {
+  const nodesStart = text.indexOf('"nodes"');
+  if (nodesStart === -1) return null;
+  
+  const arrayStart = text.indexOf('[', nodesStart);
+  if (arrayStart === -1) return null;
+  
+  // Find matching closing bracket
+  let bracketCount = 0;
+  let inString = false;
+  let escapeNext = false;
+  
+  for (let i = arrayStart; i < text.length; i++) {
+    const char = text[i];
+    
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+    
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    
+    if (!inString) {
+      if (char === '[') bracketCount++;
+      if (char === ']') {
+        bracketCount--;
+        if (bracketCount === 0) {
+          return text.substring(arrayStart, i + 1);
+        }
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Parse nodes array string into node objects
+ */
+function parseNodesArray(arrayStr: string): any[] {
+  const nodes: any[] = [];
+  
+  try {
+    // Try to parse the whole array first
+    const cleaned = cleanJsonString(arrayStr);
+    const parsed = JSON.parse(cleaned);
+    if (Array.isArray(parsed)) {
+      // Filter to nodes with at least a label
+      const validNodes = parsed.filter(node => node.label);
+      // Auto-generate IDs if missing
+      validNodes.forEach((node, i) => {
+        if (!node.id) {
+          node.id = generateNodeId(node.label, i);
+        }
+      });
+      return validNodes;
+    }
+  } catch (e) {
+    console.warn('⚠️  Could not parse nodes array as a whole, trying individual nodes');
+  }
+  
+  // Extract individual node objects
+  const nodeObjects = extractNestedObjects(arrayStr);
+  
+  for (let i = 0; i < nodeObjects.length; i++) {
+    const nodeStr = nodeObjects[i];
+    try {
+      const cleaned = cleanJsonString(nodeStr);
+      const node = JSON.parse(cleaned);
+      if (node.label) {
+        // Auto-generate ID if missing
+        if (!node.id) {
+          node.id = generateNodeId(node.label, i);
+        }
+        nodes.push(node);
+      }
+    } catch (e) {
+      console.warn('⚠️  Failed to parse node:', nodeStr.substring(0, 100));
+    }
+  }
+  
+  return nodes;
+}
+
+/**
+ * Extract nested objects from a string using bracket matching
+ */
+function extractNestedObjects(text: string): string[] {
+  const objects: string[] = [];
+  let i = 0;
+  
+  while (i < text.length) {
+    const objStart = text.indexOf('{', i);
+    if (objStart === -1) break;
+    
+    // Find matching closing brace
+    let braceCount = 0;
+    let inString = false;
+    let escapeNext = false;
+    let objEnd = -1;
+    
+    for (let j = objStart; j < text.length; j++) {
+      const char = text[j];
+      
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+      
+      if (char === '\\') {
+        escapeNext = true;
+        continue;
+      }
+      
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      
+      if (!inString) {
+        if (char === '{') braceCount++;
+        if (char === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            objEnd = j;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (objEnd !== -1) {
+      objects.push(text.substring(objStart, objEnd + 1));
+      i = objEnd + 1;
+    } else {
+      break;
+    }
+  }
+  
+  return objects;
 }

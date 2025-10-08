@@ -10,8 +10,8 @@ interface PyramidRendererProps {
 
 export const PyramidRenderer: React.FC<PyramidRendererProps> = ({
   spec,
-  width = 800,
-  height = 600
+  width = 900,
+  height = 700
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -21,11 +21,35 @@ export const PyramidRenderer: React.FC<PyramidRendererProps> = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    const margin = { top: 40, right: 40, bottom: 40, left: 40 };
+    // Create zoomable layer
+    const zoomLayer = svg.append('g').attr('class', 'zoom-layer');
+
+    // Enable zoom & pan
+    const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.5, 3])
+      .on('zoom', (event) => {
+        zoomLayer.attr('transform', event.transform.toString());
+      });
+
+    svg.call(zoomBehavior as any);
+    
+    // Set cursor styles
+    svg.style('cursor', 'grab');
+    svg.on('mousedown', function() {
+      d3.select(this).style('cursor', 'grabbing');
+    });
+    svg.on('mouseup', function() {
+      d3.select(this).style('cursor', 'grab');
+    });
+    svg.on('mouseleave', function() {
+      d3.select(this).style('cursor', 'grab');
+    });
+
+    const margin = { top: 80, right: 40, bottom: 40, left: 40 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
-    const g = svg.append('g')
+    const g = zoomLayer.append('g')
       .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
     // Group nodes by level
@@ -68,41 +92,61 @@ export const PyramidRenderer: React.FC<PyramidRendererProps> = ({
         .attr('rx', 8)
         .style('filter', 'drop-shadow(0px 2px 4px rgba(0,0,0,0.1))');
 
-      // Add text for nodes
+      // Add text for nodes - distribute horizontally if multiple nodes
+      // Use better spacing calculation to prevent overlap
+      const horizontalPadding = levelWidth * 0.05;  // 5% padding on each side
+      const availableWidth = levelWidth - (horizontalPadding * 2);  // Define outside to fix scope
+      
       nodes.forEach((node, nodeIndex) => {
         const textY = y + levelHeight / 2;
-        const textX = x + levelWidth / 2;
+        
+        // Distribute nodes horizontally within the level
+        let textX;
+        if (nodes.length === 1) {
+          textX = x + levelWidth / 2;
+        } else {
+          // Better distribution with padding
+          const spacing = availableWidth / nodes.length;
+          textX = x + horizontalPadding + (spacing * nodeIndex) + (spacing / 2);
+        }
 
-        // Main label
-        levelGroup.append('text')
+        const nodeTextGroup = levelGroup.append('g')
+          .attr('class', 'node-text-group')
+          .style('cursor', 'pointer');
+
+        // Add tooltip for full text
+        nodeTextGroup.append('title')
+          .text(node.description || node.label);
+
+        // Main label with wrapping
+        const labelText = nodeTextGroup.append('text')
           .attr('x', textX)
           .attr('y', textY)
           .attr('text-anchor', 'middle')
           .attr('dominant-baseline', 'middle')
           .attr('fill', '#1e293b')
           .attr('font-weight', 'bold')
-          .attr('font-size', index === 0 ? '18px' : '15px')
+          .attr('font-size', index === 0 ? '18px' : '13px')  // Slightly smaller for better fit
           .text(node.label);
 
-        // Description if available
-        if (node.description) {
-          levelGroup.append('text')
-            .attr('x', textX)
-            .attr('y', textY + 22)
-            .attr('text-anchor', 'middle')
-            .attr('fill', '#475569')
-            .attr('font-size', '12px')
-            .text(truncateText(node.description, 50));
-        }
+        // Wrap text if needed - calculate max width based on actual spacing
+        const maxTextWidth = nodes.length > 1 
+          ? (availableWidth / nodes.length) * 0.85  // 85% of space per node
+          : levelWidth * 0.8;
+        wrapText(labelText, maxTextWidth, 2);  // Reduced to 2 lines max
 
-        // Icon placeholder (if icon property exists)
-        if (node.icon) {
-          levelGroup.append('text')
-            .attr('x', textX - levelWidth / 3)
-            .attr('y', textY)
+        // Description if available and space permits
+        if (node.description && node.description !== node.label && levelHeight > 80) {
+          const descText = nodeTextGroup.append('text')
+            .attr('x', textX)
+            .attr('y', textY + 25)
             .attr('text-anchor', 'middle')
-            .attr('font-size', '24px')
-            .text(node.icon);
+            .attr('fill', '#64748b')
+            .attr('font-size', '11px')
+            .attr('font-style', 'italic')
+            .text(node.description);
+
+          wrapText(descText, maxTextWidth, 2);
         }
       });
 
@@ -127,16 +171,27 @@ export const PyramidRenderer: React.FC<PyramidRendererProps> = ({
       }
     });
 
-    // Title
+    // Title (outside zoom layer) - light colored for dark background
     if (spec.title) {
       svg.append('text')
         .attr('x', width / 2)
-        .attr('y', 20)
+        .attr('y', 30)
         .attr('text-anchor', 'middle')
-        .attr('font-size', '20px')
+        .attr('font-size', '22px')
         .attr('font-weight', 'bold')
-        .attr('fill', '#1e293b')
+        .attr('fill', '#e5e7eb')  // Light gray for dark background
         .text(spec.title);
+    }
+
+    // Subtitle - light colored for dark background
+    if (spec.subtitle) {
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 55)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '14px')
+        .attr('fill', '#94a3b8')  // Light gray for dark background
+        .text(spec.subtitle);
     }
 
   }, [spec, width, height]);
@@ -157,4 +212,60 @@ export const PyramidRenderer: React.FC<PyramidRendererProps> = ({
 function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength - 3) + '...';
+}
+
+// Text wrapping utility
+function wrapText(
+  text: d3.Selection<SVGTextElement, unknown, null, undefined>,
+  width: number,
+  maxLines: number = 3
+): boolean {
+  let wasTruncated = false;
+
+  text.each(function() {
+    const textSel = d3.select(this);
+    const original = textSel.text();
+    const words = (original || '').split(/\s+/);
+    const lineHeight = 1.1;
+
+    textSel.text('');
+    let tspan = textSel.append('tspan').attr('x', textSel.attr('x')).attr('dy', '0em');
+    let line: string = '';
+    let linesCount = 1;
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      const testLine = line ? `${line} ${word}` : word;
+      tspan.text(testLine);
+      const tooLong = (tspan.node() as SVGTextElement).getComputedTextLength() > width;
+      
+      if (tooLong) {
+        if (line) tspan.text(line);
+        
+        if (linesCount >= maxLines) {
+          const currentText = tspan.text();
+          tspan.text(currentText.substring(0, Math.max(0, currentText.length - 2)) + '...');
+          wasTruncated = true;
+          break;
+        }
+        
+        line = word;
+        linesCount++;
+        tspan = textSel.append('tspan')
+          .attr('x', textSel.attr('x'))
+          .attr('dy', `${lineHeight}em`)
+          .text(word);
+      } else {
+        line = testLine;
+      }
+    }
+
+    // Center vertically
+    const yOffset = -(linesCount - 1) * lineHeight * 0.5;
+    textSel.selectAll('tspan').attr('dy', (d, i) => {
+      return i === 0 ? `${yOffset}em` : `${lineHeight}em`;
+    });
+  });
+
+  return wasTruncated;
 }
