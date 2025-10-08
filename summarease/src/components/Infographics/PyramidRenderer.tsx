@@ -171,26 +171,28 @@ export const PyramidRenderer: React.FC<PyramidRendererProps> = ({
       }
     });
 
-    // Title (outside zoom layer) - light colored for dark background
+    // Title (outside zoom layer) - theme-aware colors
     if (spec.title) {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       svg.append('text')
         .attr('x', width / 2)
         .attr('y', 30)
         .attr('text-anchor', 'middle')
         .attr('font-size', '22px')
         .attr('font-weight', 'bold')
-        .attr('fill', '#e5e7eb')  // Light gray for dark background
+        .attr('fill', isDark ? '#e5e7eb' : '#1e293b')  // Light for dark, dark for light
         .text(spec.title);
     }
 
-    // Subtitle - light colored for dark background
+    // Subtitle - theme-aware colors
     if (spec.subtitle) {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       svg.append('text')
         .attr('x', width / 2)
         .attr('y', 55)
         .attr('text-anchor', 'middle')
         .attr('font-size', '14px')
-        .attr('fill', '#94a3b8')  // Light gray for dark background
+        .attr('fill', isDark ? '#94a3b8' : '#64748b')  // Light for dark, medium for light
         .text(spec.subtitle);
     }
 

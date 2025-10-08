@@ -152,7 +152,7 @@ export const InfographicGallery: React.FC<InfographicGalleryProps> = ({
     <div className="infographic-gallery">
       <div className="gallery-header">
         <div className="gallery-title-section">
-          <h3 className="gallery-title">Visual Representation</h3>
+          <h3 className="gallery-title">📊 Visual Representation</h3>
           <div className="type-indicator">
             <span className="type-badge">{formatTypeName(currentSpec!.type)}</span>
             {currentSpec!.metadata.confidence && (

@@ -125,7 +125,7 @@
   align-items: center;
   min-height: 360px;
   padding: 16px;
-  background: var(--bg-canvas, #0b1220);
+  background: var(--bg-canvas, #f8fafc);  /* Light by default */
   border-radius: 8px;
   overflow: visible; /* ensure SVG can fully render */
 }
@@ -224,28 +224,52 @@
   opacity: 0.9;
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .infographic-renderer,
-  .infographic-gallery,
-  .gallery-header {
-    --bg-primary: #0b1220;
-    --bg-secondary: #111827;
-    --bg-tertiary: #0f172a;
-    --bg-canvas: #0b1220;
-    --bg-hover: #1f2937;
-    --bg-code: #0f172a;
-    --text-primary: #e5e7eb;
-    --text-secondary: #94a3b8;
-    --text-code: #cbd5e1;
-    --border-color: #334155;
-    --border-hover: #475569;
-    --error-color: #ef4444;
-    --error-bg: #7f1d1d;
-    --error-border: #991b1b;
-    --primary-color: #3b82f6;
-    --primary-hover: #2563eb;
-  }
+/* Theme-aware styling - Light theme (default) */
+.infographic-renderer,
+.infographic-gallery,
+.gallery-header {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-canvas: #f8fafc;
+  --bg-hover: #e2e8f0;
+  --bg-code: #f1f5f9;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-code: #475569;
+  --border-color: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --error-color: #dc2626;
+  --error-bg: #fef2f2;
+  --error-border: #fecaca;
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --canvas-text-light: #1e293b;
+  --canvas-text-medium: #64748b;
+}
+
+/* Dark theme */
+[data-theme="dark"] .infographic-renderer,
+[data-theme="dark"] .infographic-gallery,
+[data-theme="dark"] .gallery-header {
+  --bg-primary: #0b1220;
+  --bg-secondary: #111827;
+  --bg-tertiary: #0f172a;
+  --bg-canvas: #0b1220;
+  --bg-hover: #1f2937;
+  --bg-code: #0f172a;
+  --text-primary: #e5e7eb;
+  --text-secondary: #94a3b8;
+  --text-code: #cbd5e1;
+  --border-color: #334155;
+  --border-hover: #475569;
+  --error-color: #ef4444;
+  --error-bg: #7f1d1d;
+  --error-border: #991b1b;
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --canvas-text-light: #e5e7eb;
+  --canvas-text-medium: #94a3b8;
 }
 
 /* Responsive Design */
@@ -546,9 +570,18 @@
   align-items: center;
   gap: 16px;
   margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--accent-color, #3b82f6);
   flex-wrap: wrap;
+}
+
+.gallery-title {
+  color: var(--accent-color, #3b82f6);
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Improve button/select theming to match app */
@@ -617,13 +650,6 @@
 
 .gallery-title-section {
   flex: 1;
-}
-
-.gallery-title {
-  margin: 0 0 8px;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary, #1e293b);
 }
 
 .type-indicator {
@@ -801,11 +827,9 @@
   visibility: visible;
 }
 
-/* Success colors in dark mode */
-@media (prefers-color-scheme: dark) {
-  .infographic-gallery,
-  .gallery-header {
-    --success-color: #22c55e;
-    --success-hover: #16a34a;
-  }
+/* Success colors */
+.infographic-gallery,
+.gallery-header {
+  --success-color: #22c55e;
+  --success-hover: #16a34a;
 }
