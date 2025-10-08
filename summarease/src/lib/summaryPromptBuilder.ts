@@ -81,33 +81,6 @@ Guidelines:
 #### SPECIAL CONTENT:
 Only use fenced code blocks when content truly requires exact copying (e.g., shell commands, JSON, YAML, config files). Use an appropriate language tag like bash, json, or yaml. Do NOT wrap ordinary prose or lists in code fences.
 
-${finalConfig.includeInfographics ? `#### INFOGRAPHICS AND VISUAL CONTENT:
-When the content would benefit from visual representation, add a plain-text Infographic Specification section (no code block):
-
-Infographic Spec:
-- Type: [flowchart|mindmap|timeline|comparison|hierarchy|process|chart]
-- Title: <brief title>
-- Description: <what the graphic should show>
-- Elements: <bullet list of key components or data points>
-- Relationships: <how elements connect or relate>
-- Data: <for charts only, provide either bullet pairs like "Label: 12" or a JSON array such as [{ "name": "Label", "value": 12 }]>
-
-Examples of when to include infographics:
-- Process flows or algorithms (use flowchart)
-- Concept relationships (use mindmap)
-- Historical sequences or project timelines (use timeline)
-- Comparing multiple items or concepts (use comparison)
-- Organizational structures or taxonomies (use hierarchy)
-- Step-by-step procedures (use process diagram)
-- Numerical data or trends (use chart; prefer bars/lines unless part-to-whole → donut)
-
-Ensure infographics are:
-- Directly relevant to the content
-- Enhance understanding rather than duplicate text
-- Include clear labels and descriptions
-- Specify colors or visual emphasis where important
-` : ''}
-
 ### OUTPUT STRUCTURE:
 
 ## 📚 KEY CONCEPTS

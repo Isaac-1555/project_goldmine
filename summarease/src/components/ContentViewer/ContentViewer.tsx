@@ -8,7 +8,6 @@ import { CodeBlockRenderer } from '../ContentBlocks/CodeBlockRenderer'
 import { MathBlockRenderer } from '../ContentBlocks/MathBlockRenderer'
 import { TagEditor } from '../TagEditor'
 import './ContentViewer.css'
-import { ChartGallery } from '../Charts/ChartGallery'
 import { InfographicGallery } from '../Infographics/InfographicGallery'
 import '../Infographics/Infographics.css'
 import { sanitizeTagName, isJunkTagName } from '../../lib/tagUtils'
@@ -634,12 +633,6 @@ const res = await regenerateSummary(fileDetails!.file.id, getSummaryConfig())
                     <div className="summary-text">
                       {renderSummaryText(fileDetails.summary.summary_text)}
                     </div>
-                    {settings.includeInfographics && (
-                      <ChartGallery
-                        summaryId={fileDetails.summary.id}
-                        summaryText={fileDetails.summary.summary_text}
-                      />
-                    )}
                     {/* Infographic Gallery - Visual representations like mind maps, pyramids, cycles */}
                     <InfographicGallery
                       summaryId={fileDetails.summary.id}
