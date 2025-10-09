@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Folder, Plus, X } from 'lucide-react'
 import { getUserFolders, createFolder, type Folder as FolderType } from '../../lib/api'
+import { CustomSelect, type SelectOption } from '../CustomSelect'
 import './FolderSelector.css'
 
 interface FolderSelectorProps {
@@ -40,8 +41,7 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
     }
   }
 
-  const handleFolderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value
+  const handleFolderChange = (value: string) => {
     if (value === 'CREATE_NEW') {
       setShowNewFolderInput(true)
       return
@@ -122,21 +122,22 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
           </div>
         </div>
       ) : (
-        <select
+        <CustomSelect
           value={selectedFolderId || ''}
           onChange={handleFolderChange}
-          className="folder-selector-dropdown"
+          options={[
+            { value: '', label: loading ? 'Loading folders...' : placeholder },
+            { value: '', label: '📁 No Folder' },
+            ...folders.map((folder): SelectOption => ({
+              value: folder.id,
+              label: `📁 ${folder.name}`
+            })),
+            { value: 'CREATE_NEW', label: '+ Create New Folder' }
+          ]}
           disabled={loading}
-        >
-          <option value="">{loading ? 'Loading folders...' : placeholder}</option>
-          <option value="">📁 No Folder</option>
-          {folders.map((folder) => (
-            <option key={folder.id} value={folder.id}>
-              📁 {folder.name}
-            </option>
-          ))}
-          <option value="CREATE_NEW">+ Create New Folder</option>
-        </select>
+          ariaLabel={label || 'Select folder'}
+          className="folder-selector-dropdown"
+        />
       )}
     </div>
   )

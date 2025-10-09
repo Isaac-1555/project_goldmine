@@ -424,7 +424,8 @@
   font-weight: 500;
 }
 
-/* Select Dropdown Styles */
+/* Select Dropdown Styles - DEPRECATED: Now using CustomSelect component */
+/* Keeping for reference but commented out
 .select-wrapper {
   position: relative;
   display: inline-block;
@@ -472,6 +473,7 @@
   color: var(--text-muted);
   pointer-events: none;
 }
+*/
 
 /* Dark Theme Specific Overrides */
 [data-theme="dark"] .theme-option.active {
@@ -482,9 +484,9 @@
   box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.1);
 }
 
-[data-theme="dark"] .settings-select {
+/* [data-theme="dark"] .settings-select {
   box-shadow: 0 1px 3px rgba(255, 255, 255, 0.05);
-}
+} */
 
 [data-theme="dark"] .settings-section {
   box-shadow: 0 1px 3px rgba(255, 255, 255, 0.05);

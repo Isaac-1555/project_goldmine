@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { User, Palette, Bot, Save, Info, ChevronDown, Monitor, MessageSquare } from 'lucide-react'
+import { User, Palette, Bot, Save, Info, Monitor, MessageSquare } from 'lucide-react'
 import { useAuth } from '../../Auth/AuthProvider'
 import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
 import { useTheme } from '../../../contexts/ThemeContext'
 import { FeedbackModal } from '../../Feedback/FeedbackModal'
+import { CustomSelect, type SelectOption } from '../../CustomSelect'
 import './SettingsTab.css'
 
 export const SettingsTab: React.FC = () => {
@@ -176,24 +177,21 @@ export const SettingsTab: React.FC = () => {
                 {/* Preferred Infographic Type */}
                 <div className="form-group sub-setting">
                   <label htmlFor="infographic-type">Preferred Infographic Type</label>
-                  <div className="select-wrapper">
-                    <select
-                      id="infographic-type"
-                      value={settings.preferredInfographicType || 'auto'}
-                      onChange={(e) => updateSetting('preferredInfographicType', e.target.value as any)}
-                      className="settings-select"
-                    >
-                      <option value="auto">Auto (Let AI Choose)</option>
-                      <option value="mindmap">Mind Map</option>
-                      <option value="pyramid">Pyramid / Hierarchy</option>
-                      <option value="cycle">Cycle Diagram</option>
-                      <option value="timeline">Timeline</option>
-                      <option value="comparison">Comparison</option>
-                      <option value="process">Process Flow</option>
-                      <option value="hierarchy">Organization Chart</option>
-                    </select>
-                    <ChevronDown className="select-icon" />
-                  </div>
+                  <CustomSelect
+                    value={settings.preferredInfographicType || 'auto'}
+                    onChange={(value) => updateSetting('preferredInfographicType', value as any)}
+                    options={[
+                      { value: 'auto', label: 'Auto (Let AI Choose)' },
+                      { value: 'mindmap', label: 'Mind Map' },
+                      { value: 'pyramid', label: 'Pyramid / Hierarchy' },
+                      { value: 'cycle', label: 'Cycle Diagram' },
+                      { value: 'timeline', label: 'Timeline' },
+                      { value: 'comparison', label: 'Comparison' },
+                      { value: 'process', label: 'Process Flow' },
+                      { value: 'hierarchy', label: 'Organization Chart' }
+                    ]}
+                    ariaLabel="Preferred infographic type"
+                  />
                   <p className="input-help">
                     AI will prefer this type, but may choose another if more suitable
                   </p>
@@ -234,19 +232,16 @@ export const SettingsTab: React.FC = () => {
             {/* LLM Provider Dropdown */}
             <div className="form-group">
               <label htmlFor="llm-provider">AI Model Provider</label>
-              <div className="select-wrapper">
-                <select
-                  id="llm-provider"
-                  value={settings.llmProvider}
-                  onChange={(e) => updateSetting('llmProvider', e.target.value as any)}
-                  className="settings-select"
-                >
-                  <option value="gemini">Google Gemini</option>
-                  <option value="openai" disabled>OpenAI GPT (Coming Soon)</option>
-                  <option value="claude" disabled>Anthropic Claude (Coming Soon)</option>
-                </select>
-                <ChevronDown className="select-icon" />
-              </div>
+              <CustomSelect
+                value={settings.llmProvider}
+                onChange={(value) => updateSetting('llmProvider', value as any)}
+                options={[
+                  { value: 'gemini', label: 'Google Gemini' },
+                  { value: 'openai', label: 'OpenAI GPT (Coming Soon)', disabled: true },
+                  { value: 'claude', label: 'Anthropic Claude (Coming Soon)', disabled: true }
+                ]}
+                ariaLabel="AI model provider"
+              />
               <p className="input-help">
                 Currently using Google Gemini. Additional AI models will be available in future updates.
               </p>
@@ -255,37 +250,31 @@ export const SettingsTab: React.FC = () => {
             {/* Additional Settings */}
             <div className="form-group">
               <label htmlFor="length-preference">Summary Length</label>
-              <div className="select-wrapper">
-                <select
-                  id="length-preference"
-                  value={settings.lengthPreference}
-                  onChange={(e) => updateSetting('lengthPreference', e.target.value as any)}
-                  className="settings-select"
-                >
-                  <option value="short">Short (200-300 words)</option>
-                  <option value="standard">Standard (300-500 words)</option>
-                  <option value="detailed">Detailed (500-700 words)</option>
-                </select>
-                <ChevronDown className="select-icon" />
-              </div>
+              <CustomSelect
+                value={settings.lengthPreference}
+                onChange={(value) => updateSetting('lengthPreference', value as any)}
+                options={[
+                  { value: 'short', label: 'Short (200-300 words)' },
+                  { value: 'standard', label: 'Standard (300-500 words)' },
+                  { value: 'detailed', label: 'Detailed (500-700 words)' }
+                ]}
+                ariaLabel="Summary length preference"
+              />
             </div>
 
             <div className="form-group">
               <label htmlFor="academic-level">Academic Level</label>
-              <div className="select-wrapper">
-                <select
-                  id="academic-level"
-                  value={settings.academicLevel}
-                  onChange={(e) => updateSetting('academicLevel', e.target.value as any)}
-                  className="settings-select"
-                >
-                  <option value="Undergraduate">Undergraduate</option>
-                  <option value="Graduate">Graduate</option>
-                  <option value="Professional">Professional</option>
-                  <option value="General">General</option>
-                </select>
-                <ChevronDown className="select-icon" />
-              </div>
+              <CustomSelect
+                value={settings.academicLevel}
+                onChange={(value) => updateSetting('academicLevel', value as any)}
+                options={[
+                  { value: 'Undergraduate', label: 'Undergraduate' },
+                  { value: 'Graduate', label: 'Graduate' },
+                  { value: 'Professional', label: 'Professional' },
+                  { value: 'General', label: 'General' }
+                ]}
+                ariaLabel="Academic level"
+              />
             </div>
           </div>
         </div>

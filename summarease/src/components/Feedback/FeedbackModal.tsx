@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { X, Send, CheckCircle, AlertCircle } from 'lucide-react'
 import { submitFeedback } from '../../lib/feedbackService'
+import { CustomSelect } from '../CustomSelect'
 import './FeedbackModal.css'
 
 interface FeedbackModalProps {
@@ -80,19 +81,20 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
         <form onSubmit={handleSubmit} className="feedback-form">
           <div className="form-group">
             <label htmlFor="category">Category</label>
-            <select
-              id="category"
+            <CustomSelect
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={setCategory}
+              options={[
+                { value: 'General', label: 'General Feedback' },
+                { value: 'Bug Report', label: 'Bug Report' },
+                { value: 'Feature Request', label: 'Feature Request' },
+                { value: 'Question', label: 'Question' },
+                { value: 'Other', label: 'Other' }
+              ]}
               disabled={isSubmitting}
+              ariaLabel="Feedback category"
               className="feedback-select"
-            >
-              <option value="General">General Feedback</option>
-              <option value="Bug Report">Bug Report</option>
-              <option value="Feature Request">Feature Request</option>
-              <option value="Question">Question</option>
-              <option value="Other">Other</option>
-            </select>
+            />
           </div>
 
           <div className="form-group">

@@ -619,7 +619,8 @@
   cursor: not-allowed;
 }
 
-/* Native select fallbacks (kept for safety, but we'll use a themed custom dropdown) */
+/* Native select fallbacks - DEPRECATED: Now using TypeDropdown component */
+/* Keeping for reference but commented out
 .gallery-controls .type-selector {
   appearance: none;
   -webkit-appearance: none;
@@ -647,6 +648,7 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
   border-color: var(--primary-color, #3b82f6);
 }
+*/
 
 .gallery-title-section {
   flex: 1;
@@ -713,6 +715,7 @@
   cursor: not-allowed;
 }
 
+/* .type-selector - DEPRECATED: Now using TypeDropdown component
 .type-selector {
   padding: 8px 12px;
   font-size: 13px;
@@ -733,6 +736,7 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+*/
 
 @media (max-width: 768px) {
   .gallery-header {

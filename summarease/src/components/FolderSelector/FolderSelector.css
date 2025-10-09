@@ -20,26 +20,8 @@
 }
 
 .folder-selector-dropdown {
+  /* CustomSelect component handles its own styling */
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 14px;
-  background: white;
-  color: #374151;
-  cursor: pointer;
-  transition: border-color 0.2s ease;
-}
-
-.folder-selector-dropdown:focus {
-  outline: none;
-  border-color: #3b82f6;
-}
-
-.folder-selector-dropdown:disabled {
-  background: #f9fafb;
-  color: #9ca3af;
-  cursor: not-allowed;
 }
 
 .new-folder-input-container {
@@ -84,10 +66,6 @@
   justify-content: center;
 }
 
-/* Option styling hints */
-.folder-selector-dropdown option {
-  padding: 8px;
-}
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
