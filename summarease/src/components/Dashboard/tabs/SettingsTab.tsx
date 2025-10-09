@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { User, Palette, Bot, Save, Info, ChevronDown, Monitor } from 'lucide-react'
+import { User, Palette, Bot, Save, Info, ChevronDown, Monitor, MessageSquare } from 'lucide-react'
 import { useAuth } from '../../Auth/AuthProvider'
 import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
 import { useTheme } from '../../../contexts/ThemeContext'
+import { FeedbackModal } from '../../Feedback/FeedbackModal'
 import './SettingsTab.css'
 
 export const SettingsTab: React.FC = () => {
@@ -12,6 +13,7 @@ export const SettingsTab: React.FC = () => {
   
   const [email, setEmail] = useState(user?.email || '')
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
 
   const handleSignOut = async () => {
     try {
@@ -287,7 +289,36 @@ export const SettingsTab: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Feedback & Support Section */}
+        <div className="settings-section">
+          <div className="section-header">
+            <MessageSquare className="section-icon" />
+            <h3>Feedback & Support</h3>
+          </div>
+          <div className="section-content">
+            <div className="form-group">
+              <label>Share Your Thoughts</label>
+              <p className="input-help" style={{ marginBottom: '12px' }}>
+                We'd love to hear from you! Share your feedback, report bugs, or suggest new features.
+              </p>
+              <button 
+                onClick={() => setShowFeedbackModal(true)} 
+                className="feedback-button"
+              >
+                <MessageSquare size={18} />
+                Send Feedback
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Feedback Modal */}
+      <FeedbackModal 
+        isOpen={showFeedbackModal} 
+        onClose={() => setShowFeedbackModal(false)} 
+      />
     </div>
   )
 }
