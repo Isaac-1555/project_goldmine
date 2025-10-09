@@ -129,6 +129,9 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   const [customTags, setCustomTags] = useState<string[]>(initialTags)
   const [existingSummaryId] = useState<string | undefined>(initialSummaryId)
   
+  // Toast notification state
+  const [notification, setNotification] = useState<string | null>(null)
+  
   // Recording state
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -139,6 +142,12 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   const [liveTranscript, setLiveTranscript] = useState('')
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null)
   const finalTranscriptRef = useRef<string>('')
+
+  // Notification utility
+  const showNotification = (message: string, duration: number = 4000) => {
+    setNotification(message)
+    setTimeout(() => setNotification(null), duration)
+  }
 
   // Recording timer
   useEffect(() => {
@@ -519,7 +528,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         })
 
         if (!updateResult.success) {
-          alert('Failed to update content. Please try again.')
+          showNotification('Failed to update content. Please try again.')
           return
         }
 
@@ -567,7 +576,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           }
         }
 
-        alert('Content updated successfully!')
+        showNotification('Content updated successfully!')
         onExitEdit?.()
         return
       }
@@ -638,13 +647,13 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         setCustomTags([])
         setSelectedFolderId(null)
         
-        alert('Content saved successfully!')
+        showNotification('Content saved successfully!')
       } else {
-        alert('Failed to save content. Please try again.')
+        showNotification('Failed to save content. Please try again.')
       }
     } catch (error) {
       console.error('Error saving content:', error)
-      alert('Failed to save content. Please try again.')
+      showNotification('Failed to save content. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -842,7 +851,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         initialContent={notes}
         onChange={(newNotes) => {
           if (!title.trim() && newNotes.trim() && !notes.trim()) {
-            alert('Please enter a notebook title before taking notes.')
+            showNotification('Please enter a notebook title before taking notes.')
             return
           }
           setNotes(newNotes)
@@ -854,6 +863,13 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
 
   return (
     <div className="record-tab">
+      {/* Notification Toast */}
+      {notification && (
+        <div className="notification-toast">
+          {notification}
+        </div>
+      )}
+      
       <ResizableDivider
         leftContent={renderLeftPanel()}
         rightContent={renderRightPanel()}

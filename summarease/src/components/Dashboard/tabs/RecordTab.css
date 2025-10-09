@@ -774,10 +774,42 @@
   cursor: not-allowed;
 }
 
+/* Notification Toast */
+.notification-toast {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  padding: 1rem 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+  font-weight: 500;
+  z-index: 1000;
+  max-width: 400px;
+  animation: slide-in-right 0.3s ease-out;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .record-tab {
     padding: 1rem;
+  }
+  
+  .notification-toast {
+    right: 1rem;
+    max-width: calc(100% - 2rem);
   }
   
   .action-options {
