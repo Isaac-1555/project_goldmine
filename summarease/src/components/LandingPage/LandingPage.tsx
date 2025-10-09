@@ -228,9 +228,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
 
         /* Hero portal + glass preview + Spline */
         .landing-remix .hero-visual{position:relative;min-height:420px}
-        .landing-remix .spline-wrap{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.9;overflow:hidden}
-        .landing-remix .spline-wrap::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) calc(100% - 72px), #0a0a12 100%);}        
-        .landing-remix .spline-inner{position:absolute;left:0;top:0;width:100%;height:100%;transform:scale(1.05);transform-origin:center;}
+        .landing-remix .spline-wrap{position:absolute;inset:0;z-index:0;pointer-events:auto;opacity:.9;overflow:hidden}
+        .landing-remix .spline-wrap::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) calc(100% - 72px), #0a0a12 100%);pointer-events:none;}        
+        .landing-remix .spline-inner{position:absolute;left:0;top:0;width:100%;height:100%;transform:scale(1.05);transform-origin:center;pointer-events:auto;}
         .landing-remix .hero-portal{position:absolute;left:0;right:0;bottom:0;height:280px;z-index:1}
         .landing-remix .portal-glow{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(1200px,92vw);height:240px;background:radial-gradient(120% 120% at 50% 100%, rgba(168,85,247,0.75) 0%, rgba(99,102,241,0.6) 35%, rgba(99,102,241,0.18) 70%, rgba(0,0,0,0) 78%);filter:blur(22px);opacity:.95}
         .landing-remix .portal-core{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);width:min(620px,60vw);height:160px;border-radius:999px;background:radial-gradient(120% 160% at 50% 120%, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.92) 60%, rgba(0,0,0,1) 70%)}
