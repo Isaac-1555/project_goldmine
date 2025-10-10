@@ -2,10 +2,12 @@ import React, { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './components/Auth/AuthProvider'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { SubscriptionProvider } from './contexts/SubscriptionContext'
 import { LoginForm } from './components/Auth/LoginForm'
 import { SignUpForm } from './components/Auth/SignUpForm'
 import { Dashboard } from './components/Dashboard/Dashboard'
 import { LandingPage } from './components/LandingPage'
+import { PricingPage } from './components/Subscription'
 import './App.css'
 import './styles/buttons.css'
 
@@ -31,7 +33,7 @@ function AppContent() {
             <Navigate to="/dashboard" replace />
           ) : (
             <LandingPage 
-              onSignUp={() => navigate('/signup')}
+              onGetStarted={() => navigate('/pricing')}
               onLogin={() => navigate('/login')}
               splineUrl={import.meta.env.VITE_SPLINE_SCENE_URL as any}
             />
@@ -68,6 +70,20 @@ function AppContent() {
           )
         } 
       />
+      <Route 
+        path="/pricing" 
+        element={<PricingPage />} 
+      />
+      <Route 
+        path="/subscription/success" 
+        element={
+          user ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        } 
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
@@ -78,7 +94,9 @@ function App() {
     <Router>
       <ThemeProvider>
         <AuthProvider>
-          <AppContent />
+          <SubscriptionProvider>
+            <AppContent />
+          </SubscriptionProvider>
         </AuthProvider>
       </ThemeProvider>
     </Router>

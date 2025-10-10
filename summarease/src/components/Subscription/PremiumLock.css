@@ -1,0 +1,122 @@
+.premium-lock-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.premium-lock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: 1rem;
+  padding: 2rem;
+}
+
+.premium-lock-content {
+  text-align: center;
+  max-width: 400px;
+}
+
+.premium-lock-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  color: white;
+}
+
+.premium-lock-content h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #1f2937;
+}
+
+.premium-lock-feature {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #667eea;
+  margin-bottom: 1rem;
+}
+
+.premium-lock-description {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.premium-lock-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  margin-bottom: 0.75rem;
+}
+
+.premium-lock-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+}
+
+.premium-lock-trial {
+  font-size: 0.875rem;
+  color: #10b981;
+  font-weight: 600;
+}
+
+.premium-lock-preview {
+  filter: blur(8px);
+  opacity: 0.3;
+  pointer-events: none;
+  user-select: none;
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 768px) {
+  .premium-lock-container {
+    min-height: 300px;
+  }
+
+  .premium-lock-overlay {
+    padding: 1rem;
+  }
+
+  .premium-lock-content h2 {
+    font-size: 1.5rem;
+  }
+
+  .premium-lock-icon {
+    width: 60px;
+    height: 60px;
+  }
+
+  .premium-lock-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+}

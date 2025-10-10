@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { ZoomIn, ZoomOut, RotateCcw, FileText } from 'lucide-react'
 import * as d3 from 'd3'
 import { getUserFiles, getUserFolders, type FileWithMetadata, type Folder } from '../../../../lib/api'
+import { useSubscription } from '../../../../contexts/SubscriptionContext'
+import { PremiumLock } from '../../../Subscription/PremiumLock'
 import './GraphView.css'
 
 interface GraphViewProps {
@@ -67,6 +69,18 @@ export const GraphView: React.FC<GraphViewProps> = ({
   onHoveredNodeChange,
   onSelectedNodeChange
 }) => {
+  const { canAccessPremiumFeatures } = useSubscription();
+
+  // Check premium access
+  if (!canAccessPremiumFeatures) {
+    return (
+      <PremiumLock 
+        feature="Graph View"
+        description="Visualize your notes and documents as an interactive knowledge graph with connections and relationships."
+      />
+    );
+  }
+
   const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
   const [nodes, setNodes] = useState<GraphNode[]>([])

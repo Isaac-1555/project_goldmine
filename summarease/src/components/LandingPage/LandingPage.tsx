@@ -13,13 +13,13 @@ declare global {
 }
 
 interface LandingPageProps {
-  onSignUp: () => void
+  onGetStarted: () => void
   onLogin: () => void
   // Optional Spline scene URL (e.g., https://prod.spline.design/xxxxx/scene.splinecode)
   splineUrl?: string
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, splineUrl }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, splineUrl }) => {
   const scrollToFeatures = () => {
     const featuresSection = document.getElementById('features')
     featuresSection?.scrollIntoView({ behavior: 'smooth' })
@@ -333,7 +333,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
               Capture ideas, link them with backlinks, and recall anything in milliseconds—across devices, anywhere.
             </p>
             <div className="hero-cta-row">
-              <button onClick={onSignUp} className="hero-cta" aria-label="Start free trial">
+              <button onClick={onGetStarted} className="hero-cta" aria-label="Start free trial">
                 Start free trial
                 <ArrowRight className="cta-icon" />
               </button>
@@ -389,7 +389,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
                 </div>
               </div>
               <div className="qs-actions">
-                <button onClick={onSignUp} className="hero-cta" aria-label="Start free month">
+                <button onClick={onGetStarted} className="hero-cta" aria-label="Start free month">
                   Start free month
                   <ArrowRight className="cta-icon" />
                 </button>
@@ -445,7 +445,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
             <h3 className="pricing-title">Free for the first month, then <span className="accent">$4.99</span>/month</h3>
             <p className="pricing-sub">Cancel anytime during your free month. Keep all your notes and summaries.</p>
             <div className="pricing-actions">
-              <button onClick={onSignUp} className="hero-cta" aria-label="Start free month">
+              <button onClick={onGetStarted} className="hero-cta" aria-label="Start free month">
                 Start free month
                 <ArrowRight className="cta-icon" />
               </button>
@@ -484,7 +484,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignUp, onLogin, spl
             </div>
           </div>
           <div className="how-actions">
-            <button onClick={onSignUp} className="cta-button" aria-label="Start free month">
+            <button onClick={onGetStarted} className="cta-button" aria-label="Start free month">
               Start free month
               <ArrowRight className="cta-icon" />
             </button>

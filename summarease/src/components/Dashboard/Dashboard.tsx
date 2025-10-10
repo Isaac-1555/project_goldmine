@@ -1,10 +1,14 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { TabNavigation, type TabType } from './TabNavigation'
 import { NotebookTab } from './tabs/NotebookTab'
 import { ViewTab } from './tabs/ViewTab'
 import { StudyToolsTab } from './tabs/StudyToolsTab'
 import { SettingsTab } from './tabs/SettingsTab'
 import { ContentViewer } from '../ContentViewer/ContentViewer'
+import { TrialExpiringModal } from '../Subscription/TrialExpiringModal'
+import { useSubscription } from '../../contexts/SubscriptionContext'
+import { useTrialNotifications } from '../../hooks/useTrialNotifications'
 import { type FileWithMetadata } from '../../lib/api'
 import './Dashboard.css'
 
@@ -12,9 +16,18 @@ import { getNotebookDetails } from '../../lib/api'
 import { type DocumentItem } from '../DocumentList'
 
 export const Dashboard: React.FC = () => {
+  const navigate = useNavigate()
+  const { subscription, isTrialing, canAccessPremiumFeatures } = useSubscription()
+  const { showModal, daysLeft, closeModal } = useTrialNotifications()
+  
   const [activeTab, setActiveTab] = useState<TabType>('notebook')
   const [selectedFile, setSelectedFile] = useState<FileWithMetadata | null>(null)
   const [showContentViewer, setShowContentViewer] = useState(false)
+  
+  // Show upgrade banner for free users
+  const showUpgradeBanner = 
+    subscription?.status === 'canceled' || 
+    (!canAccessPremiumFeatures && !isTrialing)
 
   // Prefill/editing state for NotebookTab
   const [editingContext, setEditingContext] = useState<
@@ -184,11 +197,29 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="dashboard">
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+      
+      {showUpgradeBanner && (
+        <div className="upgrade-banner">
+          <span className="upgrade-banner-text">⭐ Unlock premium features with unlimited summaries and advanced tools</span>
+          <button onClick={() => navigate('/pricing')} className="upgrade-banner-button">
+            Upgrade to Premium
+          </button>
+        </div>
+      )}
+      
       <div className="dashboard-layout">
         <main className="dashboard-main">
           {renderTabContent()}
         </main>
       </div>
+      
+      {showModal && daysLeft && (
+        <TrialExpiringModal
+          daysLeft={daysLeft}
+          onClose={closeModal}
+          onUpgrade={() => navigate('/pricing')}
+        />
+      )}
     </div>
   )
 }

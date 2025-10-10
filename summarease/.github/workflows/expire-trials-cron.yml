@@ -1,0 +1,29 @@
+name: Expire Trials Daily
+
+on:
+  schedule:
+    # Run every day at 00:00 UTC (midnight)
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual triggering for testing
+
+jobs:
+  expire-trials:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Call Supabase Edge Function to expire trials
+        run: |
+          curl -X POST \
+            '${{ secrets.SUPABASE_URL }}/functions/v1/expire-trials' \
+            -H 'Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}' \
+            -H 'Content-Type: application/json' \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            | jq '.'
+        
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "⚠️ Failed to expire trials. Check the logs above."
+          exit 1

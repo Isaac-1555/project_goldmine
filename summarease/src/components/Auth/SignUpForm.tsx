@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthProvider'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { TrialAcknowledgment } from '../Subscription/TrialAcknowledgment'
 import './AuthForms.css'
 
 interface SignUpFormProps {
@@ -9,6 +11,7 @@ interface SignUpFormProps {
 
 export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
   const { signUp } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -16,6 +19,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [showTrialAcknowledgment, setShowTrialAcknowledgment] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,11 +41,22 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
     try {
       await signUp(email, password)
       setSuccess(true)
+      // Show trial acknowledgment modal instead of email confirmation
+      setShowTrialAcknowledgment(true)
     } catch (err: any) {
       setError(err.message || 'An error occurred during sign up')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleAcknowledge = () => {
+    // After acknowledging trial, navigate to dashboard
+    navigate('/dashboard')
+  }
+
+  if (success && showTrialAcknowledgment) {
+    return <TrialAcknowledgment onAcknowledge={handleAcknowledge} />
   }
 
   if (success) {

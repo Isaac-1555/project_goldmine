@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react'
 import { Upload, File, X, AlertCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../Auth/AuthProvider'
 import { useSettingsConfig } from '../../hooks/useSettingsConfig'
+import { useSubscription } from '../../contexts/SubscriptionContext'
 import { supabase } from '../../lib/supabase'
 import './FileUpload.css'
 
@@ -11,8 +13,10 @@ interface FileUploadProps {
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onClose }) => {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const { settings } = useSettingsConfig()
+  const { usage, incrementSummaryUsage, canAccessPremiumFeatures } = useSubscription()
   const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
@@ -87,6 +91,17 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onClos
   const uploadFile = async () => {
     if (!selectedFile || !user) return
 
+    // Check usage limits for free users
+    if (!canAccessPremiumFeatures && !usage.canGenerateSummary) {
+      if (window.confirm(
+        `You've reached your limit of ${usage.summaryLimit} summaries per week. ` +
+        `Upgrade to Premium for unlimited summaries! Start with a 30-day free trial.`
+      )) {
+        navigate('/pricing')
+      }
+      return
+    }
+
     setUploading(true)
     setError('')
 
@@ -133,6 +148,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onClos
       // Trigger processing
       console.log('File uploaded successfully, starting processing:', fileData)
       
+      // Track usage for free users (increment counter)
+      if (!canAccessPremiumFeatures) {
+        await incrementSummaryUsage()
+      }
+      
       // Start processing in background
       import('../../lib/api').then(({ processFile }) => {
         processFile(fileData.id, settings.autoTags).then(result => {
@@ -168,6 +188,41 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onClos
             <X />
           </button>
         </div>
+
+        {/* Usage indicator for free users */}
+        {!canAccessPremiumFeatures && (
+          <div className="usage-indicator" style={{
+            background: usage.canGenerateSummary ? '#e0f2fe' : '#fee2e2',
+            border: `1px solid ${usage.canGenerateSummary ? '#0ea5e9' : '#ef4444'}`,
+            padding: '12px',
+            borderRadius: '8px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <span style={{ fontSize: '14px', color: usage.canGenerateSummary ? '#0369a1' : '#991b1b' }}>
+              📊 Summaries this week: {usage.summaryCount} / {usage.summaryLimit}
+            </span>
+            {usage.summaryCount >= 2 && (
+              <button 
+                onClick={() => navigate('/pricing')}
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                ⭐ Get Unlimited
+              </button>
+            )}
+          </div>
+        )}
 
         {!selectedFile ? (
           <div

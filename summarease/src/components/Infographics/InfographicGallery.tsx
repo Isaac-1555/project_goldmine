@@ -4,6 +4,8 @@ import { getInfographicSpec, saveInfographicSpec, hasInfographic } from '../../l
 import { generateInfographic, suggestInfographicTypes } from '../../lib/infographicService';
 import type { InfographicSpec, InfographicType } from '../../lib/viz/types';
 import { Loader2, Sparkles, RefreshCw } from 'lucide-react';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { PremiumLock } from '../Subscription/PremiumLock';
 import './Infographics.css';
 import TypeDropdown from './TypeDropdown';
 
@@ -18,11 +20,22 @@ export const InfographicGallery: React.FC<InfographicGalleryProps> = ({
   summaryText,
   autoGenerate = false
 }) => {
+  const { canAccessPremiumFeatures } = useSubscription();
   const [currentSpec, setCurrentSpec] = useState<InfographicSpec | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestedTypes, setSuggestedTypes] = useState<InfographicType[]>([]);
   const [selectedType, setSelectedType] = useState<InfographicType | null>(null);
+
+  // Check premium access
+  if (!canAccessPremiumFeatures) {
+    return (
+      <PremiumLock 
+        feature="Infographics"
+        description="Transform your summaries into beautiful visual representations like mind maps, diagrams, and more."
+      />
+    );
+  }
 
   // Load existing infographic on mount
   useEffect(() => {

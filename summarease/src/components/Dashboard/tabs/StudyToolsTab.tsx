@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { BookOpen, ArrowLeft, Search, X, Clock, Play, BarChart3, HelpCircle, ChevronRight, ChevronLeft, Trash2, Brain } from 'lucide-react'
 import { SatBrainMark } from '../../brand/SatBrainMark'
 import { getUserFiles, type FileWithMetadata } from '../../../lib/api'
+import { useSubscription } from '../../../contexts/SubscriptionContext'
+import { PremiumLock } from '../../Subscription/PremiumLock'
 import {
   createSimpleQuiz, 
   getUserSimpleQuizzes, 
@@ -41,6 +43,18 @@ interface QuizState {
 }
 
 export const StudyToolsTab: React.FC = () => {
+  const { canAccessPremiumFeatures } = useSubscription();
+
+  // Check premium access
+  if (!canAccessPremiumFeatures) {
+    return (
+      <PremiumLock 
+        feature="Advanced Study Tools"
+        description="Access quizzes, flashcards, spaced repetition, and other powerful study features to master your material."
+      />
+    );
+  }
+
   // Main state
   const [view, setView] = useState<ViewState>('menu')
   const [files, setFiles] = useState<FileWithMetadata[]>([])
