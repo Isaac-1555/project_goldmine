@@ -78,6 +78,7 @@ export function PricingPage() {
           )}
         </div>
 
+
         {error && (
           <div className="pricing-error">
             {error}
