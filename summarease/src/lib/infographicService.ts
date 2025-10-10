@@ -4,7 +4,8 @@ import {
   buildInfographicExtractionPrompt, 
   buildMindMapPrompt,
   buildTypedInfographicPrompt,
-  extractAndValidateJSON 
+  extractAndValidateJSON,
+  generateFallbackInfographic
 } from './infographicPromptBuilder';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
@@ -55,20 +56,55 @@ export async function generateInfographic(
       : buildInfographicExtractionPrompt(summaryText);
 
     console.log('Generating infographic with Gemini...');
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    let parsed = null;
+    let attempt = 0;
+    const maxAttempts = 2;
     
-    console.log('Gemini response length:', response.length, 'chars');
-    console.log('Response preview:', response.substring(0, 200));
+    while (attempt < maxAttempts && !parsed) {
+      attempt++;
+      console.log(`Attempt ${attempt}/${maxAttempts}`);
+      
+      // Adjust prompt and config for retries
+      const currentPrompt = attempt === 1 ? prompt : 
+        `${prompt}\n\nCRITICAL: Return ONLY valid JSON. NO markdown, NO code blocks, NO explanations. Just raw JSON starting with { and ending with }.`;
+      
+      const temperature = attempt === 1 ? (options?.temperature ?? 0.3) : 0.1;
+      
+      const retryModel = attempt === 1 ? model : genAI.getGenerativeModel({ 
+        model: 'gemini-2.5-flash',
+        generationConfig: {
+          temperature,
+          topP: 0.85,
+          topK: 40,
+          maxOutputTokens: 4096,
+        }
+      });
+      
+      const result = await retryModel.generateContent(currentPrompt);
+      const response = result.response.text();
+      
+      console.log(`Attempt ${attempt} - Response length:`, response.length, 'chars');
+      console.log(`Attempt ${attempt} - Response preview:`, response.substring(0, 200));
+      
+      // Parse and validate JSON response
+      parsed = extractAndValidateJSON(response);
+      
+      if (!parsed && attempt < maxAttempts) {
+        console.warn(`⚠️  Attempt ${attempt} failed, retrying with stricter prompt...`);
+      }
+    }
     
-    // Parse and validate JSON response
-    const parsed = extractAndValidateJSON(response);
-    
+    // If all parsing attempts failed, use fallback
     if (!parsed) {
-      return {
-        success: false,
-        error: 'Failed to parse infographic structure from AI response'
-      };
+      console.warn('⚠️  All parsing attempts failed, using fallback structure');
+      parsed = generateFallbackInfographic(summaryText);
+      
+      if (!parsed) {
+        return {
+          success: false,
+          error: 'Failed to parse infographic structure from AI response and fallback generation failed'
+        };
+      }
     }
 
     // Create the infographic spec
@@ -141,13 +177,48 @@ export async function generateMindMap(
     const prompt = buildMindMapPrompt(summaryText);
     
     console.log('Generating mind map with Gemini...');
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    let parsed = null;
+    let attempt = 0;
+    const maxAttempts = 2;
     
-    console.log('Gemini response length:', response.length, 'chars');
-    console.log('Response preview:', response.substring(0, 200));
+    while (attempt < maxAttempts && !parsed) {
+      attempt++;
+      console.log(`Mind map attempt ${attempt}/${maxAttempts}`);
+      
+      const currentPrompt = attempt === 1 ? prompt :
+        `${prompt}\n\nCRITICAL: Return ONLY valid JSON. NO markdown, NO code blocks, NO explanations. Just raw JSON.`;
+      
+      const temperature = attempt === 1 ? 0.3 : 0.1;
+      
+      const retryModel = attempt === 1 ? model : genAI.getGenerativeModel({ 
+        model: 'gemini-2.5-flash',
+        generationConfig: {
+          temperature,
+          topP: 0.85,
+          topK: 40,
+          maxOutputTokens: 2048,
+        }
+      });
+      
+      const result = await retryModel.generateContent(currentPrompt);
+      const response = result.response.text();
+      
+      console.log(`Attempt ${attempt} - Response length:`, response.length, 'chars');
+      console.log(`Attempt ${attempt} - Response preview:`, response.substring(0, 200));
+      
+      parsed = extractAndValidateJSON(response);
+      
+      if (!parsed && attempt < maxAttempts) {
+        console.warn(`⚠️  Mind map attempt ${attempt} failed, retrying...`);
+      }
+    }
     
-    const parsed = extractAndValidateJSON(response);
+    // Use fallback if parsing failed
+    if (!parsed) {
+      console.warn('⚠️  All mind map parsing attempts failed, using fallback');
+      parsed = generateFallbackInfographic(summaryText);
+      parsed.type = 'mindmap'; // Ensure it's marked as mindmap
+    }
     
     if (!parsed || parsed.type !== 'mindmap') {
       return {

@@ -330,10 +330,15 @@ A tree-like hierarchy with:
 export function extractAndValidateJSON(responseText: string): any | null {
   console.log('=== Starting JSON extraction ===');
   console.log('Response length:', responseText.length, 'chars');
+  console.log('Response preview (first 500 chars):', responseText.substring(0, 500));
   
   try {
+    // Step 0: Preprocess the response
+    const preprocessed = preprocessGeminiResponse(responseText);
+    console.log('✓ Response preprocessed, length:', preprocessed.length);
+    
     // Step 1: Extract JSON from markdown or plain text
-    let cleaned = extractJsonFromResponse(responseText);
+    let cleaned = extractJsonFromResponse(preprocessed);
     
     if (!cleaned) {
       console.error('❌ No JSON object found in response');
@@ -386,35 +391,92 @@ export function extractAndValidateJSON(responseText: string): any | null {
 }
 
 /**
+ * Preprocess Gemini response to handle common formatting issues
+ */
+function preprocessGeminiResponse(responseText: string): string {
+  let processed = responseText.trim();
+  
+  // Remove common explanatory phrases that Gemini adds
+  const phrasesToRemove = [
+    /^Here is the JSON:?\s*/i,
+    /^Here's the JSON:?\s*/i,
+    /^Here is the requested JSON:?\s*/i,
+    /^Here's the infographic structure:?\s*/i,
+    /^The JSON response:?\s*/i,
+    /^JSON:?\s*/i,
+    /^Output:?\s*/i,
+    /^Response:?\s*/i
+  ];
+  
+  for (const phrase of phrasesToRemove) {
+    processed = processed.replace(phrase, '');
+  }
+  
+  // Remove any trailing explanatory text after the JSON
+  // Look for common endings
+  const endPatterns = [
+    /\n\n.*This (structure|infographic|mindmap)/i,
+    /\n\nNote:/i,
+    /\n\nThe above/i
+  ];
+  
+  for (const pattern of endPatterns) {
+    const match = processed.search(pattern);
+    if (match > 0) {
+      processed = processed.substring(0, match);
+    }
+  }
+  
+  return processed.trim();
+}
+
+/**
  * Extract JSON from response, handling markdown and extra text
  */
 function extractJsonFromResponse(responseText: string): string | null {
   let cleaned = responseText.trim();
   
-  // Try to extract from markdown code blocks first
+  // Try to extract from markdown code blocks first with enhanced patterns
   const codeBlockPatterns = [
-    /```json\s*\n([\s\S]*?)\n```/,
-    /```\s*\n([\s\S]*?)\n```/,
-    /`([\s\S]*?)`/
+    /```json\s*\n([\s\S]*?)\n?```/,  // Standard json block
+    /```javascript\s*\n([\s\S]*?)\n?```/,  // Sometimes labeled as javascript
+    /```\s*\n([\s\S]*?)\n?```/,  // Generic code block
+    /```([\s\S]*?)```/,  // Without newlines
+    /`{3,}json\s*([\s\S]*?)`{3,}/,  // Multiple backticks
+    /`{3,}\s*([\s\S]*?)`{3,}/,  // Multiple backticks, any language
+    /`([^`]+)`/  // Single backtick inline (less preferred)
   ];
   
+  let extractionMethod = 'none';
   for (const pattern of codeBlockPatterns) {
     const match = cleaned.match(pattern);
     if (match) {
       cleaned = match[1].trim();
+      extractionMethod = 'markdown';
+      console.log('✓ Extracted from markdown code block');
       break;
     }
   }
   
-  // Find JSON object boundaries using bracket matching
-  const startIdx = cleaned.indexOf('{');
-  if (startIdx === -1) return null;
+  if (extractionMethod === 'none') {
+    console.log('⚠️  No markdown code block found, attempting direct extraction');
+  }
   
-  // Find matching closing bracket
+  // Find JSON object boundaries using enhanced bracket matching
+  const startIdx = cleaned.indexOf('{');
+  if (startIdx === -1) {
+    console.error('❌ No opening brace found in response');
+    return null;
+  }
+  
+  console.log('✓ Found opening brace at position', startIdx);
+  
+  // Find matching closing bracket with improved algorithm
   let bracketCount = 0;
   let endIdx = -1;
   let inString = false;
   let escapeNext = false;
+  let lastValidClosing = -1; // Track last valid closing for fallback
   
   for (let i = startIdx; i < cleaned.length; i++) {
     const char = cleaned[i];
@@ -429,29 +491,56 @@ function extractJsonFromResponse(responseText: string): string | null {
       continue;
     }
     
-    if (char === '"') {
-      inString = !inString;
+    // Track both single and double quotes for string boundaries
+    if (char === '"' && !inString) {
+      inString = true;
+      continue;
+    } else if (char === '"' && inString) {
+      inString = false;
       continue;
     }
     
     if (!inString) {
-      if (char === '{') bracketCount++;
-      if (char === '}') {
+      if (char === '{') {
+        bracketCount++;
+      } else if (char === '}') {
         bracketCount--;
         if (bracketCount === 0) {
           endIdx = i;
+          console.log('✓ Found matching closing brace at position', i);
           break;
+        } else if (bracketCount > 0) {
+          // Track this as a potentially valid closing point
+          lastValidClosing = i;
         }
       }
     }
   }
   
   if (endIdx === -1) {
-    console.warn('⚠️  Could not find matching closing bracket');
-    return null;
+    console.warn('⚠️  Could not find perfectly matching closing bracket');
+    console.warn('Final bracket count:', bracketCount);
+    console.warn('Last valid closing at:', lastValidClosing);
+    
+    // Fallback: if we found at least one closing bracket, try using the last one
+    if (lastValidClosing > startIdx) {
+      console.log('⚠️  Using fallback: last valid closing bracket at', lastValidClosing);
+      endIdx = lastValidClosing;
+    } else {
+      // Last resort: try to find ANY closing bracket after start
+      endIdx = cleaned.lastIndexOf('}');
+      if (endIdx > startIdx) {
+        console.log('⚠️  Using last resort: any closing bracket at', endIdx);
+      } else {
+        console.error('❌ No closing bracket found at all');
+        return null;
+      }
+    }
   }
   
-  return cleaned.substring(startIdx, endIdx + 1);
+  const extracted = cleaned.substring(startIdx, endIdx + 1);
+  console.log('✓ Extracted JSON length:', extracted.length, 'chars');
+  return extracted;
 }
 
 /**
@@ -460,26 +549,51 @@ function extractJsonFromResponse(responseText: string): string | null {
 function cleanJsonString(jsonStr: string): string {
   let cleaned = jsonStr;
   
-  // Remove comments (but be careful not to remove them from strings)
-  // Remove single-line comments
-  cleaned = cleaned.replace(/\/\/.*$/gm, '');
+  // Step 1: Remove comments more carefully
+  // Only remove // comments that are not inside strings
+  // Simple heuristic: if line has quotes before //, it's likely in a string
+  cleaned = cleaned.split('\n').map(line => {
+    const firstQuote = line.indexOf('"');
+    const commentIdx = line.indexOf('//');
+    // Only remove comment if it appears before any quotes or no quotes exist
+    if (commentIdx !== -1 && (firstQuote === -1 || commentIdx < firstQuote)) {
+      return line.substring(0, commentIdx);
+    }
+    return line;
+  }).join('\n');
   
   // Remove multi-line comments
   cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
   
-  // Remove trailing commas before closing brackets/braces
-  // This handles multiple trailing commas
-  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+  // Step 2: Remove trailing commas before closing brackets/braces
+  // Handle multiple consecutive trailing commas
+  cleaned = cleaned.replace(/,+\s*([\]}])/g, '$1');
   
-  // Fix unquoted keys (but preserve strings)
-  cleaned = cleaned.replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":');
+  // Step 3: Fix unquoted keys (but be more careful)
+  // Only fix keys that look like identifiers and are not already quoted
+  cleaned = cleaned.replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, (match, prefix, key) => {
+    // Don't quote if already quoted
+    if (prefix.includes('"')) return match;
+    return `${prefix}"${key}":`;
+  });
   
-  // Fix single quotes to double quotes for property names and values
-  // This is tricky - we need to be careful with apostrophes
-  cleaned = cleaned.replace(/([{,]\s*)'([^']+)'\s*:/g, '$1"$2":');
+  // Step 4: Handle single quotes more carefully
+  // Replace single quotes with double quotes for property names
+  cleaned = cleaned.replace(/([{,]\s*)'([^']+)'(\s*:)/g, '$1"$2"$3');
   
-  // Normalize line breaks within strings (they should be escaped)
-  // This is a simple approach - more robust would parse properly
+  // Step 5: Fix common value formatting issues
+  // Replace single-quoted values with double quotes (but preserve escaped content)
+  cleaned = cleaned.replace(/:\s*'([^']*)'/g, (match, value) => {
+    // Escape any internal double quotes
+    const escaped = value.replace(/"/g, '\\"');
+    return `: "${escaped}"`;
+  });
+  
+  // Step 6: Remove any null bytes or other problematic characters
+  cleaned = cleaned.replace(/\0/g, '');
+  
+  // Step 7: Normalize whitespace but preserve structure
+  cleaned = cleaned.replace(/[\r\n]+/g, '\n');
   
   return cleaned.trim();
 }
@@ -579,48 +693,101 @@ function logDetailedParseError(error: any, jsonStr: string): void {
  * Try alternative parsing methods when standard JSON.parse fails
  */
 function tryAlternativeParsing(responseText: string): any | null {
-  console.log('=== Attempting alternative parsing ===');
+  console.log('=== Attempting alternative parsing (Strategy-based) ===');
   
+  // Strategy 1: Regex-based field extraction
   try {
-    // Try to find and extract just the essential parts using regex
+    console.log('Strategy 1: Regex-based field extraction');
+    
     const typeMatch = responseText.match(/"type"\s*:\s*"([^"]+)"/);
     const titleMatch = responseText.match(/"title"\s*:\s*"([^"]+)"/);
     
     if (!typeMatch) {
-      console.error('❌ Could not extract type field');
-      return null;
+      console.warn('⚠️  Strategy 1: Could not extract type field');
+    } else {
+      console.log('✓ Strategy 1: Found type:', typeMatch[1]);
+      
+      // Try to extract nodes array with better bracket matching
+      const nodesArrayMatch = extractNodesArray(responseText);
+      
+      if (nodesArrayMatch) {
+        console.log('✓ Strategy 1: Found nodes array');
+        
+        // Parse the nodes array
+        const nodeObjects = parseNodesArray(nodesArrayMatch);
+        
+        if (nodeObjects.length > 0) {
+          console.log('✓ Strategy 1 succeeded: extracted', nodeObjects.length, 'nodes');
+          
+          // Build minimal valid infographic
+          return {
+            type: typeMatch[1],
+            title: titleMatch ? titleMatch[1] : 'Untitled Infographic',
+            nodes: nodeObjects,
+            connections: [],
+            confidence: 0.5,
+            reasoning: 'Recovered via alternative parsing'
+          };
+        } else {
+          console.warn('⚠️  Strategy 1: No valid nodes could be extracted');
+        }
+      } else {
+        console.warn('⚠️  Strategy 1: Could not extract nodes array');
+      }
     }
-    
-    // Try to extract nodes array with better bracket matching
-    const nodesArrayMatch = extractNodesArray(responseText);
-    
-    if (!nodesArrayMatch) {
-      console.error('❌ Could not extract nodes array');
-      return null;
-    }
-    
-    // Parse the nodes array
-    const nodeObjects = parseNodesArray(nodesArrayMatch);
-    
-    if (nodeObjects.length === 0) {
-      console.error('❌ No valid nodes could be extracted');
-      return null;
-    }
-    
-    console.log('✓ Alternative parsing succeeded, extracted', nodeObjects.length, 'nodes');
-    
-    // Build minimal valid infographic
-    return {
-      type: typeMatch[1],
-      title: titleMatch ? titleMatch[1] : 'Untitled Infographic',
-      nodes: nodeObjects,
-      connections: [],
-      confidence: 0.5
-    };
   } catch (error) {
-    console.error('❌ Alternative parsing failed:', error);
-    return null;
+    console.error('❌ Strategy 1 failed:', error);
   }
+  
+  // Strategy 2: Try to parse individual node objects scattered in text
+  try {
+    console.log('Strategy 2: Extract individual node objects from text');
+    
+    const allObjects = extractNestedObjects(responseText);
+    console.log(`Found ${allObjects.length} potential objects in response`);
+    
+    const validNodes: any[] = [];
+    
+    for (let i = 0; i < allObjects.length; i++) {
+      try {
+        const cleaned = cleanJsonString(allObjects[i]);
+        const obj = JSON.parse(cleaned);
+        
+        // Check if this looks like a node (has label or id)
+        if (obj.label || obj.id) {
+          if (!obj.id) obj.id = generateNodeId(obj.label || `node_${i}`, i);
+          if (!obj.label) obj.label = obj.id;
+          validNodes.push(obj);
+        }
+      } catch (e) {
+        // Skip invalid objects
+      }
+    }
+    
+    if (validNodes.length >= 2) {
+      console.log('✓ Strategy 2 succeeded: extracted', validNodes.length, 'nodes');
+      
+      // Try to extract type, or default to mindmap
+      const typeMatch = responseText.match(/"type"\s*:\s*"([^"]+)"/);
+      const titleMatch = responseText.match(/"title"\s*:\s*"([^"]+)"/);
+      
+      return {
+        type: typeMatch ? typeMatch[1] : 'mindmap',
+        title: titleMatch ? titleMatch[1] : 'Untitled Infographic',
+        nodes: validNodes,
+        connections: [],
+        confidence: 0.4,
+        reasoning: 'Recovered via object extraction'
+      };
+    } else {
+      console.warn('⚠️  Strategy 2: Not enough valid nodes found:', validNodes.length);
+    }
+  } catch (error) {
+    console.error('❌ Strategy 2 failed:', error);
+  }
+  
+  console.error('❌ All alternative parsing strategies failed');
+  return null;
 }
 
 /**
@@ -716,6 +883,57 @@ function parseNodesArray(arrayStr: string): any[] {
   }
   
   return nodes;
+}
+
+/**
+ * Generate a minimal valid infographic structure as a last resort fallback
+ */
+export function generateFallbackInfographic(summaryText: string): any {
+  console.log('=== Generating fallback infographic structure ===');
+  
+  // Extract key sentences or phrases from the summary
+  const sentences = summaryText
+    .split(/[.!?]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 10 && s.length < 150)
+    .slice(0, 8); // Take up to 8 sentences
+  
+  if (sentences.length === 0) {
+    // Absolute fallback - split by words
+    const words = summaryText.split(/\s+/).filter(w => w.length > 3).slice(0, 8);
+    sentences.push(...words);
+  }
+  
+  // Create nodes from sentences
+  const nodes: any[] = [];
+  
+  // Central node
+  nodes.push({
+    id: 'center',
+    label: sentences[0]?.substring(0, 40) || 'Main Concept',
+    level: 0,
+    color: '#3b82f6'
+  });
+  
+  // Create branch nodes from remaining sentences
+  const colors = ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+  sentences.slice(1, 7).forEach((sentence, idx) => {
+    nodes.push({
+      id: `branch_${idx}`,
+      label: sentence.substring(0, 40),
+      level: 1,
+      color: colors[idx % colors.length]
+    });
+  });
+  
+  return {
+    type: 'mindmap',
+    title: 'Summary Overview',
+    subtitle: 'Automatically generated structure',
+    confidence: 0.3,
+    reasoning: 'Fallback structure - AI parsing failed',
+    nodes: nodes
+  };
 }
 
 /**
