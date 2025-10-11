@@ -14,7 +14,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: color-mix(in srgb, var(--bg-primary) 95%, transparent);
   backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
@@ -45,18 +45,18 @@
   font-size: 1.75rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .premium-lock-feature {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #667eea;
+  color: var(--accent-primary);
   margin-bottom: 1rem;
 }
 
 .premium-lock-description {
-  color: #6b7280;
+  color: var(--text-secondary);
   margin-bottom: 1.5rem;
   line-height: 1.6;
 }
@@ -84,7 +84,7 @@
 
 .premium-lock-trial {
   font-size: 0.875rem;
-  color: #10b981;
+  color: var(--color-success);
   font-weight: 600;
 }
 

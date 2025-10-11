@@ -1,12 +1,28 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
+import LegalHeader from './LandingPage/LegalHeader'
 import './LegalPages.css'
 
 export const PrivacyPolicy: React.FC = () => {
   return (
-    <div className="legal-page">
-      <div className="legal-container">
-        <h1>Privacy Policy</h1>
-        <p className="last-updated">Last updated: October 11, 2025</p>
+    <div className="landing-page landing-remix">
+      {/* Background glows to match landing */}
+      <div className="remix-glows" aria-hidden="true">
+        <div className="g1" />
+        <div className="g2" />
+      </div>
+
+      <LegalHeader />
+
+      <main className="legal-page">
+        <div className="legal-container">
+          <Link to="/" className="back-link">
+            <ArrowLeft size={20} />
+            <span>Back to Home</span>
+          </Link>
+          <h1>Privacy Policy</h1>
+          <p className="last-updated">Last updated: October 11, 2025</p>
 
         <section>
           <h2>1. Information We Collect</h2>
@@ -108,7 +124,8 @@ export const PrivacyPolicy: React.FC = () => {
         <div className="legal-footer">
           <p>© {new Date().getFullYear()} Sat-Brain. All rights reserved.</p>
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

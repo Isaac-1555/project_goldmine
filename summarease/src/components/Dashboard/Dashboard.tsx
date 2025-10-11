@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { X } from 'lucide-react'
 import { TabNavigation, type TabType } from './TabNavigation'
 import { NotebookTab } from './tabs/NotebookTab'
 import { ViewTab } from './tabs/ViewTab'
@@ -24,10 +25,23 @@ export const Dashboard: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<FileWithMetadata | null>(null)
   const [showContentViewer, setShowContentViewer] = useState(false)
   
-  // Show upgrade banner for free users
-  const showUpgradeBanner = 
-    subscription?.status === 'canceled' || 
-    (!canAccessPremiumFeatures && !isTrialing)
+  // Track upgrade banner dismissal
+  const [isBannerDismissed, setIsBannerDismissed] = useState(() => {
+    const dismissed = localStorage.getItem('upgrade-banner-dismissed')
+    return dismissed === 'true'
+  })
+  
+  // Show upgrade banner for free users (unless dismissed)
+  const shouldShowBanner = 
+    !isBannerDismissed && (
+      subscription?.status === 'canceled' || 
+      (!canAccessPremiumFeatures && !isTrialing)
+    )
+  
+  const handleDismissBanner = () => {
+    setIsBannerDismissed(true)
+    localStorage.setItem('upgrade-banner-dismissed', 'true')
+  }
 
   // Prefill/editing state for NotebookTab
   const [editingContext, setEditingContext] = useState<
@@ -198,12 +212,17 @@ export const Dashboard: React.FC = () => {
     <div className="dashboard">
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
       
-      {showUpgradeBanner && (
+      {shouldShowBanner && (
         <div className="upgrade-banner">
           <span className="upgrade-banner-text">⭐ Unlock premium features with unlimited summaries and advanced tools</span>
-          <button onClick={() => navigate('/pricing')} className="upgrade-banner-button">
-            Upgrade to Premium
-          </button>
+          <div className="upgrade-banner-actions">
+            <button onClick={() => navigate('/pricing')} className="upgrade-banner-button">
+              Upgrade to Premium
+            </button>
+            <button onClick={handleDismissBanner} className="upgrade-banner-close" aria-label="Dismiss banner">
+              <X size={20} />
+            </button>
+          </div>
         </div>
       )}
       

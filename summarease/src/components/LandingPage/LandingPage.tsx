@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { Mic, BookOpen, ArrowRight, Sparkles, Play, Upload, CheckCircle, GitBranch, Brain } from 'lucide-react'
 import { SatBrainMark } from '../brand/SatBrainMark'
 import { FAQSection } from './FAQSection'
@@ -457,8 +458,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
           <div className="inner">
             <div>© {new Date().getFullYear()} Sat‑Brain. All rights reserved.</div>
             <nav className="links" style={{display:'flex',gap:'14px'}} aria-label="Footer navigation">
-              <a href="/privacy" aria-label="View privacy policy">Privacy</a>
-              <a href="/terms" aria-label="View terms of service">Terms</a>
+              <Link to="/privacy" aria-label="View privacy policy">Privacy</Link>
+              <Link to="/terms" aria-label="View terms of service">Terms</Link>
             </nav>
           </div>
         </footer>

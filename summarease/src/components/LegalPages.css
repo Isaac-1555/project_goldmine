@@ -2,31 +2,63 @@
 
 .legal-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* Transparent so it inherits the landing-remix background */
+  background: transparent;
   color: white;
-  padding: 4rem 2rem;
+  padding: 96px 16px 64px; /* space for shared nav */
 }
 
 .legal-container {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
   padding: 3rem;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.55);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+  text-decoration: none;
+  font-size: 0.9375rem;
+  margin-bottom: 1.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.back-link:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateX(-4px);
+}
+
+.back-link svg {
+  transition: transform 0.2s ease;
+}
+
+.back-link:hover svg {
+  transform: translateX(-2px);
 }
 
 .legal-container h1 {
-  font-size: 2.5rem;
-  font-weight: bold;
+  font-size: clamp(2rem, 2.5vw + 1rem, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
   margin-bottom: 0.5rem;
   color: white;
 }
 
 .last-updated {
   font-size: 0.875rem;
-  opacity: 0.8;
+  opacity: 0.7;
   margin-bottom: 2rem;
 }
 
@@ -35,16 +67,16 @@
 }
 
 .legal-container h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 700;
   margin-bottom: 1rem;
-  color: white;
+  color: #fff;
 }
 
 .legal-container p {
-  line-height: 1.7;
+  line-height: 1.8;
   margin-bottom: 1rem;
-  opacity: 0.95;
+  color: #cbd5e1;
 }
 
 .legal-container ul {
@@ -54,14 +86,14 @@
 }
 
 .legal-container li {
-  line-height: 1.7;
+  line-height: 1.8;
   margin-bottom: 0.5rem;
-  opacity: 0.95;
+  color: #e5e7eb;
 }
 
 .legal-container strong {
   font-weight: 600;
-  color: white;
+  color: #fff;
 }
 
 .legal-footer {

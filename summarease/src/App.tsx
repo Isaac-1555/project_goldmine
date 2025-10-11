@@ -9,6 +9,9 @@ import { Dashboard } from './components/Dashboard/Dashboard'
 import { LandingPage } from './components/LandingPage'
 import { PricingPage } from './components/Subscription'
 import { Analytics } from './components/Analytics/Analytics'
+import { PrivacyPolicy } from './components/PrivacyPolicy'
+import { TermsOfService } from './components/TermsOfService'
+import ScrollToTop from './components/ScrollToTop'
 import './App.css'
 import './styles/buttons.css'
 
@@ -76,6 +79,14 @@ function AppContent() {
         element={<PricingPage />} 
       />
       <Route 
+        path="/privacy" 
+        element={<PrivacyPolicy />} 
+      />
+      <Route 
+        path="/terms" 
+        element={<TermsOfService />} 
+      />
+      <Route 
         path="/subscription/success" 
         element={
           user ? (
@@ -93,6 +104,8 @@ function AppContent() {
 function App() {
   return (
     <Router>
+      {/* Ensure each route change scrolls to top and handles hash anchors */}
+      <ScrollToTop />
       <ThemeProvider>
         <AuthProvider>
           <SubscriptionProvider>
