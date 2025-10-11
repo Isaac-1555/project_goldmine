@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  
+  <!-- Homepage / Landing Page -->
+  <url>
+    <loc>https://satbrain.vercel.app/</loc>
+    <lastmod>2025-10-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- Features Section (anchor link) -->
+  <url>
+    <loc>https://satbrain.vercel.app/#features</loc>
+    <lastmod>2025-10-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Pricing Section (anchor link) -->
+  <url>
+    <loc>https://satbrain.vercel.app/#pricing</loc>
+    <lastmod>2025-10-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Privacy Policy -->
+  <url>
+    <loc>https://satbrain.vercel.app/privacy</loc>
+    <lastmod>2025-10-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  
+  <!-- Terms of Service -->
+  <url>
+    <loc>https://satbrain.vercel.app/terms</loc>
+    <lastmod>2025-10-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  
+  <!-- 
+    TODO: Replace 'yourdomain.com' with your actual domain
+    TODO: Add additional pages as they're created:
+    - Blog posts (changefreq: weekly, priority: 0.6)
+    - Help/Documentation pages (changefreq: monthly, priority: 0.5)
+    - Use cases/Examples (changefreq: monthly, priority: 0.6)
+    - About page (changefreq: monthly, priority: 0.5)
+    - Contact page (changefreq: monthly, priority: 0.5)
+  -->
+  
+</urlset>

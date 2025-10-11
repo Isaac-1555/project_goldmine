@@ -1,0 +1,29 @@
+# robots.txt for Sat-Brain
+# https://yourdomain.com/robots.txt
+
+# Allow all crawlers to access all content
+User-agent: *
+Allow: /
+
+# Disallow crawling of API endpoints and admin paths (if any)
+Disallow: /api/
+Disallow: /_admin/
+Disallow: /.well-known/
+
+# Disallow crawling of temporary or dynamic files
+Disallow: /temp/
+Disallow: /*.json$
+Disallow: /*.xml$ 
+Allow: /sitemap.xml$
+
+# Block specific bad bots (optional - uncomment if needed)
+# User-agent: AhrefsBot
+# Crawl-delay: 10
+
+# User-agent: SemrushBot
+# Crawl-delay: 10
+
+# Sitemap location (TODO: replace with actual domain)
+Sitemap: https://yourdomain.com/sitemap.xml
+
+# Crawl-delay: 0 (no delay needed for good bots)

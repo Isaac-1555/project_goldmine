@@ -8,6 +8,7 @@ import { SignUpForm } from './components/Auth/SignUpForm'
 import { Dashboard } from './components/Dashboard/Dashboard'
 import { LandingPage } from './components/LandingPage'
 import { PricingPage } from './components/Subscription'
+import { Analytics } from './components/Analytics/Analytics'
 import './App.css'
 import './styles/buttons.css'
 
@@ -95,6 +96,11 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <SubscriptionProvider>
+            {/* Google Analytics */}
+            <Analytics 
+              trackingId={import.meta.env.VITE_GA_TRACKING_ID}
+              enabled={true}
+            />
             <AppContent />
           </SubscriptionProvider>
         </AuthProvider>
