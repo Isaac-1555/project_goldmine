@@ -1,4 +1,4 @@
-/* Legal Pages Styles */
+/* Legal Pages Styles - Optimized for Performance */
 
 .legal-page {
   min-height: 100vh;
@@ -6,6 +6,9 @@
   background: transparent;
   color: white;
   padding: 96px 16px 64px; /* space for shared nav */
+  /* Enable smooth scrolling with hardware acceleration */
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
 }
 
 .legal-container {
@@ -13,10 +16,15 @@
   margin: 0 auto;
   background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
   padding: 3rem;
   box-shadow: 0 24px 60px rgba(0,0,0,0.55);
+  /* GPU acceleration for smoother rendering */
+  transform: translateZ(0);
+  /* Content visibility for better performance */
+  contain: layout style paint;
 }
 
 .back-link {
@@ -32,20 +40,23 @@
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all 0.2s ease;
+  /* GPU acceleration */
+  will-change: transform, background, border-color;
 }
 
 .back-link:hover {
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
-  transform: translateX(-4px);
+  transform: translateX(-4px) translateZ(0);
 }
 
 .back-link svg {
   transition: transform 0.2s ease;
+  will-change: transform;
 }
 
 .back-link:hover svg {
-  transform: translateX(-2px);
+  transform: translateX(-2px) translateZ(0);
 }
 
 .legal-container h1 {
@@ -64,6 +75,9 @@
 
 .legal-container section {
   margin-bottom: 2rem;
+  /* Optimize rendering for sections */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px;
 }
 
 .legal-container h2 {
@@ -77,6 +91,10 @@
   line-height: 1.8;
   margin-bottom: 1rem;
   color: #cbd5e1;
+  /* Better text rendering */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .legal-container ul {
