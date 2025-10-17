@@ -1,0 +1,168 @@
+.obsidian-comparison-section {
+  padding: 80px 20px;
+  background: linear-gradient(to bottom, rgba(139, 92, 246, 0.03), transparent);
+}
+
+.comparison-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.comparison-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.comparison-title {
+  font-size: clamp(28px, 4vw, 36px);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 12px 0;
+  line-height: 1.2;
+}
+
+.comparison-subtitle {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+.comparison-table-wrapper {
+  overflow-x: auto;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.comparison-table th {
+  padding: 20px 24px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.comparison-table th.feature-col {
+  color: rgba(255, 255, 255, 0.9);
+  width: 30%;
+}
+
+.comparison-table th.obsidian-col {
+  color: rgba(255, 255, 255, 0.7);
+  width: 35%;
+}
+
+.comparison-table th.satbrain-col {
+  color: #8b5cf6;
+  width: 35%;
+}
+
+.comparison-table td {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.comparison-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.comparison-table tbody tr:hover {
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.feature-name {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.obsidian-value {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.satbrain-value {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.satbrain-value.highlight {
+  color: #8b5cf6;
+  font-weight: 500;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status-badge.positive {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.status-badge.negative {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.comparison-cta {
+  margin-top: 32px;
+  text-align: center;
+}
+
+.comparison-cta-text {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .obsidian-comparison-section {
+    padding: 60px 16px;
+  }
+
+  .comparison-header {
+    margin-bottom: 32px;
+  }
+
+  .comparison-title {
+    font-size: 24px;
+  }
+
+  .comparison-subtitle {
+    font-size: 16px;
+  }
+
+  .comparison-table {
+    font-size: 14px;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    padding: 16px;
+  }
+
+  .comparison-table th.feature-col {
+    width: 40%;
+  }
+
+  .comparison-table th.obsidian-col,
+  .comparison-table th.satbrain-col {
+    width: 30%;
+  }
+
+  .status-badge {
+    font-size: 13px;
+    padding: 3px 8px;
+  }
+}

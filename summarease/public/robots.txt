@@ -1,11 +1,11 @@
-# robots.txt for Sat-Brain
-# https://yourdomain.com/robots.txt
+# robots.txt for Sat-Brain - Obsidian Alternative for Students
+# https://satbrain.vercel.app/robots.txt
 
 # Allow all crawlers to access all content
 User-agent: *
 Allow: /
 
-# Disallow crawling of API endpoints and admin paths (if any)
+# Disallow crawling of API endpoints and admin paths
 Disallow: /api/
 Disallow: /_admin/
 Disallow: /.well-known/
@@ -16,14 +16,23 @@ Disallow: /*.json$
 Disallow: /*.xml$ 
 Allow: /sitemap.xml$
 
-# Block specific bad bots (optional - uncomment if needed)
+# Explicitly allow important pages for SEO
+Allow: /privacy
+Allow: /terms
+
+# Sitemap location
+Sitemap: https://satbrain.vercel.app/sitemap.xml
+
+# Optional: Control crawler behavior for resource-intensive bots
+# Uncomment if experiencing excessive crawling
 # User-agent: AhrefsBot
 # Crawl-delay: 10
 
 # User-agent: SemrushBot
 # Crawl-delay: 10
 
-# Sitemap location (TODO: replace with actual domain)
-Sitemap: https://yourdomain.com/sitemap.xml
+# User-agent: MJ12bot
+# Crawl-delay: 10
 
-# Crawl-delay: 0 (no delay needed for good bots)
+# No crawl delay for major search engines (Google, Bing, etc.)
+# Crawl-delay: 0

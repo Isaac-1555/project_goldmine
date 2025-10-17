@@ -10,6 +10,18 @@ interface FAQ {
 
 const faqs: FAQ[] = [
   {
+    question: 'What makes Sat-Brain different from Obsidian?',
+    answer: 'Obsidian is a powerful tool, but requires hours of setup, markdown knowledge, and paid plugins for AI features. Sat-Brain gives you everything out-of-the-box: AI summaries, automatic linking, audio transcription, and flashcards—no configuration needed. Perfect for students who want to study, not tinker.'
+  },
+  {
+    question: 'Can I import my Obsidian notes?',
+    answer: 'Yes! Sat-Brain supports markdown import, so you can bring your existing Obsidian vault over seamlessly. We\'ll preserve your links and structure while adding AI enhancements like auto-generated summaries and flashcards.'
+  },
+  {
+    question: 'Is Sat-Brain good for microlearning?',
+    answer: 'Absolutely. Auto-generated flashcards, bite-sized summaries, and spaced repetition features make Sat-Brain perfect for microlearning. Study in 5-10 minute sessions instead of marathon cram sessions.'
+  },
+  {
     question: 'How does Sat-Brain work?',
     answer: 'Upload audio recordings, PDFs, or documents to Sat-Brain. Our AI instantly transcribes and analyzes your content, generating summaries, flashcards, quizzes, and automatically tagging key concepts. Everything syncs across your devices in real-time.'
   },
@@ -38,8 +50,8 @@ const faqs: FAQ[] = [
     answer: 'Currently, everyone gets the same low price: free for the first month, then just $4.99/month. We\'re working on educational institution partnerships for bulk licensing. Contact us if you\'re an educator interested in using Sat-Brain with your students.'
   },
   {
-    question: 'What makes Sat-Brain different from Notion?',
-    answer: 'Unlike Notion, Sat-Brain is specifically built for learning and studying with AI-first features: automatic transcription, AI summaries, flashcard generation, quiz creation, and a knowledge graph that connects your ideas. Notion is great for organization, but Sat-Brain is designed for active learning.'
+    question: 'What makes Sat-Brain different from Notion or Obsidian?',
+    answer: 'Unlike Notion and Obsidian, Sat-Brain is specifically built for learning and studying with AI-first features ready out-of-the-box. Obsidian requires hours of plugin configuration, Notion lacks study features—Sat-Brain gives you automatic transcription, AI summaries, flashcard generation, quiz creation, and a knowledge graph from day one. It\'s easier than Obsidian while being more learning-focused than Notion.'
   },
   {
     question: 'Can I export my notes and summaries?',

@@ -4,6 +4,7 @@ import { Mic, BookOpen, ArrowRight, Sparkles, Play, Upload, CheckCircle, GitBran
 import { SatBrainMark } from '../brand/SatBrainMark'
 import { FAQSection } from './FAQSection'
 import { BuiltWithSection } from './BuiltWithSection'
+import { ObsidianComparisonSection } from './ObsidianComparisonSection'
 import { analytics } from '../Analytics/Analytics'
 import './LandingPage.css'
 import './LandingPage.modern.css'
@@ -61,9 +62,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
 
   // Comprehensive SEO setup without touching index.html or adding deps
   useEffect(() => {
-    const title = 'Sat‑Brain — AI text summarizer, note‑taking, and lecture transcription'
-    const description = 'Sat‑Brain is an AI text summarizer and note‑taking app for students and professionals. Record and transcribe audio, summarize PDFs & DOCX, auto‑generate flashcards and quizzes, and connect ideas in a knowledge graph.'
+    const title = 'Sat-Brain: Obsidian Alternative with AI for Students | Smart Note-Taking'
+    const description = 'The easiest Obsidian alternative for students. Get automatic linking, AI summaries, flashcards, and audio transcription—no plugins needed. Perfect for active recall and microlearning. Free 30-day trial, then $4.99/mo.'
     const keywords = [
+      'Obsidian alternative',
+      'Obsidian alternative for students',
+      'AI note-taking app',
+      'smart note-taking',
+      'active recall study app',
+      'Zettelkasten with AI',
+      'note-taking with flashcards',
       'AI text summarizer',
       'note taking app',
       'lecture transcription',
@@ -77,7 +85,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
       'audio to text',
       'summarize pdf',
       'summarize document',
-      'study tool'
+      'study tool',
+      'microlearning app',
+      'bidirectional links',
+      'automatic note linking'
     ].join(', ')
     const siteUrl = window.location.origin
     const currentUrl = window.location.href
@@ -165,8 +176,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
     return () => window.removeEventListener('resize', alignCard)
   }, [])
 
+  // Schema.org structured data for SoftwareApplication
+  const softwareSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Sat-Brain',
+    applicationCategory: 'Note-taking',
+    operatingSystem: 'Web',
+    offers: {
+      '@type': 'Offer',
+      price: '4.99',
+      priceCurrency: 'USD',
+      priceValidUntil: '2026-12-31',
+      availability: 'https://schema.org/InStock',
+      description: 'Free 30-day trial, then $4.99/month'
+    },
+    description: 'The easiest Obsidian alternative for students. Get automatic linking, AI summaries, flashcards, and audio transcription—no plugins needed. Perfect for active recall and microlearning.',
+    featureList: [
+      'AI-powered summarization',
+      'Audio transcription',
+      'Auto-generated flashcards',
+      'Quiz generation',
+      'Knowledge graph',
+      'Automatic note linking',
+      'PDF and document processing'
+    ],
+    alternativeTo: 'Obsidian'
+  }
+
   return (
     <>
+      {/* Schema.org SoftwareApplication structured data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+      />
+
       <div className={`landing-page landing-remix ${splineUrl ? 'spline-on' : ''}`}>
         {/* Background glows inspired by mock */}
         <div className="remix-glows" aria-hidden="true">
@@ -204,18 +249,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
             <div className="hero-content">
               <div className="hero-chip" role="status" aria-label="Product update announcement">
                 <Sparkles size={14} aria-hidden="true" />
-                <span>New: Realtime graph sync just landed</span>
+                <span>Better than Obsidian: AI-powered + zero setup required</span>
               </div>
               <h1 id="hero-title" className="hero-title">
-                Turn Lectures into AI Study Guides
+                The Smart Obsidian Alternative for Students
               </h1>
               <p className="hero-subtitle">
-                Upload audio, PDFs, or notes—get instant summaries, flashcards, and quizzes. 
-                AI-powered learning for students and professionals.
+                Skip the learning curve—get AI note-taking with automatic linking, flashcards, and audio transcription out of the box. Everything Obsidian offers, plus the AI features students actually need.
               </p>
               <div className="hero-cta-row">
-                <button onClick={() => handleGetStarted('Hero Section')} className="hero-cta" aria-label="Start your free month trial from hero section">
-                  Start Free Month
+                <button onClick={() => handleGetStarted('Hero Section')} className="hero-cta" aria-label="Try the easy Obsidian alternative free">
+                  Try the Easy Obsidian Alternative Free
                   <ArrowRight className="cta-icon" aria-hidden="true" />
                 </button>
               </div>
@@ -273,40 +317,43 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
           {/* Features Section */}
           <section id="features" className="features-section" aria-labelledby="features-title">
           <div className="features-container">
-            <h2 id="features-title" className="features-title">What Sat‑Brain does today</h2>
+            <h2 id="features-title" className="features-title">Why Students Choose Sat‑Brain Over Obsidian</h2>
             <div className="features-rows">
               <div className="features-grid features-mock row-top">
                 <article className="feature-card">
                   <div className="feature-icon" aria-hidden="true"><Upload /></div>
-                  <h3 className="feature-title">Upload PDFs, DOCX, PPTX, images, or audio</h3>
-                  <p className="feature-description">extracts text client‑side, then auto‑summarizes and tags</p>
+                  <h3 className="feature-title">Auto-extract and summarize any content</h3>
+                  <p className="feature-description">Upload PDFs, audio, or images—AI instantly extracts text and generates summaries. No manual note-taking required (unlike Obsidian).</p>
                 </article>
                 <article className="feature-card">
                   <div className="feature-icon" aria-hidden="true"><Mic /></div>
-                  <h3 className="feature-title">Record lectures and classes</h3>
-                  <p className="feature-description">noise‑reduced recording with live transcript; use your phone as a remote mic</p>
+                  <h3 className="feature-title">Record + transcribe lectures automatically</h3>
+                  <p className="feature-description">Built-in audio recording with live transcription. Obsidian requires third-party plugins; Sat-Brain has it built-in.</p>
                 </article>
                 <article className="feature-card">
                   <div className="feature-icon" aria-hidden="true"><BookOpen /></div>
-                  <h3 className="feature-title">Notebook: notes + docs in one place</h3>
-                  <p className="feature-description">rich notes, transcripts, and files; autosave locally and organize by folders</p>
+                  <h3 className="feature-title">Notes that organize themselves</h3>
+                  <p className="feature-description">Auto-tagging and smart folders mean less manual organization. Spend time learning, not configuring plugins.</p>
                 </article>
               </div>
               <div className="features-grid features-mock row-bottom">
                 <article className="feature-card">
                   <div className="feature-icon" aria-hidden="true"><Brain size={24} /></div>
-                  <h3 className="feature-title">Study tools: flashcards & quizzes</h3>
-                  <p className="feature-description">generate MCQs and flashcards from summaries; review with spaced repetition</p>
+                  <h3 className="feature-title">AI flashcards for active recall</h3>
+                  <p className="feature-description">Generate flashcards and quizzes from any note—automatically. Perfect for microlearning and spaced repetition.</p>
                 </article>
                 <article className="feature-card">
                   <div className="feature-icon" aria-hidden="true"><GitBranch /></div>
-                  <h3 className="feature-title">Knowledge graph & tag search</h3>
-                  <p className="feature-description">interactive graph of files and tags; open items from the graph and filter by tags</p>
+                  <h3 className="feature-title">Knowledge graph (like Obsidian, but smarter)</h3>
+                  <p className="feature-description">Automatic bidirectional links and AI-suggested connections. Get Obsidian's graph view without the manual [[linking]].</p>
                 </article>
               </div>
             </div>
           </div>
           </section>
+
+          {/* Obsidian Comparison Section */}
+          <ObsidianComparisonSection />
 
           {/* Built With Section */}
           <BuiltWithSection />
@@ -317,12 +364,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
               <div className="pricing-hero-content">
                 <div className="pricing-badge">
                   <Sparkles size={16} aria-hidden="true" />
-                  <span>Simple, honest pricing</span>
+                  <span>Student-friendly pricing (Obsidian's plugins cost more)</span>
                 </div>
                 <h2 id="pricing-title" className="pricing-hero-title">
-                  Start free for 30 days.
+                  Obsidian + AI features for less than one coffee per month
                   <br />
-                  Then just <span className="price-highlight">$4.99</span>/month
+                  Just <span className="price-highlight">$4.99</span>/month
                 </h2>
                 <p className="pricing-hero-subtitle">
                   No credit card required. Cancel anytime. Keep all your notes and summaries forever.
@@ -361,8 +408,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
 
                 {/* CTA Section */}
                 <div className="pricing-cta-section">
-                  <button onClick={() => handleGetStarted('Pricing Section')} className="pricing-hero-cta" aria-label="Start your free month from pricing section">
-                    <span className="cta-text">Start Free Month</span>
+                  <button onClick={() => handleGetStarted('Pricing Section')} className="pricing-hero-cta" aria-label="See why students switched from Obsidian">
+                    <span className="cta-text">See Why Students Switched from Obsidian</span>
                     <ArrowRight className="cta-icon" aria-hidden="true" />
                   </button>
                   <div className="pricing-reassurance">
@@ -381,21 +428,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
                   </div>
                   <div className="value-comparison">
                     <div className="value-item">
-                      <span className="value-service">ChatGPT Plus</span>
-                      <span className="value-price">$20/mo</span>
-                    </div>
-                    <div className="value-item">
-                      <span className="value-service">Notion AI</span>
+                      <span className="value-service">Obsidian Sync</span>
                       <span className="value-price">$10/mo</span>
                     </div>
                     <div className="value-item">
-                      <span className="value-service">Otter.ai</span>
-                      <span className="value-price">$17/mo</span>
+                      <span className="value-service">Obsidian Publish</span>
+                      <span className="value-price">$20/mo</span>
+                    </div>
+                    <div className="value-item">
+                      <span className="value-service">AI plugins</span>
+                      <span className="value-price">$10-20/mo</span>
                     </div>
                     <div className="value-divider"></div>
                     <div className="value-total">
-                      <span className="value-total-label">Typical cost:</span>
-                      <span className="value-total-price">$47/mo</span>
+                      <span className="value-total-label">Obsidian total:</span>
+                      <span className="value-total-price">$40-50/mo</span>
                     </div>
                   </div>
                   <div className="value-card-footer">
@@ -404,7 +451,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
                       <span className="your-price-amount">$4.99/mo</span>
                     </div>
                     <div className="savings-badge">
-                      Save $42/month
+                      Save $35-45/month
                     </div>
                   </div>
                 </div>
@@ -441,8 +488,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
               </article>
             </div>
             <div className="how-actions">
-              <button onClick={() => handleGetStarted('How It Works Section')} className="cta-button" aria-label="Start your free month from how it works section">
-                Start Free Month
+              <button onClick={() => handleGetStarted('How It Works Section')} className="cta-button" aria-label="Start free trial - no credit card needed">
+                Start Free Trial — No Credit Card
                 <ArrowRight className="cta-icon" aria-hidden="true" />
               </button>
             </div>
