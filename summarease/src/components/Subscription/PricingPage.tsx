@@ -33,31 +33,48 @@ export function PricingPage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleStartTrial = async () => {
+    console.log('🎯 handleStartTrial called', {
+      userExists: !!user,
+      subscriptionStatus: subscription?.status,
+      isPremium,
+      isTrialing,
+    });
+
     if (!user) {
       // Not logged in → Go to signup
+      console.log('⚠️ No user, redirecting to signup');
       navigate('/signup');
       return;
     }
 
     if (subscription?.status === 'trialing') {
       // Already in trial → Go to dashboard
+      console.log('✅ Already trialing, redirecting to dashboard');
       navigate('/dashboard');
       return;
     }
 
     if (subscription?.status === 'canceled' || !subscription) {
       // Trial expired or never started → Upgrade with Stripe
+      console.log('💳 Starting Stripe checkout flow...', {
+        status: subscription?.status,
+        hasSubscription: !!subscription,
+      });
       setIsLoading(true);
       setError(null);
 
       try {
         await redirectToCheckout();
+        console.log('✅ Checkout completed (should have redirected)');
       } catch (err: any) {
-        console.error('Error starting checkout:', err);
+        console.error('❌ Checkout error:', err);
         setError(err.message || 'Failed to start checkout. Please try again.');
       } finally {
         setIsLoading(false);
       }
+    } else {
+      console.log('⚠️ Unhandled subscription status:', subscription?.status);
+      setError(`Unexpected subscription status: ${subscription?.status}`);
     }
   };
 
