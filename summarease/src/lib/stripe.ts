@@ -32,32 +32,54 @@ export async function createCheckoutSession(priceId?: string) {
       finalPriceId 
     });
     
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    if (!session) {
-      console.error('❌ User not authenticated');
+    if (sessionError || !session) {
+      console.error('❌ User not authenticated:', sessionError);
       throw new Error('You must be logged in to subscribe');
     }
 
-    console.log('✅ User authenticated, calling Edge Function...');
-    const response = await supabase.functions.invoke('create-checkout-session', {
-      body: { priceId: finalPriceId },
+    console.log('✅ User authenticated:', {
+      userId: session.user.id,
+      hasAccessToken: !!session.access_token
     });
+    
+    console.log('📞 Calling Edge Function...');
+    
+    // Get Supabase URL and anon key from environment
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+    
+    // Use direct fetch to ensure Authorization header is passed correctly
+    const response = await fetch(
+      `${supabaseUrl}/functions/v1/create-checkout-session`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': supabaseAnonKey,
+        },
+        body: JSON.stringify({ priceId: finalPriceId }),
+      }
+    );
 
-    console.log('📥 Edge Function response:', {
-      hasError: !!response.error,
-      hasData: !!response.data,
-      data: response.data,
-      error: response.error,
-    });
+    console.log('📥 Edge Function response status:', response.status);
+    
+    const data = await response.json();
+    
+    console.log('📥 Edge Function response data:', data);
 
-    if (response.error) {
-      console.error('❌ Edge Function error:', response.error);
-      throw response.error;
+    if (!response.ok || data.error) {
+      console.error('❌ Edge Function error:', data.error || data);
+      throw new Error(data.error || 'Failed to create checkout session');
     }
 
-    console.log('✅ Checkout session created:', response.data);
-    return response.data;
+    console.log('✅ Checkout session created:', data);
+    return data;
   } catch (error: any) {
     console.error('❌ Error creating checkout session:', error);
     throw new Error(error.message || 'Failed to create checkout session');

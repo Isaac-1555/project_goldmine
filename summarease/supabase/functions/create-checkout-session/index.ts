@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,12 +37,24 @@ serve(async (req) => {
       throw new Error('Supabase configuration error')
     }
     
+    // Get and validate Authorization header
+    const authHeader = req.headers.get('Authorization')
+    console.log('🔑 Auth header check:', {
+      exists: !!authHeader,
+      prefix: authHeader?.substring(0, 20) + '...',
+    })
+    
+    if (!authHeader) {
+      console.error('❌ Missing Authorization header')
+      throw new Error('Authorization header missing')
+    }
+    
     const supabaseClient = createClient(
       supabaseUrl,
       supabaseAnonKey,
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     )
