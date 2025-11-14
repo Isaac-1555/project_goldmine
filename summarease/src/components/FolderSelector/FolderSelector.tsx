@@ -46,7 +46,12 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
       setShowNewFolderInput(true)
       return
     }
-    onFolderSelect(value === '' ? null : value)
+    // Handle special placeholder values
+    if (value === '__PLACEHOLDER__' || value === '__NO_FOLDER__' || value === '') {
+      onFolderSelect(null)
+      return
+    }
+    onFolderSelect(value)
   }
 
   const handleCreateFolder = async () => {
@@ -123,11 +128,11 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({
         </div>
       ) : (
         <CustomSelect
-          value={selectedFolderId || ''}
+          value={selectedFolderId || '__NO_FOLDER__'}
           onChange={handleFolderChange}
           options={[
-            { value: '', label: loading ? 'Loading folders...' : placeholder },
-            { value: '', label: '📁 No Folder' },
+            { value: '__PLACEHOLDER__', label: loading ? 'Loading folders...' : placeholder, disabled: true },
+            { value: '__NO_FOLDER__', label: '📁 No Folder' },
             ...folders.map((folder): SelectOption => ({
               value: folder.id,
               label: `📁 ${folder.name}`

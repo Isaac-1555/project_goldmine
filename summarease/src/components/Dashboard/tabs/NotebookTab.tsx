@@ -726,8 +726,11 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
                 onChange={(e) => setCustomTagInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
+                    e.preventDefault()
                     const v = customTagInput.trim()
-                    if (v && !customTags.includes(v)) setCustomTags((prev) => [...prev, v])
+                    if (v && v.length > 0 && !customTags.includes(v)) {
+                      setCustomTags((prev) => [...prev, v])
+                    }
                     setCustomTagInput('')
                   }
                 }}
@@ -745,7 +748,9 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
                 className="btn btn-soft-primary btn-sm"
                 onClick={() => {
                   const v = customTagInput.trim()
-                  if (v && !customTags.includes(v)) setCustomTags((prev) => [...prev, v])
+                  if (v && v.length > 0 && !customTags.includes(v)) {
+                    setCustomTags((prev) => [...prev, v])
+                  }
                   setCustomTagInput('')
                 }}
                 title="Add tag"
