@@ -10,6 +10,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 - **Frontend**: React 18 + TypeScript + Vite
 - **Backend**: Supabase (PostgreSQL database, Edge Functions, Storage, Auth)
 - **AI Services**: Google Gemini API for transcription, summarization, and content generation
+- **Payments**: Polar.sh (Merchant of Record for subscriptions and billing)
 - **UI Libraries**: Radix UI components, Framer Motion, Lucide React icons
 
 ## Development Commands
@@ -45,12 +46,13 @@ cd summarease && supabase gen types typescript --local > src/lib/database.types.
 ```bash
 # Deploy Edge Functions to Supabase
 cd summarease && supabase functions deploy process-file
+cd summarease && supabase functions deploy polar-webhooks  # For Polar.sh integration
 
 # Test Edge Functions locally
 cd summarease && supabase functions serve
 
 # View Edge Function logs
-# Use Supabase Dashboard → Edge Functions → process-file → Logs
+# Use Supabase Dashboard → Edge Functions → [function-name] → Logs
 ```
 
 ## Architecture Overview
@@ -75,6 +77,9 @@ cd summarease && supabase functions serve
 - `tags`: Automatically extracted keywords for content linking
 - `flashcards`: Study materials generated from summaries
 - `quizzes`: Interactive quizzes with multiple choice questions
+- `subscriptions`: User subscription status managed via Polar.sh webhooks
+- `customers`: Payment customer records linked to Polar.sh
+- `payment_history`: Historical payment records from Polar.sh
 
 ## Setup Requirements
 
@@ -83,13 +88,16 @@ cd summarease && supabase functions serve
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 VITE_GEMINI_API_KEY=your-gemini-key  # Optional for client-side processing
+VITE_POLAR_ORGANIZATION_ID=your-polar-org-id  # For Polar.sh billing
+VITE_POLAR_PRODUCT_ID=your-polar-product-id  # For Polar.sh billing
 ```
 
 ### Supabase Setup
-1. **Database**: Run migrations in order: `001_initial_schema.sql`, `002_row_level_security.sql`, `003_functions_and_triggers.sql`
+1. **Database**: Run migrations in order starting from `001_initial_schema.sql`
 2. **Storage**: Create 'files' bucket with proper policies
-3. **Edge Functions**: Deploy `process-file` function with Gemini API key as secret
+3. **Edge Functions**: Deploy Edge Functions with required secrets (Gemini API key, etc.)
 4. **Authentication**: Configure site URL and redirect URLs for local development
+5. **Subscriptions**: Polar.sh webhooks update subscription status automatically
 
 ## Development Workflow
 

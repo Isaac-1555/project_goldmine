@@ -5,8 +5,8 @@ import { supabase } from '../lib/supabase';
 export interface SubscriptionData {
   id: string;
   user_id: string;
-  stripe_subscription_id: string | null;
-  stripe_customer_id: string;
+  payment_subscription_id: string | null; // Polar.sh subscription ID (previously stripe_subscription_id)
+  payment_customer_id: string; // Polar.sh customer ID (previously stripe_customer_id)
   status: 'active' | 'trialing' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'unpaid' | 'paused';
   price_id: string | null;
   quantity: number;
@@ -15,6 +15,7 @@ export interface SubscriptionData {
   current_period_end: string | null;
   trial_start: string | null;
   trial_end: string | null;
+  is_lifetime_premium?: boolean; // TRUE for users with permanent premium access
   created_at: string;
   updated_at: string;
 }
@@ -50,16 +51,20 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [isLoading, setIsLoading] = useState(true);
 
   // Calculate subscription status
+  // Lifetime premium users always have access
+  const isLifetimePremium = subscription?.is_lifetime_premium === true;
+  
   // Check if trial hasn't expired
   const isTrialValid = subscription?.trial_end 
     ? new Date(subscription.trial_end) > new Date() 
     : false;
 
   const hasActiveSubscription = 
+    isLifetimePremium ||
     (subscription?.status === 'active') ||
     (subscription?.status === 'trialing' && isTrialValid);
   
-  const isTrialing = subscription?.status === 'trialing' && isTrialValid;
+  const isTrialing = !isLifetimePremium && subscription?.status === 'trialing' && isTrialValid;
   const isPremium = hasActiveSubscription;
   const canAccessPremiumFeatures = hasActiveSubscription;
 

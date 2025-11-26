@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../Auth/AuthProvider';
 import { useSubscription } from '../../contexts/SubscriptionContext';
-import { redirectToCheckout } from '../../lib/stripe';
 import { Check, Sparkles, Zap } from 'lucide-react';
 import './PricingPage.css';
+
+// TODO: Replace with Polar.sh checkout implementation
+// See docs/polar.sh.md for integration options
 
 const FEATURES = {
   free: [
@@ -55,8 +57,8 @@ export function PricingPage() {
     }
 
     if (subscription?.status === 'canceled' || !subscription) {
-      // Trial expired or never started → Upgrade with Stripe
-      console.log('💳 Starting Stripe checkout flow...', {
+      // Trial expired or never started → Redirect to Polar.sh checkout
+      console.log('💳 Starting Polar.sh checkout flow...', {
         status: subscription?.status,
         hasSubscription: !!subscription,
       });
@@ -64,12 +66,23 @@ export function PricingPage() {
       setError(null);
 
       try {
-        await redirectToCheckout();
-        console.log('✅ Checkout completed (should have redirected)');
+        // Get direct Polar.sh checkout link from environment variables
+        const checkoutLink = import.meta.env.VITE_POLAR_CHECKOUT_LINK;
+
+        if (!checkoutLink) {
+          console.error('❌ Missing Polar.sh checkout link');
+          setError('Payment system not configured. Please contact support.');
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('🌐 Redirecting to Polar.sh checkout:', checkoutLink);
+        
+        // Redirect directly to Polar.sh checkout
+        window.location.href = checkoutLink;
       } catch (err: any) {
         console.error('❌ Checkout error:', err);
         setError(err.message || 'Failed to start checkout. Please try again.');
-      } finally {
         setIsLoading(false);
       }
     } else {
@@ -211,7 +224,7 @@ export function PricingPage() {
           <div className="faq-item">
             <h4>What payment methods do you accept?</h4>
             <p>
-              We accept all major credit cards (Visa, Mastercard, American Express) and debit cards through Stripe.
+              We accept all major credit cards (Visa, Mastercard, American Express) and debit cards through our secure payment processor.
             </p>
           </div>
         </div>
