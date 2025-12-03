@@ -34,8 +34,11 @@ interface SubscriptionContextType {
   isTrialing: boolean;
   hasActiveSubscription: boolean;
   canAccessPremiumFeatures: boolean;
+  localTrialStatus: 'not_started' | 'active' | 'expired';
+  localTrialExpiresAt: string | null;
   refreshSubscription: () => Promise<void>;
   incrementSummaryUsage: () => Promise<void>;
+  startLocalTrial: () => Promise<void>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -43,6 +46,8 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [localTrialStatus, setLocalTrialStatus] = useState<'not_started' | 'active' | 'expired'>('not_started');
+  const [localTrialExpiresAt, setLocalTrialExpiresAt] = useState<string | null>(null);
   const [usage, setUsage] = useState<UsageData>({
     summaryCount: 0,
     summaryLimit: 3,
@@ -54,42 +59,66 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   // Lifetime premium users always have access
   const isLifetimePremium = subscription?.is_lifetime_premium === true;
   
-  // Check if trial hasn't expired
-  const isTrialValid = subscription?.trial_end 
+  // Check if Polar trial hasn't expired
+  const isPolarTrialValid = subscription?.trial_end 
     ? new Date(subscription.trial_end) > new Date() 
+    : false;
+
+  // Check if Local trial is active and not expired
+  const isLocalTrialActive = localTrialStatus === 'active' && localTrialExpiresAt
+    ? new Date(localTrialExpiresAt) > new Date()
     : false;
 
   const hasActiveSubscription = 
     isLifetimePremium ||
     (subscription?.status === 'active') ||
-    (subscription?.status === 'trialing' && isTrialValid);
+    (subscription?.status === 'trialing' && isPolarTrialValid) ||
+    isLocalTrialActive;
   
-  const isTrialing = !isLifetimePremium && subscription?.status === 'trialing' && isTrialValid;
+  const isTrialing = (!isLifetimePremium && subscription?.status === 'trialing' && isPolarTrialValid) || isLocalTrialActive;
   const isPremium = hasActiveSubscription;
   const canAccessPremiumFeatures = hasActiveSubscription;
 
-  // Fetch subscription data
+  // Fetch subscription and user data
   const fetchSubscription = async () => {
     if (!user) {
       setSubscription(null);
+      setLocalTrialStatus('not_started');
+      setLocalTrialExpiresAt(null);
       setIsLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase
+      // Fetch Polar subscription
+      const { data: subData, error: subError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', user.id)
-        .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors when no rows
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching subscription:', error);
+      if (subError) {
+        console.error('Error fetching subscription:', subError);
       }
 
-      setSubscription(data);
+      setSubscription(subData);
+
+      // Fetch Local Trial status from users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('local_trial_status, local_trial_expires_at')
+        .eq('id', user.id)
+        .single();
+
+      if (userError) {
+        console.error('Error fetching user trial status:', userError);
+      } else if (userData) {
+        setLocalTrialStatus(userData.local_trial_status);
+        setLocalTrialExpiresAt(userData.local_trial_expires_at);
+      }
+
     } catch (error) {
-      console.error('Error fetching subscription:', error);
+      console.error('Error fetching subscription data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -144,6 +173,19 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
   };
 
+  // Start local trial
+  const startLocalTrial = async () => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.rpc('start_local_trial');
+      if (error) throw error;
+      await refreshSubscription();
+    } catch (error) {
+      console.error('Error starting local trial:', error);
+      throw error;
+    }
+  };
+
   // Refresh subscription data
   const refreshSubscription = async () => {
     setIsLoading(true);
@@ -191,6 +233,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     isTrialing,
     hasActiveSubscription,
     canAccessPremiumFeatures,
+    localTrialStatus,
+    localTrialExpiresAt,
+    startLocalTrial,
     refreshSubscription,
     incrementSummaryUsage,
   };

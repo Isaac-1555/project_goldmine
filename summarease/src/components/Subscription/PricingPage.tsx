@@ -30,73 +30,87 @@ const FEATURES = {
 export function PricingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isPremium, isTrialing, subscription } = useSubscription();
+  const { isPremium, isTrialing, subscription, localTrialStatus, startLocalTrial } = useSubscription();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleStartTrial = async () => {
-    console.log('🎯 handleStartTrial called', {
-      userExists: !!user,
-      subscriptionStatus: subscription?.status,
-      isPremium,
-      isTrialing,
-    });
-
+  const handleLocalTrial = async () => {
     if (!user) {
-      // Not logged in → Go to signup
-      console.log('⚠️ No user, redirecting to signup');
+      navigate('/signup');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await startLocalTrial();
+      navigate('/dashboard');
+    } catch (err: any) {
+      console.error('Failed to start local trial:', err);
+      setError(err.message || 'Failed to start trial');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePolarCheckout = async () => {
+    if (!user) {
       navigate('/signup');
       return;
     }
 
-    if (subscription?.status === 'trialing') {
-      // Already in trial → Go to dashboard
-      console.log('✅ Already trialing, redirecting to dashboard');
-      navigate('/dashboard');
-      return;
-    }
+    setIsLoading(true);
+    setError(null);
 
-    if (subscription?.status === 'canceled' || !subscription) {
-      // Trial expired or never started → Redirect to Polar.sh checkout
-      console.log('💳 Starting Polar.sh checkout flow...', {
-        status: subscription?.status,
-        hasSubscription: !!subscription,
-      });
-      setIsLoading(true);
-      setError(null);
+    try {
+      // Get direct Polar.sh checkout link from environment variables
+      const checkoutLink = import.meta.env.VITE_POLAR_CHECKOUT_LINK;
 
-      try {
-        // Get direct Polar.sh checkout link from environment variables
-        const checkoutLink = import.meta.env.VITE_POLAR_CHECKOUT_LINK;
-
-        if (!checkoutLink) {
-          console.error('❌ Missing Polar.sh checkout link');
-          setError('Payment system not configured. Please contact support.');
-          setIsLoading(false);
-          return;
-        }
-
-        console.log('🌐 Redirecting to Polar.sh checkout:', checkoutLink);
-        
-        // Redirect directly to Polar.sh checkout
-        window.location.href = checkoutLink;
-      } catch (err: any) {
-        console.error('❌ Checkout error:', err);
-        setError(err.message || 'Failed to start checkout. Please try again.');
+      if (!checkoutLink) {
+        console.error('❌ Missing Polar.sh checkout link');
+        setError('Payment system not configured. Please contact support.');
         setIsLoading(false);
+        return;
       }
-    } else {
-      console.log('⚠️ Unhandled subscription status:', subscription?.status);
-      setError(`Unexpected subscription status: ${subscription?.status}`);
+
+      // Attach user identity to checkout via query params so Polar can send it back in webhooks
+      const url = new URL(checkoutLink);
+
+      if (user.email) {
+        // Pre-fill email in Polar checkout, improves UX
+        url.searchParams.set('customer_email', user.email);
+      }
+
+      // This will end up as subscription.metadata.reference_id on the Polar side
+      url.searchParams.set('reference_id', user.id);
+
+      // Redirect directly to Polar.sh checkout
+      window.location.href = url.toString();
+    } catch (err: any) {
+      console.error('❌ Checkout error:', err);
+      setError(err.message || 'Failed to start checkout. Please try again.');
+      setIsLoading(false);
     }
   };
+  
+  // Determine button visibility
+  // Check if user has an active Polar subscription (trialing or active)
+  const hasPolarSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
+  
+  // Show Local Trial button if:
+  // 1. User is not logged in OR
+  // 2. Logged in, Local Trial not started, and no active Polar subscription
+  const showLocalTrialBtn = !user || (localTrialStatus === 'not_started' && !hasPolarSubscription);
+  
+  // Show Polar Button if:
+  // User does NOT have an active Polar subscription
+  const showPolarBtn = !hasPolarSubscription;
 
   return (
     <div className="pricing-page">
       <div className="pricing-container">
         <div className="pricing-header">
           <h1>Choose Your Plan</h1>
-          <p>Start with a 30-day free trial, no credit card required</p>
+          <p>Start with a <strong>7-day free Premium trial</strong>, no credit card required.<br/>Add a card any time for <strong>30 extra days free</strong>.</p>
           
           {!user && (
             <div className="existing-user">
@@ -154,12 +168,12 @@ export function PricingPage() {
             <div className="pricing-card-header">
               <h2>Premium</h2>
               <div className="pricing-price">
-                <span className="price-amount">$4.99</span>
+                <span className="price-amount">$9.99</span>
                 <span className="price-period">/month</span>
               </div>
               <p className="trial-notice">
                 <Zap size={16} />
-                First 30 days free
+                First 7 days free (no card) + 30 days free (with card)
               </p>
             </div>
 
@@ -172,46 +186,55 @@ export function PricingPage() {
               ))}
             </ul>
 
-            {isPremium ? (
-              <div className="subscription-status">
-                {isTrialing ? (
-                  <>
+            <div className="pricing-actions">
+              {hasPolarSubscription ? (
+                 <div className="subscription-status">
                     <Check size={20} />
-                    <span>Free Trial Active</span>
-                  </>
-                ) : (
-                  <>
-                    <Check size={20} />
-                    <span>Subscribed</span>
-                  </>
-                )}
-              </div>
-            ) : (
-              <button 
-                className="pricing-button primary"
-                onClick={handleStartTrial}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <span className="button-spinner"></span>
-                    Processing...
-                  </>
-                ) : (
-                  'Start Free Trial'
-                )}
-              </button>
-            )}
+                    <span>{subscription?.status === 'trialing' ? 'Polar Trial Active' : 'Subscribed'}</span>
+                 </div>
+              ) : (
+                <>
+                  {showLocalTrialBtn && (
+                    <button 
+                      className="pricing-button primary"
+                      onClick={handleLocalTrial}
+                      disabled={isLoading}
+                      style={{ marginBottom: '10px' }}
+                    >
+                      Start Free Trial (7 Days)
+                    </button>
+                  )}
+                  
+                  {showPolarBtn && (
+                    <button 
+                      className={`pricing-button ${showLocalTrialBtn ? 'secondary' : 'primary'}`}
+                      onClick={handlePolarCheckout}
+                      disabled={isLoading}
+                    >
+                      Add card and get 30 days free
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="pricing-faq">
           <h3>Frequently Asked Questions</h3>
           <div className="faq-item">
+             <h4>How do the trials work?</h4>
+             <p>
+               You can start a <strong>7-day local trial</strong> immediately without a credit card. 
+               At any point (during or after those 7 days), you can add a payment method to start a <strong>30-day free trial</strong> powered by Polar. 
+               These are separate: adding a card starts a fresh 30-day clock.
+             </p>
+          </div>
+          <div className="faq-item">
             <h4>What happens after my trial ends?</h4>
             <p>
-              After your 30-day free trial, you'll be asked to add a payment method to continue with Premium features. 
-              If you choose not to subscribe, you'll automatically be moved to the Free plan with 3 summaries per week.
+              After your 7-day local trial ends, you revert to the Free plan unless you add a card. 
+              After your 30-day card-backed trial ends, you will be charged monthly unless you cancel.
             </p>
           </div>
           <div className="faq-item">
@@ -219,12 +242,6 @@ export function PricingPage() {
             <p>
               Yes! You can cancel your subscription at any time from your account settings. 
               You'll retain access to Premium features until the end of your billing period.
-            </p>
-          </div>
-          <div className="faq-item">
-            <h4>What payment methods do you accept?</h4>
-            <p>
-              We accept all major credit cards (Visa, Mastercard, American Express) and debit cards through our secure payment processor.
             </p>
           </div>
         </div>

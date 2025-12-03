@@ -43,7 +43,7 @@ export function PremiumLock({ feature, description, children }: PremiumLockProps
             {buttonText}
           </button>
           {!isTrialing && (
-            <p className="premium-lock-trial">Start with 30-day free trial</p>
+            <p className="premium-lock-trial">Start with 7-day free trial</p>
           )}
         </div>
       </div>

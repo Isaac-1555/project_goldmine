@@ -7,16 +7,25 @@ export interface Database {
           id: string
           email: string
           created_at: string
+          local_trial_status: 'not_started' | 'active' | 'expired'
+          local_trial_started_at: string | null
+          local_trial_expires_at: string | null
         }
         Insert: {
           id: string
           email: string
           created_at?: string
+          local_trial_status?: 'not_started' | 'active' | 'expired'
+          local_trial_started_at?: string | null
+          local_trial_expires_at?: string | null
         }
         Update: {
           id?: string
           email?: string
           created_at?: string
+          local_trial_status?: 'not_started' | 'active' | 'expired'
+          local_trial_started_at?: string | null
+          local_trial_expires_at?: string | null
         }
       }
       folders: {
@@ -412,6 +421,10 @@ export interface Database {
           total_questions: number
           correct_answers: number
         }[]
+      }
+      start_local_trial: {
+        Args: Record<string, never>
+        Returns: void
       }
     }
     Enums: {

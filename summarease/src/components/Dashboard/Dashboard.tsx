@@ -18,7 +18,7 @@ import { type DocumentItem } from '../DocumentList'
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate()
-  const { subscription, isTrialing, canAccessPremiumFeatures } = useSubscription()
+  const { subscription, isTrialing, canAccessPremiumFeatures, localTrialStatus, localTrialExpiresAt } = useSubscription()
   const { showModal, daysLeft, closeModal } = useTrialNotifications()
   
   const [activeTab, setActiveTab] = useState<TabType>('notebook')
@@ -31,8 +31,19 @@ export const Dashboard: React.FC = () => {
     return dismissed === 'true'
   })
   
-  // Show upgrade banner for free users (unless dismissed)
-  const shouldShowBanner = 
+  // Calculate days left for local trial
+  const localTrialDaysLeft = React.useMemo(() => {
+    if (localTrialStatus !== 'active' || !localTrialExpiresAt) return 0;
+    const diff = new Date(localTrialExpiresAt).getTime() - new Date().getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }, [localTrialStatus, localTrialExpiresAt]);
+
+  // Show Local Trial Banner if active
+  const showLocalTrialBanner = localTrialStatus === 'active';
+
+  // Show upgrade banner for free users (unless dismissed) - only if not showing trial banner
+  const shouldShowUpgradeBanner = 
+    !showLocalTrialBanner &&
     !isBannerDismissed && (
       subscription?.status === 'canceled' || 
       (!canAccessPremiumFeatures && !isTrialing)
@@ -212,7 +223,20 @@ export const Dashboard: React.FC = () => {
     <div className="dashboard">
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
       
-      {shouldShowBanner && (
+      {showLocalTrialBanner && (
+        <div className="upgrade-banner" style={{ background: 'linear-gradient(to right, #4f46e5, #06b6d4)' }}>
+          <span className="upgrade-banner-text">
+            You’re on a 7‑day free trial ({localTrialDaysLeft} days left). Add your card to extend Premium to 30 days total.
+          </span>
+          <div className="upgrade-banner-actions">
+            <button onClick={() => navigate('/pricing')} className="upgrade-banner-button">
+              Add Card for 30 Days Free
+            </button>
+          </div>
+        </div>
+      )}
+
+      {shouldShowUpgradeBanner && (
         <div className="upgrade-banner">
           <span className="upgrade-banner-text">⭐ Unlock premium features with unlimited summaries and advanced tools</span>
           <div className="upgrade-banner-actions">
