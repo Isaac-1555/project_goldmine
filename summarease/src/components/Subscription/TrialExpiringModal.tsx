@@ -32,7 +32,7 @@ export function TrialExpiringModal({ daysLeft, onClose, onUpgrade }: TrialExpiri
         </p>
         
         <div className="premium-reminder">
-          <strong>Just $4.99/month</strong> to keep:
+          <strong>Just $9.99/month</strong> to keep:
           <ul>
             <li>✓ Unlimited summaries</li>
             <li>✓ Graph view & Infographics</li>

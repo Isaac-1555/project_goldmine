@@ -62,41 +62,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
 
   // Comprehensive SEO setup without touching index.html or adding deps
   useEffect(() => {
-    const title = 'Sat-Brain: Obsidian Alternative with AI for Students | Smart Note-Taking'
-    const description = 'The easiest Obsidian alternative for students. Get automatic linking, AI summaries, flashcards, and audio transcription—no plugins needed. Perfect for active recall and microlearning. Free 30-day trial, then $4.99/mo.'
+    const title = 'Sat-Brain: Study Better with Spaced Repetition, Active Recall, and Visual Mapping'
+    const description = 'Most college students study the hard wayre-reading notes and cramming before exams. Sat-Brain helps you map your semester, use spaced repetition and active recall, and actually remember what you learn. A smarter study system for Obsidian/Notion users and everyone else.'
     const keywords = [
-      'Obsidian alternative',
-      'Obsidian alternative for students',
-      'AI note-taking app',
-      'smart note-taking',
+      'study app for college students',
+      'spaced repetition app',
       'active recall study app',
-      'Zettelkasten with AI',
-      'note-taking with flashcards',
-      'AI text summarizer',
-      'note taking app',
-      'lecture transcription',
-      'meeting notes',
-      'PDF summarizer',
-      'document summarizer',
+      'visual knowledge map',
+      'knowledge graph for students',
       'flashcards generator',
       'quiz generator',
-      'knowledge graph',
-      'AI note taker',
-      'audio to text',
-      'summarize pdf',
-      'summarize document',
+      'AI note-taking app',
+      'lecture transcription',
+      'PDF summarizer',
+      'document summarizer',
       'study tool',
       'microlearning app',
-      'bidirectional links',
-      'automatic note linking'
+      'Obsidian alternative',
+      'Obsidian alternative for studying',
+      'Notion alternative for studying'
     ].join(', ')
     const siteUrl = window.location.origin
     const currentUrl = window.location.href
-    const siteName = 'Sat‑Brain'
+    const siteName = 'SatBrain'
     const twitterHandle = '@satbrain' // Update with your actual Twitter handle
     // TODO: Add actual OG image URL when available
     const ogImage = `${siteUrl}/og-image.png` // You'll need to create this image
-    const ogImageAlt = 'Sat‑Brain - AI-powered note-taking and study tool'
+    const ogImageAlt = 'SatBrain - research-backed study app with spaced repetition and visual mapping'
 
     document.title = title
 
@@ -185,20 +177,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
     operatingSystem: 'Web',
     offers: {
       '@type': 'Offer',
-      price: '4.99',
+      price: '9.99',
       priceCurrency: 'USD',
       priceValidUntil: '2026-12-31',
       availability: 'https://schema.org/InStock',
-      description: 'Free 30-day trial, then $4.99/month'
+      description: 'Free 30-day trial, then $9.99/month'
     },
-    description: 'The easiest Obsidian alternative for students. Get automatic linking, AI summaries, flashcards, and audio transcription—no plugins needed. Perfect for active recall and microlearning.',
+    description:
+      'Sat-Brain is a research-backed study app for college students that combines spaced repetition, active recall quizzes, and a visual knowledge map so you actually remember what you learn.',
     featureList: [
-      'AI-powered summarization',
+      'Visual knowledge map that connects concepts across classes',
+      'Spaced repetition and active recall with quizzes and flashcards',
+      'AI-powered summarization of lectures, PDFs, and documents',
       'Audio transcription',
-      'Auto-generated flashcards',
-      'Quiz generation',
-      'Knowledge graph',
-      'Automatic note linking',
       'PDF and document processing'
     ],
     alternativeTo: 'Obsidian'
@@ -247,19 +238,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
         )}
           <div className="hero-container">
             <div className="hero-content">
-              <div className="hero-chip" role="status" aria-label="Product update announcement">
+              <div className="hero-chip" role="status" aria-label="Study science announcement">
                 <Sparkles size={14} aria-hidden="true" />
-                <span>Better than Obsidian: AI-powered + zero setup required</span>
+                <span>Built on 80+ years of learning science—spaced repetition, active recall, visual mapping</span>
               </div>
               <h1 id="hero-title" className="hero-title">
-                The Smart Obsidian Alternative for Students
+                Most college students study wrong.
+                <br />
+                You don't have to.
               </h1>
               <p className="hero-subtitle">
-                Skip the learning curve—get AI note-taking with automatic linking, flashcards, and audio transcription out of the box. Everything Obsidian offers, plus the AI features students actually need.
+                Stop re-reading notes and cramming the night before exams. Sat-Brain helps you map your semester, quiz yourself with spaced repetition, and actually remember what you learn across every class.
               </p>
               <div className="hero-cta-row">
-                <button onClick={() => handleGetStarted('Hero Section')} className="hero-cta" aria-label="Try the easy Obsidian alternative free">
-                  Try the Easy Obsidian Alternative Free
+                <button
+                  onClick={() => handleGetStarted('Hero - Map your semester')}
+                  className="hero-cta"
+                  aria-label="Map your semester with a visual knowledge map"
+                >
+                  Map your semester
                   <ArrowRight className="cta-icon" aria-hidden="true" />
                 </button>
               </div>
@@ -314,45 +311,110 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
           </div>
           </section>
 
-          {/* Features Section */}
-          <section id="features" className="features-section" aria-labelledby="features-title">
-          <div className="features-container">
-            <h2 id="features-title" className="features-title">Why Students Choose Sat‑Brain Over Obsidian</h2>
-            <div className="features-rows">
-              <div className="features-grid features-mock row-top">
+          {/* Problem Section: why current studying fails */}
+          <section id="study-problem" className="features-section" aria-labelledby="study-problem-title">
+            <div className="features-container">
+              <h2 id="study-problem-title" className="features-title">Why the way you study now isn't working</h2>
+              <div className="features-grid">
                 <article className="feature-card">
-                  <div className="feature-icon" aria-hidden="true"><Upload /></div>
-                  <h3 className="feature-title">Auto-extract and summarize any content</h3>
-                  <p className="feature-description">Upload PDFs, audio, or images—AI instantly extracts text and generates summaries. No manual note-taking required (unlike Obsidian).</p>
+                  <h3 className="feature-title">Re-reading and cramming</h3>
+                  <p className="feature-description">
+                    96% of college students re-read notes and cram right before exams—exactly the strategies research calls the least
+                    effective. You feel busy, but retention drops days later.
+                  </p>
                 </article>
                 <article className="feature-card">
-                  <div className="feature-icon" aria-hidden="true"><Mic /></div>
-                  <h3 className="feature-title">Record + transcribe lectures automatically</h3>
-                  <p className="feature-description">Built-in audio recording with live transcription. Obsidian requires third-party plugins; Sat-Brain has it built-in.</p>
+                  <h3 className="feature-title">No real plan for what to review</h3>
+                  <p className="feature-description">
+                    Only 6.3% of students use spaced repetition, even though it consistently beats massed practice. Most people keep
+                    guessing what to review instead of following the science.
+                  </p>
                 </article>
                 <article className="feature-card">
-                  <div className="feature-icon" aria-hidden="true"><BookOpen /></div>
-                  <h3 className="feature-title">Notes that organize themselves</h3>
-                  <p className="feature-description">Auto-tagging and smart folders mean less manual organization. Spend time learning, not configuring plugins.</p>
-                </article>
-              </div>
-              <div className="features-grid features-mock row-bottom">
-                <article className="feature-card">
-                  <div className="feature-icon" aria-hidden="true"><Brain size={24} /></div>
-                  <h3 className="feature-title">AI flashcards for active recall</h3>
-                  <p className="feature-description">Generate flashcards and quizzes from any note—automatically. Perfect for microlearning and spaced repetition.</p>
-                </article>
-                <article className="feature-card">
-                  <div className="feature-icon" aria-hidden="true"><GitBranch /></div>
-                  <h3 className="feature-title">Knowledge graph (like Obsidian, but smarter)</h3>
-                  <p className="feature-description">Automatic bidirectional links and AI-suggested connections. Get Obsidian's graph view without the manual [[linking]].</p>
+                  <h3 className="feature-title">Scattered notes across classes</h3>
+                  <p className="feature-description">
+                    Your notes live in different docs, apps, and screenshots. Connections between econ, calc, and history never become
+                    visible, so concepts feel isolated instead of part of one story.
+                  </p>
                 </article>
               </div>
             </div>
-          </div>
           </section>
 
-          {/* Obsidian Comparison Section */}
+          {/* Value pillars: what Sat-Brain does differently */}
+          <section id="features" className="features-section" aria-labelledby="features-title">
+              <div className="features-container">
+              <h2 id="features-title" className="features-title">A smarter study system that matches how your brain learns</h2>
+              <div className="how-actions features-cta">
+                <button
+                  onClick={() => handleGetStarted('Features - Map your semester')}
+                  className="cta-button"
+                  aria-label="Map your semester with Sat-Brain"
+                >
+                  Study smarter today
+                  <ArrowRight className="cta-icon" aria-hidden="true" />
+                </button>
+              </div>
+              <div className="features-rows">
+                <div className="features-grid features-mock row-top">
+                  <article className="feature-card">
+                    <div className="feature-icon" aria-hidden="true">
+                      <GitBranch />
+                    </div>
+                    <h3 className="feature-title">Map your semester with a visual knowledge graph</h3>
+                    <p className="feature-description">
+                      See how everything you're learning connects. Sat-Brain turns scattered notes into a knowledge map so you can spot
+                      patterns across courses and finally understand how econ, calc, and history relate.
+                    </p>
+                  </article>
+                  <article className="feature-card">
+                    <div className="feature-icon" aria-hidden="true">
+                      <Brain />
+                    </div>
+                    <h3 className="feature-title">Spaced repetition and active recall, built in</h3>
+                    <p className="feature-description">
+                      Turn any reading, lecture, or PDF into quizzes and flashcards in seconds. Research shows spaced repetition and
+                      retrieval practice can boost recall from about 60% with cramming to around 80% when you review over time.
+                    </p>
+                  </article>
+                  <article className="feature-card">
+                    <div className="feature-icon" aria-hidden="true">
+                      <Mic />
+                    </div>
+                    <h3 className="feature-title">Capture anything—lectures, slides, PDFs, or raw notes</h3>
+                    <p className="feature-description">
+                      Upload PDFs, record lectures, or paste text. Sat-Brain transcribes, summarizes, and pulls out key ideas so you
+                      can spend less time formatting notes and more time actually learning.
+                    </p>
+                  </article>
+                </div>
+                <div className="features-grid features-mock row-bottom">
+                  <article className="feature-card">
+                    <div className="feature-icon" aria-hidden="true">
+                      <BookOpen />
+                    </div>
+                    <h3 className="feature-title">Study tools that fit short sessions</h3>
+                    <p className="feature-description">
+                      Use quick quizzes and flashcards between classes instead of marathon cram sessions. Microlearning with spaced
+                      repetition helps you chip away at tough subjects without burning out.
+                    </p>
+                  </article>
+                  <article className="feature-card">
+                    <div className="feature-icon" aria-hidden="true">
+                      <Sparkles />
+                    </div>
+                    <h3 className="feature-title">Evidence-based, not just another note app</h3>
+                    <p className="feature-description">
+                      Sat-Brain is grounded in 80+ years of learning science—spaced repetition, active recall, and visual learning—so
+                      you're not guessing whether your study method will actually work.
+                    </p>
+                </article>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Three study approaches section (repurposed comparison) */}
           <ObsidianComparisonSection />
 
           {/* Built With Section */}
@@ -364,15 +426,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
               <div className="pricing-hero-content">
                 <div className="pricing-badge">
                   <Sparkles size={16} aria-hidden="true" />
-                  <span>Student-friendly pricing (Obsidian's plugins cost more)</span>
+                  <span>Student-friendly pricing for serious studying</span>
                 </div>
                 <h2 id="pricing-title" className="pricing-hero-title">
-                  Obsidian + AI features for less than one coffee per month
+                  All your study tools in one place for less than one coffee a month
                   <br />
-                  Just <span className="price-highlight">$4.99</span>/month
+                  Just <span className="price-highlight">$9.99</span>/month
                 </h2>
                 <p className="pricing-hero-subtitle">
-                  No credit card required. Cancel anytime. Keep all your notes and summaries forever.
+                  No credit card required for the first month. Cancel anytime. Keep all your notes, summaries, and study materials.
                 </p>
 
                 {/* What's Included */}
@@ -408,8 +470,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
 
                 {/* CTA Section */}
                 <div className="pricing-cta-section">
-                  <button onClick={() => handleGetStarted('Pricing Section')} className="pricing-hero-cta" aria-label="See why students switched from Obsidian">
-                    <span className="cta-text">See Why Students Switched from Obsidian</span>
+                <button
+                  onClick={() => handleGetStarted('Pricing Section - Start retaining what you learn')}
+                  className="pricing-hero-cta"
+                  aria-label="Start retaining what you learn with Sat-Brain"
+                >
+                    <span className="cta-text">Start retaining what you learn</span>
                     <ArrowRight className="cta-icon" aria-hidden="true" />
                   </button>
                   <div className="pricing-reassurance">
@@ -420,38 +486,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
                 </div>
               </div>
 
-              {/* Pricing Visual - Value Comparison */}
+              {/* Pricing Visual - Value Summary */}
               <div className="pricing-hero-visual">
                 <div className="value-card">
                   <div className="value-card-header">
-                    <span className="value-label">What you get</span>
+                    <span className="value-label">What you're investing in</span>
                   </div>
                   <div className="value-comparison">
                     <div className="value-item">
-                      <span className="value-service">Obsidian Sync</span>
-                      <span className="value-price">$10/mo</span>
+                      <span className="value-service">Visual knowledge map for your semester</span>
+                      <span className="value-price">Included</span>
                     </div>
                     <div className="value-item">
-                      <span className="value-service">Obsidian Publish</span>
-                      <span className="value-price">$20/mo</span>
+                      <span className="value-service">Spaced repetition quizzes & flashcards</span>
+                      <span className="value-price">Included</span>
                     </div>
                     <div className="value-item">
-                      <span className="value-service">AI plugins</span>
-                      <span className="value-price">$10-20/mo</span>
+                      <span className="value-service">AI summaries & lecture transcription</span>
+                      <span className="value-price">Included</span>
                     </div>
                     <div className="value-divider"></div>
                     <div className="value-total">
-                      <span className="value-total-label">Obsidian total:</span>
-                      <span className="value-total-price">$40-50/mo</span>
+                    <span className="value-total-label">Total study system:</span>
+                    <span className="value-total-price">Focused learning. No waste time</span>
                     </div>
                   </div>
                   <div className="value-card-footer">
                     <div className="your-price">
-                      <span className="your-price-label">Sat-Brain:</span>
-                      <span className="your-price-amount">$4.99/mo</span>
+                      <span className="your-price-label">Your price:</span>
+                      <span className="your-price-amount">$9.99/mo</span>
                     </div>
                     <div className="savings-badge">
-                      Save $35-45/month
+                      Trade one coffee for a smarter learning
                     </div>
                   </div>
                 </div>
@@ -459,41 +525,84 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
             </div>
           </section>
 
-          {/* How it works (better fit for a single-plan product) */}
+          {/* How it works (quick overview) */}
           <section className="how-section" aria-labelledby="how-title">
-          <div className="how-container">
-            <h2 id="how-title" className="how-title">How Sat‑Brain works</h2>
-            <p className="how-sub">Three quick steps to capture and connect your ideas.</p>
-            <div className="how-grid">
-              <article className="how-card">
-                <Mic className="how-icon" aria-hidden="true" />
-                <div>
-                  <h3>Record or import</h3>
-                  <p>Bring in audio, PDFs, or notes to start.</p>
-                </div>
-              </article>
-              <article className="how-card">
-                <Sparkles className="how-icon" size={28} aria-hidden="true" />
-                <div>
-                  <h3>AI summarizes</h3>
-                  <p>Get clean notes, key points, and tasks automatically.</p>
-                </div>
-              </article>
-              <article className="how-card">
-                <BookOpen className="how-icon" aria-hidden="true" />
-                <div>
-                  <h3>Connect & recall</h3>
-                  <p>Link ideas with the graph and find them in seconds.</p>
-                </div>
-              </article>
+            <div className="how-container">
+              <h2 id="how-title" className="how-title">How SatBrain works</h2>
+              <p className="how-sub">Capture once, map it visually, then review with quizzes and flashcards.</p>
+              <div className="how-grid">
+                <article className="how-card">
+                  <Mic className="how-icon" aria-hidden="true" />
+                  <div>
+                    <h3>Capture your inputs</h3>
+                    <p>Upload PDFs and slides, paste notes, or record lectures. Sat-Brain pulls out the key ideas automatically.</p>
+                  </div>
+                </article>
+                <article className="how-card">
+                  <Sparkles className="how-icon" size={28} aria-hidden="true" />
+                  <div>
+                    <h3>Build a knowledge map</h3>
+                    <p>Concepts are connected into a visual graph so you can see how topics across classes relate and reinforce each other.</p>
+                  </div>
+                </article>
+                <article className="how-card">
+                  <BookOpen className="how-icon" aria-hidden="true" />
+                  <div>
+                    <h3>Review with science-backed tools</h3>
+                    <p>Use spaced repetition quizzes and flashcards to keep what matters fresh, even in short 10–20 minute sessions.</p>
+                  </div>
+                </article>
+              </div>
+              <div className="how-actions">
+                <button
+                  onClick={() => handleGetStarted('How It Works Section - Start retaining what you learn')}
+                  className="cta-button"
+                  aria-label="Start retaining what you learn with Sat-Brain"
+                >
+                  Start building your knowledge map
+                  <ArrowRight className="cta-icon" aria-hidden="true" />
+                </button>
+              </div>
             </div>
-            <div className="how-actions">
-              <button onClick={() => handleGetStarted('How It Works Section')} className="cta-button" aria-label="Start free trial - no credit card needed">
-                Start Free Trial — No Credit Card
-                <ArrowRight className="cta-icon" aria-hidden="true" />
-              </button>
+          </section>
+
+          {/* Product gallery placeholder section */}
+          <section className="how-section" aria-labelledby="gallery-title">
+            <div className="how-container">
+              <h2 id="gallery-title" className="how-title">See your knowledge differently</h2>
+              <p className="how-sub">
+                This section will showcase real screenshots soon. For now, here's what each view is designed to help you do.
+              </p>
+              <div className="how-grid">
+                <article className="how-card">
+                  <div>
+                    <h3>Knowledge map view (image placeholder)</h3>
+                    <p>
+                      A visual graph of your semester, showing how concepts from different classes connect. This is where you'll see
+                      the “Map your semester” screenshot.
+                    </p>
+                  </div>
+                </article>
+                <article className="how-card">
+                  <div>
+                    <h3>Quizzes and flashcards (image placeholder)</h3>
+                    <p>
+                      Adaptive quizzes and flashcards that resurface what you're about to forget. This area will later show your quiz
+                      and flashcard UI.
+                    </p>
+                  </div>
+                </article>
+                <article className="how-card">
+                  <div>
+                    <h3>Study dashboard (image placeholder)</h3>
+                    <p>
+                      A simple overview of what you've captured, what's coming up, and where you're strongest or weakest. Future
+                      screenshots here will highlight your overall workflow.
+                    </p>
+                  </div>
+                </article>
+              </div>
             </div>
-          </div>
           </section>
 
           {/* FAQ Section */}

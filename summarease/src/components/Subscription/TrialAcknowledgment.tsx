@@ -18,7 +18,7 @@ export function TrialAcknowledgment({ onAcknowledge }: TrialAcknowledgmentProps)
               This free trial ends after <strong>30 days</strong>.
             </p>
             <p>
-              You will have to pay <strong>$4.99 per month</strong> to continue 
+              You will have to pay <strong>$9.99 per month</strong> to continue 
               using all the features or be downgraded to the basic features.
             </p>
             <div className="trial-benefits">

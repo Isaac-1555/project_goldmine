@@ -27,91 +27,38 @@
   margin: 0;
 }
 
-.comparison-table-wrapper {
-  overflow-x: auto;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(139, 92, 246, 0.2);
+.comparison-grid-approaches {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
 }
 
-.comparison-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 15px;
+@media (max-width: 900px) {
+  .comparison-grid-approaches {
+    grid-template-columns: 1fr;
+  }
 }
 
-.comparison-table th {
-  padding: 20px 24px;
-  text-align: left;
+.approach-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  padding: 20px 22px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.approach-title {
+  font-size: 18px;
   font-weight: 600;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
-  background: rgba(139, 92, 246, 0.1);
+  color: #ffffff;
+  margin: 0 0 8px 0;
 }
 
-.comparison-table th.feature-col {
-  color: rgba(255, 255, 255, 0.9);
-  width: 30%;
-}
-
-.comparison-table th.obsidian-col {
-  color: rgba(255, 255, 255, 0.7);
-  width: 35%;
-}
-
-.comparison-table th.satbrain-col {
-  color: #8b5cf6;
-  width: 35%;
-}
-
-.comparison-table td {
-  padding: 20px 24px;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
-}
-
-.comparison-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.comparison-table tbody tr:hover {
-  background: rgba(139, 92, 246, 0.05);
-}
-
-.feature-name {
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.obsidian-value {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.satbrain-value {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.satbrain-value.highlight {
-  color: #8b5cf6;
-  font-weight: 500;
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.status-badge.positive {
-  background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
-}
-
-.status-badge.negative {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+.approach-body {
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(226, 232, 240, 0.9);
+  margin: 0;
 }
 
 .comparison-cta {

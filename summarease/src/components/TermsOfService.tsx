@@ -119,7 +119,7 @@ export const TermsOfService: React.FC = React.memo(() => {
           <p>
             <strong>Free Trial:</strong> New users receive 1 month free access to all features.
             <br />
-            <strong>Paid Subscription:</strong> After the trial, subscriptions are $4.99/month, billed monthly.
+            <strong>Paid Subscription:</strong> After the trial, subscriptions are $9.99/month, billed monthly.
             <br />
             <strong>Cancellation:</strong> You may cancel anytime during your free trial without charge.
             After the trial, you can cancel your subscription, which will remain active until the end of your current billing period.
