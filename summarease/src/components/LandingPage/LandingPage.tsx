@@ -4,7 +4,6 @@ import { Mic, BookOpen, ArrowRight, Sparkles, Play, Upload, CheckCircle, GitBran
 import { SatBrainMark } from '../brand/SatBrainMark'
 import { FAQSection } from './FAQSection'
 import { BuiltWithSection } from './BuiltWithSection'
-import { ObsidianComparisonSection } from './ObsidianComparisonSection'
 import { analytics } from '../Analytics/Analytics'
 import './LandingPage.css'
 import './LandingPage.modern.css'
@@ -318,13 +317,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
               <h2 id="study-problem-title" className="features-title">Identifying the GAPS in your study approach</h2>
               <div className="features-grid">
                 <article className="feature-card">
-                  <h3 className="feature-title">Lost Information</h3>
+                  <h3 className="feature-title">Incomplete Notes</h3>
                   <p className="feature-description">
                     Incomplete or illegible notes arise from distractions or difficulty focusing in class.
                   </p>
                 </article>
                 <article className="feature-card">
-                  <h3 className="feature-title">Unable to See the Big Picture</h3>
+                  <h3 className="feature-title">Blind to the Big Picture</h3>
                   <p className="feature-description">
                     Different classes, different notebooks, zero connections. You know the concepts relate, but you can't see how.
                   </p>
@@ -411,9 +410,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
               </div>
             </div>
           </section>
-
-          {/* Three study approaches section (repurposed comparison) */}
-          <ObsidianComparisonSection />
 
           {/* Built With Section */}
           <BuiltWithSection />
@@ -564,38 +560,64 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
             </div>
           </section>
 
-          {/* Product gallery placeholder section */}
+          {/* Product gallery section with real screenshots */}
           <section className="how-section" aria-labelledby="gallery-title">
             <div className="how-container">
               <h2 id="gallery-title" className="how-title">See your knowledge differently</h2>
               <p className="how-sub">
-                This section will showcase real screenshots soon. For now, here's what each view is designed to help you do.
+                Get a feel for what Sat-Brain actually looks like in actionfrom your knowledge map to quizzes and your study dashboard.
               </p>
               <div className="how-grid">
-                <article className="how-card">
-                  <div>
-                    <h3>Knowledge map view (image placeholder)</h3>
+                <article className="how-card gallery-card">
+                  <div className="gallery-media">
+                    <img
+                      src="/landing/knowledge-map.png"
+                      alt="Screenshot of Sat-Brain's knowledge map showing connected topics across classes."
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="gallery-copy">
+                    <h3>Knowledge map view</h3>
                     <p>
                       A visual graph of your semester, showing how concepts from different classes connect. This is where you'll see
-                      the “Map your semester” screenshot.
+                      the “Map your semester” view.
                     </p>
                   </div>
                 </article>
-                <article className="how-card">
-                  <div>
-                    <h3>Quizzes and flashcards (image placeholder)</h3>
+                <article className="how-card gallery-card">
+                  <div className="gallery-media gallery-media-split">
+                    <img
+                      src="/landing/quiz.png"
+                      alt="Screenshot of a multiple-choice quiz question in Sat-Brain."
+                      loading="lazy"
+                    />
+                    <img
+                      src="/landing/flashcards.png"
+                      alt="Screenshot of Sat-Brain flashcards showing the front and back of a card."
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="gallery-copy">
+                    <h3>Quizzes and flashcards</h3>
                     <p>
-                      Adaptive quizzes and flashcards that resurface what you're about to forget. This area will later show your quiz
-                      and flashcard UI.
+                      Adaptive quizzes and flashcards that resurface what you're about to forget, so you can practice active recall in
+                      short, focused sessions.
                     </p>
                   </div>
                 </article>
-                <article className="how-card">
-                  <div>
-                    <h3>Study dashboard (image placeholder)</h3>
+                <article className="how-card gallery-card">
+                  <div className="gallery-media">
+                    <img
+                      src="/landing/study-dashboard.png"
+                      alt="Screenshot of Sat-Brain's study dashboard with progress and upcoming reviews."
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="gallery-copy">
+                    <h3>Study dashboard</h3>
                     <p>
-                      A simple overview of what you've captured, what's coming up, and where you're strongest or weakest. Future
-                      screenshots here will highlight your overall workflow.
+                      A simple overview of what you've captured, what's coming up, and where you're strongest or weakestso you always
+                      know what to review next.
                     </p>
                   </div>
                 </article>

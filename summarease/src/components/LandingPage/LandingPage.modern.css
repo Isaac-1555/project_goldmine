@@ -213,6 +213,32 @@
   border-radius: 18px;
 }
 
+/* Study problem section – keep cards visually uniform */
+.landing-remix #study-problem .features-grid {
+  align-items: stretch;
+}
+
+.landing-remix #study-problem .feature-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+@media (min-width: 900px) {
+  .landing-remix #study-problem .feature-card {
+    min-height: 220px;
+  }
+}
+
+.landing-remix #study-problem .feature-title {
+  margin-bottom: 0.75rem;
+}
+
+.landing-remix #study-problem .feature-description {
+  margin: 0;
+}
+
 .landing-remix .feature-icon svg{
   width:32px;
   height:32px;
@@ -657,6 +683,105 @@
   display:flex;
   gap:12px;
   align-items:flex-start;
+}
+
+/* Gallery cards in "See your knowledge differently" */
+.landing-remix .how-card.gallery-card{
+  position:relative;
+  flex-direction:column;
+  padding:0;
+  align-items:stretch;
+  cursor:default;
+  transition:transform 180ms ease-out, box-shadow 180ms ease-out;
+}
+
+.landing-remix .gallery-lottie{
+  position:absolute;
+  top:10px;
+  left:10px;
+  width:48px;
+  height:48px;
+  z-index:2;
+  pointer-events:none;
+  border-radius:8px;
+  overflow:hidden;
+}
+
+.landing-remix .gallery-lottie video,
+.landing-remix .gallery-lottie lottie-player{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.landing-remix .how-card.gallery-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 16px 40px rgba(0,0,0,0.55);
+}
+
+.landing-remix .gallery-media{
+  width:100%;
+  aspect-ratio:16/9;
+  overflow:hidden;
+  border-radius:18px 18px 0 0;
+  background:rgba(15,23,42,0.8);
+}
+
+.landing-remix .gallery-media img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  transition:transform 200ms ease-out;
+}
+
+.landing-remix .how-card.gallery-card:hover .gallery-media img{
+  transform:scale(1.03);
+}
+
+/* Split layout for quizzes + flashcards card */
+.landing-remix .gallery-media-split{
+  display:flex;
+}
+
+.landing-remix .gallery-media-split img{
+  width:50%;
+  height:100%;
+}
+
+.landing-remix .gallery-media-split img:first-child{
+  border-right:1px solid rgba(15,23,42,0.9);
+}
+
+.landing-remix .gallery-copy{
+  padding:18px 18px 20px;
+}
+
+@media (max-width: 640px){
+  .landing-remix .gallery-media-split{
+    flex-direction:column;
+  }
+
+  .landing-remix .gallery-media-split img{
+    width:100%;
+    height:50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .landing-remix .how-card.gallery-card{
+    transition:none;
+  }
+
+  .landing-remix .gallery-media img{
+    transition:none;
+    transform:none !important;
+  }
+
+  .landing-remix .how-card.gallery-card:hover{
+    transform:none;
+    box-shadow:0 10px 30px rgba(0,0,0,0.35);
+  }
 }
 
 .landing-remix .how-card h3{
