@@ -232,6 +232,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
         {splineUrl && (
           <div className="spline-wrap" aria-hidden="true">
             <div className="spline-inner">
+              {/* @ts-ignore: custom web component provided by Spline */}
               <spline-viewer url={splineUrl} style={{ width: '100%', height: '100%' }}></spline-viewer>
             </div>
           </div>
@@ -240,15 +241,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
             <div className="hero-content">
               <div className="hero-chip" role="status" aria-label="Study science announcement">
                 <Sparkles size={14} aria-hidden="true" />
-                <span>Built on 80+ years of learning science—spaced repetition, active recall, visual mapping</span>
+                <span>Spaced repetition, active recall, visual mapping</span>
               </div>
               <h1 id="hero-title" className="hero-title">
-                Most college students study wrong.
+                From scattered notes to
                 <br />
-                You don't have to.
+                Connected Knowledge
               </h1>
               <p className="hero-subtitle">
-                Stop re-reading notes and cramming the night before exams. Sat-Brain helps you map your semester, quiz yourself with spaced repetition, and actually remember what you learn across every class.
+                Sat-Brain maps your notes across every class, quizzes you with spaced repetition, and helps you see how concepts connect—so you remember what matters when it matters.
               </p>
               <div className="hero-cta-row">
                 <button
@@ -314,27 +315,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
           {/* Problem Section: why current studying fails */}
           <section id="study-problem" className="features-section" aria-labelledby="study-problem-title">
             <div className="features-container">
-              <h2 id="study-problem-title" className="features-title">Why the way you study now isn't working</h2>
+              <h2 id="study-problem-title" className="features-title">Identifying the GAPS in your study approach</h2>
               <div className="features-grid">
                 <article className="feature-card">
-                  <h3 className="feature-title">Re-reading and cramming</h3>
+                  <h3 className="feature-title">Lost Information</h3>
                   <p className="feature-description">
-                    96% of college students re-read notes and cram right before exams—exactly the strategies research calls the least
-                    effective. You feel busy, but retention drops days later.
+                    Incomplete or illegible notes arise from distractions or difficulty focusing in class.
                   </p>
                 </article>
                 <article className="feature-card">
-                  <h3 className="feature-title">No real plan for what to review</h3>
+                  <h3 className="feature-title">Unable to See the Big Picture</h3>
                   <p className="feature-description">
-                    Only 6.3% of students use spaced repetition, even though it consistently beats massed practice. Most people keep
-                    guessing what to review instead of following the science.
+                    Different classes, different notebooks, zero connections. You know the concepts relate, but you can't see how.
                   </p>
                 </article>
                 <article className="feature-card">
-                  <h3 className="feature-title">Scattered notes across classes</h3>
+                  <h3 className="feature-title">Re-reading, yet Forgetting</h3>
                   <p className="feature-description">
-                    Your notes live in different docs, apps, and screenshots. Connections between econ, calc, and history never become
-                    visible, so concepts feel isolated instead of part of one story.
+                    You spend hours re-reading notes, but it never sticks. Come exam time, you're cramming anyway.
                   </p>
                 </article>
               </div>
