@@ -8,6 +8,7 @@ import { StudyToolsTab } from './tabs/StudyToolsTab'
 import { SettingsTab } from './tabs/SettingsTab'
 import { ContentViewer } from '../ContentViewer/ContentViewer'
 import { TrialExpiringModal } from '../Subscription/TrialExpiringModal'
+import { TrialAcknowledgment } from '../Subscription/TrialAcknowledgment'
 import { useSubscription } from '../../contexts/SubscriptionContext'
 import { useTrialNotifications } from '../../hooks/useTrialNotifications'
 import { type FileWithMetadata } from '../../lib/api'
@@ -22,6 +23,7 @@ export const Dashboard: React.FC = () => {
   const { showModal, daysLeft, closeModal } = useTrialNotifications()
   
   const [activeTab, setActiveTab] = useState<TabType>('notebook')
+  const [showTrialAcknowledgment, setShowTrialAcknowledgment] = useState(false)
   const [selectedFile, setSelectedFile] = useState<FileWithMetadata | null>(null)
   const [showContentViewer, setShowContentViewer] = useState(false)
   
@@ -40,6 +42,28 @@ export const Dashboard: React.FC = () => {
 
   // Show Local Trial Banner if active
   const showLocalTrialBanner = localTrialStatus === 'active';
+
+  // Decide when to show the one-time trial acknowledgment overlay
+  useEffect(() => {
+    if (!isTrialing) return
+    try {
+      const acknowledged = localStorage.getItem('trial_acknowledged_v1') === 'true'
+      if (!acknowledged) {
+        setShowTrialAcknowledgment(true)
+      }
+    } catch (e) {
+      console.error('Error reading trial acknowledgment flag', e)
+    }
+  }, [isTrialing])
+
+  const handleTrialAcknowledge = () => {
+    try {
+      localStorage.setItem('trial_acknowledged_v1', 'true')
+    } catch (e) {
+      console.error('Error setting trial acknowledgment flag', e)
+    }
+    setShowTrialAcknowledgment(false)
+  }
 
   // Show upgrade banner for free users (unless dismissed) - only if not showing trial banner
   const shouldShowUpgradeBanner = 
@@ -222,6 +246,10 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="dashboard">
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+      
+      {showTrialAcknowledgment && (
+        <TrialAcknowledgment onAcknowledge={handleTrialAcknowledge} />
+      )}
       
       {showLocalTrialBanner && (
         <div className="upgrade-banner" style={{ background: 'linear-gradient(to right, #4f46e5, #06b6d4)' }}>

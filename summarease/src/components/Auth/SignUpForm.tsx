@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthProvider'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
-import { TrialAcknowledgment } from '../Subscription/TrialAcknowledgment'
 import './AuthForms.css'
 
 interface SignUpFormProps {
@@ -19,7 +18,6 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  const [showTrialAcknowledgment, setShowTrialAcknowledgment] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,8 +39,6 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
     try {
       await signUp(email, password)
       setSuccess(true)
-      // Show trial acknowledgment modal instead of email confirmation
-      setShowTrialAcknowledgment(true)
     } catch (err: any) {
       setError(err.message || 'An error occurred during sign up')
     } finally {
@@ -50,29 +46,30 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
     }
   }
 
-  const handleAcknowledge = () => {
-    // After acknowledging trial, navigate to dashboard
-    navigate('/dashboard')
-  }
-
-  if (success && showTrialAcknowledgment) {
-    return <TrialAcknowledgment onAcknowledge={handleAcknowledge} />
-  }
-
+  // After successful signup, show a dedicated confirm-email screen
+  // so users clearly know they must verify their address before logging in.
   if (success) {
     return (
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <h1>Check your email</h1>
-            <p>We've sent you a confirmation link at {email}</p>
+            <h1>Confirm your email to start your trial</h1>
+            <p>
+              Weve sent a confirmation link to <strong>{email}</strong>. Click the link in your inbox to
+              activate your Sat-Brain account and unlock your 30-day free trial.
+            </p>
           </div>
           <div className="auth-footer">
             <p>
-              Already have an account?{' '}
-              <button type="button" onClick={onToggleMode} className="link-button">
-                Sign in
+              Once youve confirmed, you can{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="link-button"
+              >
+                sign in here
               </button>
+              .
             </p>
           </div>
         </div>

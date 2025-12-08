@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { User, Palette, Bot, Save, Info, Monitor, MessageSquare } from 'lucide-react'
+import { User, Palette, Bot, Save, Info, Monitor, MessageSquare, Zap, ExternalLink, CreditCard } from 'lucide-react'
 import { useAuth } from '../../Auth/AuthProvider'
+import { useSubscription } from '../../../contexts/SubscriptionContext'
 import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
 import { useTheme } from '../../../contexts/ThemeContext'
 import { FeedbackModal } from '../../Feedback/FeedbackModal'
@@ -9,12 +10,31 @@ import './SettingsTab.css'
 
 export const SettingsTab: React.FC = () => {
   const { user, signOut } = useAuth()
+  const { subscription, localTrialStatus, localTrialExpiresAt } = useSubscription()
   const { settings, updateSetting } = useSettingsConfig()
   const { themeMode, actualTheme, setThemeMode } = useTheme()
   
   const [email, setEmail] = useState(user?.email || '')
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+
+  const subscriptionStatus = React.useMemo(() => {
+    if (subscription?.is_lifetime_premium) {
+      return { type: 'lifetime', label: 'Lifetime Premium', color: 'var(--accent-primary)' }
+    }
+    if (subscription?.status === 'active' || subscription?.status === 'trialing') {
+      return { type: 'polar', label: 'Premium (Polar)', color: 'var(--accent-primary)' }
+    }
+    if (localTrialStatus === 'active' && localTrialExpiresAt) {
+      const days = Math.ceil((new Date(localTrialExpiresAt).getTime() - Date.now()) / (86400000))
+      return { type: 'trial', label: `Free Trial (${Math.max(0, days)} days left)`, color: 'var(--color-warning)' }
+    }
+    return { type: 'free', label: 'Free Plan', color: 'var(--text-secondary)' }
+  }, [subscription, localTrialStatus, localTrialExpiresAt])
+
+  const handleManageSubscription = () => {
+    window.open('https://polar.sh/settings', '_blank')
+  }
 
   const handleSignOut = async () => {
     try {
@@ -33,30 +53,61 @@ export const SettingsTab: React.FC = () => {
 
       <div className="settings-sections">
         {/* Account Section */}
-        <div className="settings-section">
-          <div className="section-header">
-            <User className="section-icon" />
+        <div className=\"settings-section\">
+          <div className=\"section-header\">
+            <User className=\"section-icon\" />
             <h3>Account</h3>
           </div>
-          <div className="section-content">
-            <div className="form-group">
-              <label htmlFor="email">Email Address</label>
+          <div className=\"section-content\">
+            <div className=\"form-group\">
+              <label htmlFor=\"email\">Email Address</label>
               <input
-                id="email"
-                type="email"
+                id=\"email\"
+                type=\"email\"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled
-                className="disabled-input"
+                className=\"disabled-input\"
               />
-              <p className="input-help">Email changes are not currently supported</p>
+              <p className=\"input-help\">Email changes are not currently supported</p>
             </div>
             
-            <div className="form-group">
+            <div className=\"form-group\">
               <label>Account Actions</label>
-              <button onClick={handleSignOut} className="danger-button">
+              <button onClick={handleSignOut} className=\"danger-button\">
                 Sign Out
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Subscription Section */}
+        <div className=\"settings-section\">
+          <div className=\"section-header\">
+            <Zap className=\"section-icon\" />
+            <h3>Subscription</h3>
+          </div>
+          <div className=\"section-content\">
+            <div className=\"form-group\">
+              <label>Current Plan</label>
+              <div className=\"subscription-info\">
+                <div className=\"status-badge\" style={{ borderColor: subscriptionStatus.color, color: subscriptionStatus.color }}>
+                  {subscriptionStatus.label}
+                </div>
+                {subscriptionStatus.type === 'polar' && (
+                  <button onClick={handleManageSubscription} className=\"manage-button\">
+                    <ExternalLink size={16} />
+                    Manage Subscription
+                  </button>
+                )}
+              </div>
+              <p className=\"input-help\">
+                {subscriptionStatus.type === 'polar' 
+                  ? 'Cancel or update your payment method via Polar.' 
+                  : subscriptionStatus.type === 'free' 
+                    ? 'Upgrade to unlock premium features.' 
+                    : 'Enjoy your free trial features!'}
+              </p>
             </div>
           </div>
         </div>
