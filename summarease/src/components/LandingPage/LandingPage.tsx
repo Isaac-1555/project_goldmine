@@ -423,12 +423,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
                   <span>Student-friendly pricing for serious studying</span>
                 </div>
                 <h2 id="pricing-title" className="pricing-hero-title">
-                  All your study tools in one place for less than one coffee a month
+                  Stop juggling apps and prompts.
                   <br />
-                  Just <span className="price-highlight">$9.99</span>/month
+                  Summaries, flashcards, quizzes just for{' '}
+                  <span className="price-highlight">$9.99</span>/month
                 </h2>
                 <p className="pricing-hero-subtitle">
-                  No credit card required for the first month. Cancel anytime. Keep all your notes, summaries, and study materials.
+                  No credit card required for the first month. Cancel anytime. Keep all your notes and summaries.
                 </p>
 
                 {/* What's Included */}
@@ -511,7 +512,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
                       <span className="your-price-amount">$9.99/mo</span>
                     </div>
                     <div className="savings-badge">
-                      Trade one coffee for a smarter learning
+                      All-in-one study hub
                     </div>
                   </div>
                 </div>
