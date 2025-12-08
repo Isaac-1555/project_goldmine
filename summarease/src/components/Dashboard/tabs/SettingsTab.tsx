@@ -53,28 +53,28 @@ export const SettingsTab: React.FC = () => {
 
       <div className="settings-sections">
         {/* Account Section */}
-        <div className=\"settings-section\">
-          <div className=\"section-header\">
-            <User className=\"section-icon\" />
+        <div className="settings-section">
+          <div className="section-header">
+            <User className="section-icon" />
             <h3>Account</h3>
           </div>
-          <div className=\"section-content\">
-            <div className=\"form-group\">
-              <label htmlFor=\"email\">Email Address</label>
+          <div className="section-content">
+            <div className="form-group">
+              <label htmlFor="email">Email Address</label>
               <input
-                id=\"email\"
-                type=\"email\"
+                id="email"
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled
-                className=\"disabled-input\"
+                className="disabled-input"
               />
-              <p className=\"input-help\">Email changes are not currently supported</p>
+              <p className="input-help">Email changes are not currently supported</p>
             </div>
             
-            <div className=\"form-group\">
+            <div className="form-group">
               <label>Account Actions</label>
-              <button onClick={handleSignOut} className=\"danger-button\">
+              <button onClick={handleSignOut} className="danger-button">
                 Sign Out
               </button>
             </div>
@@ -82,26 +82,26 @@ export const SettingsTab: React.FC = () => {
         </div>
 
         {/* Subscription Section */}
-        <div className=\"settings-section\">
-          <div className=\"section-header\">
-            <Zap className=\"section-icon\" />
+        <div className="settings-section">
+          <div className="section-header">
+            <Zap className="section-icon" />
             <h3>Subscription</h3>
           </div>
-          <div className=\"section-content\">
-            <div className=\"form-group\">
+          <div className="section-content">
+            <div className="form-group">
               <label>Current Plan</label>
-              <div className=\"subscription-info\">
-                <div className=\"status-badge\" style={{ borderColor: subscriptionStatus.color, color: subscriptionStatus.color }}>
+              <div className="subscription-info">
+                <div className="status-badge" style={{ borderColor: subscriptionStatus.color, color: subscriptionStatus.color }}>
                   {subscriptionStatus.label}
                 </div>
                 {subscriptionStatus.type === 'polar' && (
-                  <button onClick={handleManageSubscription} className=\"manage-button\">
+                  <button onClick={handleManageSubscription} className="manage-button">
                     <ExternalLink size={16} />
                     Manage Subscription
                   </button>
                 )}
               </div>
-              <p className=\"input-help\">
+              <p className="input-help">
                 {subscriptionStatus.type === 'polar' 
                   ? 'Cancel or update your payment method via Polar.' 
                   : subscriptionStatus.type === 'free' 
