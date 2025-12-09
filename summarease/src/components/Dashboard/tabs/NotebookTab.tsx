@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Mic, Upload, Save, Check, Play, Pause, Square, Plus, X as XIcon } from 'lucide-react'
+import { Mic, Upload, Save, Check, Play, Pause, Square, Plus, X as XIcon, Brain } from 'lucide-react'
 import { FileUploadModal } from '../../Upload/FileUploadModal'
 import { createUnifiedContent, updateNotebookContent, addTagsToSummary } from '../../../lib/api'
 import { sanitizeTagName, isJunkTagName } from '../../../lib/tagUtils'
@@ -7,6 +7,7 @@ import { supabase } from '../../../lib/supabase'
 import { processAudioTranscript } from '../../../lib/audioProcessor'
 import type { SummaryConfig } from '../../../types/summaryTypes'
 import { LiveTranscriber, getFallbackTranscript } from '../../../lib/webSpeechTranscription'
+import { transcribeLecture } from '../../../lib/transcriptionService'
 import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
 import { useNotebookState } from '../../../hooks/useNotebookState'
 import { ResizableDivider } from '../../ResizableDivider'
@@ -137,10 +138,12 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   const [isPaused, setIsPaused] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
-  const [recordingChunks, setRecordingChunks] = useState<Blob[]>([])
+  const recordingChunksRef = useRef<Blob[]>([])
   const [liveTranscriber, setLiveTranscriber] = useState<LiveTranscriber | null>(null)
   const [liveTranscript, setLiveTranscript] = useState('')
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null)
+  const [isLectureProcessing, setIsLectureProcessing] = useState(false)
+  const [lectureProcessingError, setLectureProcessingError] = useState<string | null>(null)
   const finalTranscriptRef = useRef<string>('')
 
   // Notification utility
@@ -209,7 +212,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       
       const recorder = new MediaRecorder(stream)
       
-      setRecordingChunks([])
+      recordingChunksRef.current = []
       setMediaRecorder(recorder)
       setTranscriptionError(null)
       
@@ -258,12 +261,12 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          setRecordingChunks(prev => [...prev, event.data])
+          recordingChunksRef.current.push(event.data)
         }
       }
       
       recorder.onstop = async () => {
-        const audioBlob = new Blob(recordingChunks, { type: 'audio/webm' })
+        const audioBlob = new Blob(recordingChunksRef.current, { type: 'audio/webm' })
         // Use ref directly to avoid closure issues
         console.log('🎤 Recorder stopped, finalTranscriptRef:', finalTranscriptRef.current?.substring(0, 100))
         
@@ -329,59 +332,114 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
 
   const processRecording = async (audioBlob: Blob) => {
     const recordingName = `Recording ${new Date().toLocaleTimeString()}`
-    
+
     let transcriptContent = ''
     let isValidTranscript = false
-    
+
     // Use ref value which is more reliable than state
     const capturedTranscript = finalTranscriptRef.current || liveTranscript
-    
-    console.log('🎯 Processing recording - transcript state:', {
+
+    console.log('🎯 Processing recording - initial transcript state:', {
       hasLiveTranscript: !!liveTranscript,
       hasFinalTranscript: !!finalTranscriptRef.current,
-      transcriptPreview: capturedTranscript?.substring(0, 100) + (capturedTranscript && capturedTranscript.length > 100 ? '...' : ''),
+      transcriptPreview:
+        capturedTranscript?.substring(0, 100) +
+        (capturedTranscript && capturedTranscript.length > 100 ? '...' : ''),
       transcriptLength: capturedTranscript?.length || 0,
       hasError: !!transcriptionError,
-      error: transcriptionError
+      error: transcriptionError,
     })
-    
-    // Check if we have a valid transcript (not an error message)
-    if (capturedTranscript && capturedTranscript.trim() && !capturedTranscript.startsWith('[')) {
-      transcriptContent = capturedTranscript
-      isValidTranscript = true
-      console.log('✅ Using Web Speech API transcript:', {
-        preview: transcriptContent.substring(0, 100) + '...',
-        length: transcriptContent.length
+
+    // First, try Jarvis-style lecture transcription (Gemini STT + cleanup)
+    setIsLectureProcessing(true)
+    setLectureProcessingError(null)
+    try {
+      const { raw, processed } = await transcribeLecture(audioBlob, {
+        language: 'en-US',
+        isLecture: true,
       })
-    } else {
-      // No valid transcript captured
-      console.log('⚠️ No valid transcript captured');
-      console.log('capturedTranscript:', capturedTranscript);
-      console.log('finalTranscriptRef.current:', finalTranscriptRef.current);
-      console.log('liveTranscript:', liveTranscript);
-      
-      if (transcriptionError) {
-        console.log('Transcription had an error:', transcriptionError)
-        transcriptContent = `[Transcription Error: ${transcriptionError}]\n\nPlease type your transcript manually.`
-      } else {
-        console.log('No transcript captured - speech may not have been detected')
-        transcriptContent = '[No speech detected]\n\nThe Web Speech API did not capture any speech. Please ensure:\n1. You spoke clearly into the microphone\n2. Your microphone is working\n3. You allowed microphone permissions\n\nTry recording again or type your transcript manually.'
+
+      const clean = processed.cleanTranscript?.trim()
+      if (clean) {
+        transcriptContent = clean
+        isValidTranscript = true
+        console.log('✅ Using cleaned lecture transcript from Gemini:', {
+          preview: transcriptContent.substring(0, 120) +
+            (transcriptContent.length > 120 ? '...' : ''),
+          length: transcriptContent.length,
+        })
+      } else if (raw.text?.trim()) {
+        transcriptContent = raw.text.trim()
+        isValidTranscript = true
+        console.log('✅ Using raw Gemini transcript (no separate clean transcript returned).')
       }
-      isValidTranscript = false // Don't try to generate summary from error messages
+    } catch (err) {
+      console.error(
+        '❌ Lecture transcription pipeline failed, falling back to Web Speech transcript:',
+        err
+      )
+      setLectureProcessingError(
+        err instanceof Error
+          ? err.message
+          : 'Lecture transcription failed. Using browser transcript instead.'
+      )
+    } finally {
+      setIsLectureProcessing(false)
     }
-    
+
+    // Fall back to Web Speech transcript if provider did not give a usable one
+    if (!isValidTranscript) {
+      console.log('⚠️ Falling back to Web Speech API transcript.')
+
+      console.log('🎯 Web Speech transcript state:', {
+        hasLiveTranscript: !!liveTranscript,
+        hasFinalTranscript: !!finalTranscriptRef.current,
+        transcriptPreview:
+          capturedTranscript?.substring(0, 100) +
+          (capturedTranscript && capturedTranscript.length > 100 ? '...' : ''),
+        transcriptLength: capturedTranscript?.length || 0,
+        hasError: !!transcriptionError,
+        error: transcriptionError,
+      })
+
+      if (capturedTranscript && capturedTranscript.trim() && !capturedTranscript.startsWith('[')) {
+        transcriptContent = capturedTranscript
+        isValidTranscript = true
+        console.log('✅ Using Web Speech API transcript:', {
+          preview: transcriptContent.substring(0, 100) + '...',
+          length: transcriptContent.length,
+        })
+      } else {
+        // No valid transcript captured
+        console.log('⚠️ No valid transcript captured')
+        console.log('capturedTranscript:', capturedTranscript)
+        console.log('finalTranscriptRef.current:', finalTranscriptRef.current)
+        console.log('liveTranscript:', liveTranscript)
+
+        if (transcriptionError) {
+          console.log('Transcription had an error:', transcriptionError)
+          transcriptContent = `[Transcription Error: ${transcriptionError}]\n\nPlease type your transcript manually.`
+        } else {
+          console.log('No transcript captured - speech may not have been detected')
+          transcriptContent =
+            '[No speech detected]\n\nThe Web Speech API did not capture any speech. Please ensure:\n1. You spoke clearly into the microphone\n2. Your microphone is working\n3. You allowed microphone permissions\n\nTry recording again or type your transcript manually.'
+        }
+        isValidTranscript = false // Don't try to generate summary from error messages
+      }
+    }
+
     // Add transcript as a document
     const transcriptDocument: DocumentItem = {
       id: `transcript_${Date.now()}_${Math.random().toString(36).substring(2)}`,
       name: `${recordingName} - Transcript`,
       type: 'transcript',
       content: transcriptContent,
-      timestamp: new Date()
+      timestamp: new Date(),
     }
-    
+
     setDocuments(prev => [...prev, transcriptDocument])
     setRecordingTime(0)
-    
+
     // Reset transcription state after using it
     // Use setTimeout to avoid race conditions with state updates
     setTimeout(() => {
@@ -821,18 +879,45 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         </div>
       )}
 
-      {/* Transcription Error Display */}
+      {/* Lecture processing status */}
+      {isLectureProcessing && (
+        <div className="lecture-processing-banner">
+          <Brain className="lecture-processing-icon" />
+          <span>Processing lecture audio with AI. This may take a moment…</span>
+        </div>
+      )}
+
+      {/* Transcription Error Display (Web Speech) */}
       {transcriptionError && (
-        <div style={{
-          marginTop: '0.5rem',
-          padding: '0.5rem',
-          backgroundColor: '#fef2f2',
-          borderRadius: '6px',
-          border: '1px solid #fecaca',
-          color: '#dc2626',
-          fontSize: '12px'
-        }}>
+        <div
+          style={{
+            marginTop: '0.5rem',
+            padding: '0.5rem',
+            backgroundColor: '#fef2f2',
+            borderRadius: '6px',
+            border: '1px solid #fecaca',
+            color: '#dc2626',
+            fontSize: '12px',
+          }}
+        >
           ⚠️ {transcriptionError}
+        </div>
+      )}
+
+      {/* Lecture transcription pipeline error */}
+      {lectureProcessingError && (
+        <div
+          style={{
+            marginTop: '0.5rem',
+            padding: '0.5rem',
+            backgroundColor: '#fef2f2',
+            borderRadius: '6px',
+            border: '1px solid #fecaca',
+            color: '#dc2626',
+            fontSize: '12px',
+          }}
+        >
+          ⚠️ {lectureProcessingError}
         </div>
       )}
 

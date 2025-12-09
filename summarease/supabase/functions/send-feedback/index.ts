@@ -76,14 +76,14 @@ Message:
 ${message}
 
 ---
-Sent from SummarEase Feedback System
+Sent from SatBrain Feedback System
     `.trim()
 
     // Send email
     await client.send({
       from: gmailUser,
       to: feedbackEmail,
-      subject: `[SummarEase Feedback] ${category}`,
+      subject: `[SatBrain Feedback] ${category}`,
       content: emailContent,
     })
 

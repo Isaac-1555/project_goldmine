@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Mic, Square, Play, Pause, X, AlertCircle } from 'lucide-react'
+import { Mic, Square, Play, Pause, X, AlertCircle, Brain } from 'lucide-react'
 import { LiveTranscriber } from '../../lib/webSpeechTranscription'
+import { transcribeLecture } from '../../lib/transcriptionService'
 import './AudioRecorder.css'
 
 export interface AudioRecording {
@@ -10,14 +11,22 @@ export interface AudioRecording {
   duration: number
   timestamp: Date
   transcript?: string
+  cleanTranscript?: string
+  studyNotes?: string
+  summary?: string
 }
 
 interface AudioRecorderProps {
   onRecordingComplete?: (recording: AudioRecording) => void
   onClose?: () => void
+  /**
+   * When true, run the lecture transcription pipeline (Gemini STT + cleanup)
+   * before invoking onRecordingComplete. Falls back to live transcript on error.
+   */
+  useLectureTranscription?: boolean
 }
 
-export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, onClose }) => {
+export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, onClose, useLectureTranscription }) => {
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
@@ -29,6 +38,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
   const [liveTranscriber, setLiveTranscriber] = useState<LiveTranscriber | null>(null)
   const [liveTranscript, setLiveTranscript] = useState('')
   const [showTranscript, setShowTranscript] = useState(false)
+  const [isLectureProcessing, setIsLectureProcessing] = useState(false)
+  const [lectureProcessingError, setLectureProcessingError] = useState<string | null>(null)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -177,21 +188,60 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
   }
 
   const saveRecording = async () => {
-    if (!audioBlob || !title.trim()) return
+    if (!audioBlob || !title.trim() || isLectureProcessing) return
 
     try {
+      setError('')
+      setLectureProcessingError(null)
+
+      let transcript = liveTranscript || ''
+      let cleanTranscript: string | undefined
+      let studyNotes: string | undefined
+      let summary: string | undefined
+
+      if (useLectureTranscription) {
+        try {
+          setIsLectureProcessing(true)
+          const { raw, processed } = await transcribeLecture(audioBlob, {
+            language: 'en-US',
+            isLecture: true,
+          })
+
+          cleanTranscript = processed.cleanTranscript?.trim() || raw.text?.trim() || undefined
+          studyNotes = processed.studyNotes?.trim() || undefined
+          summary = processed.summary?.trim() || undefined
+
+          if (cleanTranscript) {
+            transcript = cleanTranscript
+          } else if (raw.text?.trim()) {
+            transcript = raw.text.trim()
+          }
+        } catch (err) {
+          console.error('Lecture transcription failed, falling back to live transcript:', err)
+          setLectureProcessingError(
+            err instanceof Error
+              ? err.message
+              : 'Lecture transcription failed. Using live transcript instead.'
+          )
+        } finally {
+          setIsLectureProcessing(false)
+        }
+      }
+
       const recording: AudioRecording = {
         id: `recording_${Date.now()}_${Math.random().toString(36).substring(2)}`,
         name: title.trim(),
         blob: audioBlob,
         duration: recordingTime,
         timestamp: new Date(),
-        transcript: liveTranscript || undefined
+        transcript: transcript || undefined,
+        cleanTranscript,
+        studyNotes,
+        summary,
       }
-      
+
       onRecordingComplete?.(recording)
       onClose?.()
-      
     } catch (err: any) {
       console.error('Save error:', err)
       setError(err.message || 'Failed to save recording')
@@ -334,6 +384,29 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                 </div>
               )}
 
+              {isLectureProcessing && (
+                <div className="lecture-processing-banner">
+                  <Brain className="lecture-processing-icon" />
+                  <span>Processing lecture audio with AI. This may take a moment…</span>
+                </div>
+              )}
+
+              {lectureProcessingError && (
+                <div
+                  style={{
+                    marginTop: '0.5rem',
+                    padding: '0.5rem',
+                    backgroundColor: '#fef2f2',
+                    borderRadius: '6px',
+                    border: '1px solid #fecaca',
+                    color: '#dc2626',
+                    fontSize: '12px',
+                  }}
+                >
+                  ⚠️ {lectureProcessingError}
+                </div>
+              )}
+
               <div className="upload-actions">
                 <button onClick={resetRecording} className="cancel-button">
                   Record Again
@@ -341,7 +414,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
                 <button 
                   onClick={saveRecording} 
                   className="upload-button"
-                  disabled={!title.trim()}
+                  disabled={!title.trim() || isLectureProcessing}
                 >
                   Save Recording
                 </button>

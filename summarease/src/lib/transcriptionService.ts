@@ -1,4 +1,5 @@
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
+import { getTranscriptionProvider, type ProviderTranscriptionResult, type TranscriptionOptions } from './transcriptionProviders'
+import { postprocessLectureTranscript, type LecturePostprocessOutput } from './lecturePostprocessor'
 
 export interface TranscriptionResult {
   transcript: string
@@ -6,78 +7,64 @@ export interface TranscriptionResult {
   error?: string
 }
 
-export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionResult> {
-  if (!GEMINI_API_KEY) {
-    return {
-      transcript: '',
-      success: false,
-      error: 'Gemini API key not configured'
-    }
-  }
+export interface LectureTranscriptionResult {
+  raw: ProviderTranscriptionResult
+  processed: LecturePostprocessOutput
+}
 
+/**
+ * Basic audio transcription using the default provider (Gemini).
+ * Kept for backwards compatibility with the original API.
+ */
+export async function transcribeAudio(
+  audioBlob: Blob,
+  options?: TranscriptionOptions
+): Promise<TranscriptionResult> {
   try {
-    // Convert audio blob to base64
-    const base64Audio = await blobToBase64(audioBlob)
-    
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            {
-              text: "Please transcribe this audio file. Provide only the transcript text without any additional commentary or formatting."
-            },
-            {
-              inline_data: {
-                mime_type: audioBlob.type,
-                data: base64Audio.split(',')[1] // Remove data:audio/webm;base64, prefix
-              }
-            }
-          ]
-        }]
-      })
-    })
+    const provider = getTranscriptionProvider('gemini')
+    const raw = await provider.transcribeBlob(audioBlob, options)
 
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+    return {
+      transcript: raw.text,
+      success: true,
     }
-
-    const data = await response.json()
-    
-    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-      const transcript = data.candidates[0].content.parts[0].text.trim()
-      return {
-        transcript,
-        success: true
-      }
-    } else {
-      throw new Error('No transcript generated')
-    }
-    
   } catch (error) {
     console.error('Transcription error:', error)
     return {
       transcript: '',
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
     }
   }
 }
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result)
-      } else {
-        reject(new Error('Failed to convert blob to base64'))
-      }
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
+/**
+ * Low-level helper returning the full provider result (including metadata).
+ */
+export async function transcribeAudioWithMetadata(
+  audioBlob: Blob,
+  options?: TranscriptionOptions
+): Promise<ProviderTranscriptionResult> {
+  const provider = getTranscriptionProvider('gemini')
+  return provider.transcribeBlob(audioBlob, options)
+}
+
+/**
+ * Jarvis-style lecture transcription: raw STT + LLM cleanup and structuring.
+ */
+export async function transcribeLecture(
+  audioBlob: Blob,
+  options?: TranscriptionOptions
+): Promise<LectureTranscriptionResult> {
+  const raw = await transcribeAudioWithMetadata(audioBlob, {
+    ...(options || {}),
+    isLecture: true,
   })
+
+  const processed = await postprocessLectureTranscript({
+    rawTranscript: raw.text,
+    language: options?.language,
+  })
+
+  return { raw, processed }
 }

@@ -646,6 +646,27 @@
   font-weight: 500;
 }
 
+/* AI lecture processing banner */
+.lecture-processing-banner {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.lecture-processing-banner .lecture-processing-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--accent-primary);
+}
+
 /* Transcript Section */
 .transcript-section {
   display: flex;
