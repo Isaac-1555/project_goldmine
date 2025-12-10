@@ -100,9 +100,9 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, 
               List View
             </button>
             <button
-              className={`subtab-button ${activeSubTab === 'graph' ? 'active' : ''}`}
+              className={`subtab-button premium-subtab ${activeSubTab === 'graph' ? 'active' : ''}`}
               onClick={() => setActiveSubTab('graph')}
-              aria-label="Switch to Graph View"
+              aria-label="Switch to Graph View (Premium)"
             >
               <Network className="subtab-icon" />
               Graph View
