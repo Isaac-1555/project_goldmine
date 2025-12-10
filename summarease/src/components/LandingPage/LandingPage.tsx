@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Mic, BookOpen, ArrowRight, Sparkles, Play, Upload, CheckCircle, GitBranch, Brain } from 'lucide-react'
+import { Mic, BookOpen, ArrowRight, Sparkles, Play, Upload, CheckCircle, GitBranch, Brain, Menu, X } from 'lucide-react'
 import { SatBrainMark } from '../brand/SatBrainMark'
 import { FAQSection } from './FAQSection'
 import { BuiltWithSection } from './BuiltWithSection'
@@ -25,6 +25,8 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, splineUrl }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+
   const scrollToFeatures = () => {
     analytics.trackNavigation('Features')
     const featuresSection = document.getElementById('features')
@@ -216,12 +218,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
               <SatBrainMark className="logo-icon" theme="mono" variant="f" detail="low" aria-hidden="true" />
               <span>Sat‑Brain</span>
             </div>
-            <div className="nav-links">
+            <div className="nav-links desktop-nav">
               <button onClick={scrollToFeatures} className="nav-link" aria-label="Navigate to features section">Features</button>
               <button onClick={scrollToPricing} className="nav-link" aria-label="Navigate to pricing section">Pricing</button>
               <button onClick={handleLogin} className="nav-button nav-login" aria-label="Log in to your account">Log In</button>
             </div>
+
+            <button 
+              className="mobile-menu-toggle"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle navigation menu"
+              aria-expanded={isMobileMenuOpen}
+            >
+              {isMobileMenuOpen ? <X /> : <Menu />}
+            </button>
           </div>
+
+          {/* Mobile Menu */}
+          {isMobileMenuOpen && (
+            <div className="mobile-menu">
+              <button onClick={() => { scrollToFeatures(); setIsMobileMenuOpen(false) }} className="nav-link mobile-link">Features</button>
+              <button onClick={() => { scrollToPricing(); setIsMobileMenuOpen(false) }} className="nav-link mobile-link">Pricing</button>
+              <button onClick={() => { handleLogin(); setIsMobileMenuOpen(false) }} className="nav-button nav-login mobile-btn">Log In</button>
+            </div>
+          )}
         </nav>
 
         {/* Main Content */}
@@ -240,7 +260,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
             <div className="hero-content">
               <div className="hero-chip" role="status" aria-label="Study science announcement">
                 <Sparkles size={14} aria-hidden="true" />
-                <span>Spaced repetition, active recall, visual mapping</span>
+                <span>Visual Map, Quizzes and Flashcards</span>
               </div>
               <h1 id="hero-title" className="hero-title">
                 From scattered notes to
@@ -248,7 +268,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
                 Connected Knowledge
               </h1>
               <p className="hero-subtitle">
-                Sat-Brain maps your notes across every class, quizzes you with spaced repetition, and helps you see how concepts connect—so you remember what matters when it matters.
+                Sat-Brain maps your notes across every class, quizzes you with spaced repetition, and helps you see how concepts connect, so you remember what matters when it matters.
               </p>
               <div className="hero-cta-row">
                 <button
@@ -429,7 +449,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
                   <span className="price-highlight">$9.99</span>/month
                 </h2>
                 <p className="pricing-hero-subtitle">
-                  No credit card required for the first month. Cancel anytime. Keep all your notes and summaries.
+                  No credit card required for the first 7 days. Additional <span className="price-highlight">1 month free</span> when you add a card. Cancel anytime. Keep all your notes.
                 </p>
 
                 {/* What's Included */}
