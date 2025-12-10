@@ -112,6 +112,18 @@
 .recording-controls { display: flex; gap: 12px; flex: 1; }
 .btn-icon { width: 18px; height: 18px; }
 
+/* New Notebook button (purple) */
+.new-notebook-button {
+  background: linear-gradient(45deg, #6366f1, #4f46e5);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.new-notebook-button:hover {
+  background: linear-gradient(45deg, #4f46e5, #4338ca);
+  color: #ffffff;
+}
+
 /* Recording Indicator */
 .recording-indicator {
   display: flex;
@@ -478,7 +490,6 @@
 /* Ensure proper spacing for all sections */
 .notebook-left-panel > div:not(:last-child) {
   margin-bottom: 20px;
-}
   font-size: 0.875rem;
   line-height: 1.4;
 }

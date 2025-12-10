@@ -125,6 +125,9 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   const [localSaveId, setLocalSaveId] = useState<string | undefined>(undefined)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(initialFolderId || null)
 
+  // Track whether we've already attempted to restore from local cache in this session
+  const hasRestoredFromLocalRef = useRef(false)
+
   // Custom tags state
   const [customTagInput, setCustomTagInput] = useState('')
   const [customTags, setCustomTags] = useState<string[]>(initialTags)
@@ -133,6 +136,101 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   // Toast notification state
   const [notification, setNotification] = useState<string | null>(null)
   
+  // Restore latest local notebook draft on initial mount (create mode only)
+  useEffect(() => {
+    if (mode !== 'create') return
+    if (hasRestoredFromLocalRef.current) return
+
+    // If we're prefilled from an editing context or explicit initial props, don't override
+    const hasInitialContent = Boolean(
+      initialTitle ||
+      initialNotesHtml ||
+      (initialDocuments && initialDocuments.length > 0)
+    )
+    if (hasInitialContent) return
+
+    try {
+      const raw = localStorage.getItem('sat-brain-local-notebooks')
+      if (!raw) return
+
+      const all = JSON.parse(raw)
+      if (!Array.isArray(all) || all.length === 0) return
+
+      // Pick the most recently saved local notebook
+      const latest = [...all].sort((a: any, b: any) => {
+        const aTime = new Date(a.lastSaved || a.last_saved || 0).getTime()
+        const bTime = new Date(b.lastSaved || b.last_saved || 0).getTime()
+        return bTime - aTime
+      })[0]
+
+      if (!latest) return
+
+      const hasAnyContent = Boolean(
+        (latest.title && latest.title.trim()) ||
+        (latest.notes && latest.notes.trim()) ||
+        (latest.documents && latest.documents.length > 0)
+      )
+      if (!hasAnyContent) return
+
+      // Restore core notebook content
+      setTitle(latest.title || '')
+      setNotes(latest.notes || '')
+
+      if (Array.isArray(latest.documents)) {
+        const restoredDocs: DocumentItem[] = latest.documents.map((doc: any) => ({
+          id: doc.id,
+          name: doc.name,
+          type: doc.type,
+          size: doc.size,
+          content: doc.content,
+          // File blobs are not persisted in localStorage; they must be re-attached before upload
+          file: undefined,
+          timestamp: doc.timestamp ? new Date(doc.timestamp) : new Date()
+        }))
+        setDocuments(restoredDocs)
+      } else {
+        // Backward compatibility for older shapes that stored audioTranscript/uploadedFiles separately
+        const fallbackDocs: DocumentItem[] = []
+
+        if (typeof (latest as any).audioTranscript === 'string' && (latest as any).audioTranscript.trim()) {
+          fallbackDocs.push({
+            id: `transcript_local_${Date.now()}`,
+            name: 'Transcript',
+            type: 'transcript',
+            content: (latest as any).audioTranscript,
+            size: undefined,
+            file: undefined,
+            timestamp: new Date(latest.lastSaved || Date.now())
+          })
+        }
+
+        if (Array.isArray((latest as any).uploadedFiles)) {
+          (latest as any).uploadedFiles.forEach((f: any, index: number) => {
+            fallbackDocs.push({
+              id: f.id || `file_local_${Date.now()}_${index}`,
+              name: f.name || 'File',
+              type: 'file',
+              size: f.size,
+              content: undefined,
+              file: undefined,
+              timestamp: f.timestamp ? new Date(f.timestamp) : new Date(latest.lastSaved || Date.now())
+            })
+          })
+        }
+
+        if (fallbackDocs.length > 0) {
+          setDocuments(fallbackDocs)
+        }
+      }
+
+      setIsLocalSave(true)
+      setLocalSaveId(latest.id)
+      hasRestoredFromLocalRef.current = true
+    } catch (error) {
+      console.error('Error restoring notebook from local cache:', error)
+    }
+  }, [mode, initialTitle, initialNotesHtml, initialDocuments])
+
   // Recording state
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -457,6 +555,77 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   }
 
   // Handler functions
+  const hasNotebookContent = () => {
+    return Boolean(title.trim() || notes.trim() || documents.length > 0)
+  }
+
+  const handleNewNotebook = () => {
+    if (mode !== 'create') return
+
+    if (hasNotebookContent()) {
+      const confirmed = window.confirm(
+        'Start a new notebook? This will clear the current title, notes, transcripts, and locally saved attachments for this draft.'
+      )
+      if (!confirmed) return
+    }
+
+    // Remove this draft from localStorage collections
+    try {
+      if (localSaveId) {
+        const existingRaw = localStorage.getItem('sat-brain-local-notebooks') || '[]'
+        const existingLocal = JSON.parse(existingRaw)
+        if (Array.isArray(existingLocal)) {
+          const filtered = existingLocal.filter((item: any) => item.id !== localSaveId)
+          localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(filtered))
+        }
+      }
+      // Also clear any working notebook state used by hooks
+      localStorage.removeItem('sat-brain-notebook-state')
+    } catch (error) {
+      console.error('Error clearing local notebook state:', error)
+    }
+
+    // Stop any active recording and reset recording-related state
+    try {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop()
+      }
+    } catch (err) {
+      console.error('Error stopping media recorder during reset:', err)
+    }
+    recordingChunksRef.current = []
+    setIsRecording(false)
+    setIsPaused(false)
+    setRecordingTime(0)
+
+    if (liveTranscriber) {
+      try {
+        liveTranscriber.stop()
+      } catch (err) {
+        console.error('Error stopping live transcriber during reset:', err)
+      }
+    }
+    setLiveTranscriber(null)
+    setLiveTranscript('')
+    setTranscriptionError(null)
+    setIsLectureProcessing(false)
+    setLectureProcessingError(null)
+    finalTranscriptRef.current = ''
+
+    // Reset core notebook content and local save state
+    setTitle('')
+    setNotes('')
+    setDocuments([])
+    setCustomTags([])
+    setCustomTagInput('')
+    setSelectedFolderId(null)
+    setIsLocalSave(false)
+    setLocalSaveId(undefined)
+    setShowUploadModal(false)
+
+    showNotification('Started a new notebook')
+  }
+
   const handleFileUpload = (files: File[]) => {
     const newDocuments: DocumentItem[] = files.map(file => ({
       id: `file_${Date.now()}_${Math.random().toString(36).substring(2)}`,
@@ -528,6 +697,21 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     if (!hasContent) {
       alert('Please add some content before saving.')
       return
+    }
+
+    // Warn if there are "metadata-only" file documents that were restored from a previous session
+    const missingFileDocs = documents.filter(doc => doc.type === 'file' && !doc.file)
+    if (missingFileDocs.length > 0) {
+      const names = missingFileDocs.map(doc => doc.name).join(', ')
+      const proceed = window.confirm(
+        `Some attached files came from a previous session and cannot be uploaded automatically.\n\n` +
+        `${names}\n\n` +
+        'You can reattach them using the Upload button before clicking Done.\n\n' +
+        'Press OK to continue without these files, or Cancel to go back and reattach them.'
+      )
+      if (!proceed) {
+        return
+      }
     }
 
     try {
@@ -729,12 +913,31 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           onChange={(e) => setTitle(e.target.value)}
         />
         
-        <FolderSelector
-          selectedFolderId={selectedFolderId}
-          onFolderSelect={setSelectedFolderId}
-          label="Save to folder"
-          placeholder="Select folder (optional)"
-        />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: 8,
+            marginTop: 8,
+          }}
+        >
+          <FolderSelector
+            selectedFolderId={selectedFolderId}
+            onFolderSelect={setSelectedFolderId}
+            label="Save to folder"
+            placeholder="Select folder (optional)"
+          />
+          {mode === 'create' && (
+            <button
+              type="button"
+              className="btn new-notebook-button"
+              onClick={handleNewNotebook}
+            >
+              New Notebook
+            </button>
+          )}
+        </div>
         <div className="save-buttons">
           <button 
             className="btn btn-primary"

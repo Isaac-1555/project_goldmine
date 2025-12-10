@@ -200,6 +200,29 @@ export const ListView: React.FC<ListViewProps> = ({
   }
 
   const handleLocalNotebookSelect = (localNotebook: any) => {
+    // Derive transcript text from stored documents if not already present
+    let audioTranscript = localNotebook.audioTranscript as string | undefined
+    if (!audioTranscript && Array.isArray(localNotebook.documents)) {
+      const transcriptDocs = localNotebook.documents.filter((doc: any) => doc.type === 'transcript' && doc.content)
+      audioTranscript = transcriptDocs
+        .map((doc: any) => (doc.content ?? '').toString())
+        .filter((text: string) => text.trim().length > 0)
+        .join('\n\n')
+    }
+
+    // Derive uploaded file metadata list from documents if not already present
+    let uploadedFiles = localNotebook.uploadedFiles as any[] | undefined
+    if (!uploadedFiles && Array.isArray(localNotebook.documents)) {
+      uploadedFiles = localNotebook.documents
+        .filter((doc: any) => doc.type === 'file')
+        .map((doc: any) => ({
+          ...doc,
+          // File blobs are not persisted; they can be re-attached later in the Notebook tab
+          file: undefined,
+          timestamp: doc.timestamp ? new Date(doc.timestamp) : new Date()
+        }))
+    }
+
     // Convert local notebook to FileWithMetadata format with all content
     const mockFile: FileWithMetadata = {
       id: localNotebook.id,
@@ -212,8 +235,8 @@ export const ListView: React.FC<ListViewProps> = ({
       // Add local notebook content
       localNotebookData: {
         notes: localNotebook.notes,
-        audioTranscript: localNotebook.audioTranscript,
-        uploadedFiles: localNotebook.uploadedFiles,
+        audioTranscript,
+        uploadedFiles,
         recordingTime: localNotebook.recordingTime
       }
     }
