@@ -219,6 +219,28 @@
   width: 100%;
   height: auto;
   display: block;
+  background: transparent;
+}
+
+/* Fullscreen Overrides */
+.infographic-fullscreen-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.infographic-fullscreen-content .mind-map-container,
+.infographic-fullscreen-content .pyramid-container,
+.infographic-fullscreen-content .cycle-diagram-container {
+  flex: 1;
+  height: 100%;
+  overflow: hidden; /* Prevent double scrollbars, let SVG scale */
+}
+
+.infographic-fullscreen-content .mind-map-svg,
+.infographic-fullscreen-content .pyramid-svg,
+.infographic-fullscreen-content .cycle-diagram-svg {
+  height: 100%;
+  width: 100%;
 }
 
 /* Placeholder Styles */
@@ -406,9 +428,9 @@
   z-index: 9999;
 }
 
-.infographic-fullscreen-inner {
+ .infographic-fullscreen-inner {
   width: min(95vw, 1400px);
-  height: min(90vh, 900px);
+  max-height: min(90vh, 900px);
   background: var(--bg-primary, #ffffff);
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.35);
@@ -435,7 +457,7 @@
 .infographic-fullscreen-content {
   flex: 1;
   padding: 12px;
-  overflow: hidden;
+  overflow: auto; /* Allow scrolling so rich detail card isn't clipped in fullscreen */
 }
 
 /* Gallery-specific Styles (for InfographicGallery component) */

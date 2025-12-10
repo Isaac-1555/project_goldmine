@@ -106,7 +106,6 @@ export const MindMapRenderer: React.FC<MindMapRendererProps> = ({
         className="mind-map-svg"
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="xMidYMid meet"
-        style={{ width: '100%', height: 'auto', background: 'transparent', display: 'block' }}
       />
       
       {/* Rich Details Hover Card */}
