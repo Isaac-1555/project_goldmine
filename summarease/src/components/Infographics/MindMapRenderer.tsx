@@ -16,7 +16,11 @@ export const MindMapRenderer: React.FC<MindMapRendererProps> = ({
   interactive = true
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [hoveredNodeData, setHoveredNodeData] = useState<InfographicNode | null>(null);
+  const [selectedNodeData, setSelectedNodeData] = useState<InfographicNode | null>(null);
+
+  // The active node is either the selected one (locked) or the hovered one (preview)
+  const activeNode = selectedNodeData || hoveredNodeData;
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -37,12 +41,20 @@ export const MindMapRenderer: React.FC<MindMapRendererProps> = ({
 
     // Enable zoom & pan
     const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.5, 3])
+      .scaleExtent([0.2, 4])
       .on('zoom', (event) => {
         zoomLayer.attr('transform', event.transform.toString());
       });
 
     svg.call(zoomBehavior as any);
+    
+    // Background click handler to deselect
+    svg.on('click', (event) => {
+      // Only deselect if clicking on the background (svg element itself)
+      if (event.target === svgRef.current) {
+        setSelectedNodeData(null);
+      }
+    });
     
     // Set cursor styles
     svg.style('cursor', 'grab');
@@ -66,22 +78,29 @@ export const MindMapRenderer: React.FC<MindMapRendererProps> = ({
       return;
     }
 
+    // Pass state setters to render functions
+    const interactionProps = {
+      interactive,
+      setHoveredNodeData,
+      setSelectedNodeData
+    };
+
     // Render connections (lines) first so they're behind nodes
     renderConnections(g, centerNode, primaryNodes, secondaryNodes);
 
     // Render center node
-    renderCenterNode(g, centerNode, interactive, setHoveredNode, hoveredNode);
+    renderCenterNode(g, centerNode, interactionProps);
 
     // Render primary branches
-    renderPrimaryBranches(g, primaryNodes, secondaryNodes, interactive, setHoveredNode, hoveredNode);
+    renderPrimaryBranches(g, primaryNodes, secondaryNodes, interactionProps);
 
     // Render secondary nodes
-    renderSecondaryNodes(g, primaryNodes, secondaryNodes, interactive, setHoveredNode, hoveredNode);
+    renderSecondaryNodes(g, primaryNodes, secondaryNodes, interactionProps);
 
   }, [spec, width, height]);
 
   return (
-    <div className="mind-map-container">
+    <div className="mind-map-container" style={{ position: 'relative' }}>
       <svg 
         ref={svgRef}
         className="mind-map-svg"
@@ -89,9 +108,40 @@ export const MindMapRenderer: React.FC<MindMapRendererProps> = ({
         preserveAspectRatio="xMidYMid meet"
         style={{ width: '100%', height: 'auto', background: 'transparent', display: 'block' }}
       />
+      
+      {/* Rich Details Hover Card */}
+      {activeNode && (
+        <div className="infographic-details-card">
+          <div className="details-card-header">
+            <span 
+              className="details-card-type"
+              style={{ backgroundColor: activeNode.color || '#3b82f6' }}
+            >
+              {getNodeTypeLabel(activeNode.level)}
+            </span>
+            {selectedNodeData && selectedNodeData.id === activeNode.id && (
+              <span className="details-card-pinned">📌 Pinned</span>
+            )}
+          </div>
+          <h4 className="details-card-title">{activeNode.label}</h4>
+          {activeNode.description && (
+            <p className="details-card-description">{activeNode.description}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 };
+
+// Helper for node type labels
+function getNodeTypeLabel(level?: number): string {
+  switch(level) {
+    case 0: return 'Central Concept';
+    case 1: return 'Key Topic';
+    case 2: return 'Sub-point';
+    default: return 'Concept';
+  }
+}
 
 /**
  * Render all connection lines
@@ -103,12 +153,16 @@ function renderConnections(
   secondaryNodes: InfographicNode[]
 ) {
   const angleStep = (2 * Math.PI) / primaryNodes.length;
+  // Increased radius for better legibility (220 -> 280)
+  const primaryRadius = 280;
+  // Increased radius for better legibility (360 -> 450)
+  const secondaryRadius = 450;
 
   // Primary connections (center to primary nodes)
   primaryNodes.forEach((node, i) => {
     const angle = i * angleStep - Math.PI / 2;
-    const x = Math.cos(angle) * 220;
-    const y = Math.sin(angle) * 220;
+    const x = Math.cos(angle) * primaryRadius;
+    const y = Math.sin(angle) * primaryRadius;
 
     g.append('line')
       .attr('x1', 0)
@@ -124,15 +178,15 @@ function renderConnections(
   // Secondary connections (primary to secondary nodes)
   primaryNodes.forEach((primary, i) => {
     const angle = i * angleStep - Math.PI / 2;
-    const px = Math.cos(angle) * 220;
-    const py = Math.sin(angle) * 220;
+    const px = Math.cos(angle) * primaryRadius;
+    const py = Math.sin(angle) * primaryRadius;
 
     const children = secondaryNodes.filter(s => primary.children?.includes(s.id));
     
     children.forEach((child, j) => {
       const childAngle = angle + ((j - (children.length - 1) / 2) * 0.35);
-      const cx = Math.cos(childAngle) * 360;
-      const cy = Math.sin(childAngle) * 360;
+      const cx = Math.cos(childAngle) * secondaryRadius;
+      const cy = Math.sin(childAngle) * secondaryRadius;
 
       g.append('line')
         .attr('x1', px)
@@ -148,19 +202,25 @@ function renderConnections(
   });
 }
 
+// Interface for shared interaction props
+interface InteractionProps {
+  interactive: boolean;
+  setHoveredNodeData: (node: InfographicNode | null) => void;
+  setSelectedNodeData: (node: InfographicNode | null) => void;
+}
+
 /**
  * Render center node
  */
 function renderCenterNode(
   g: d3.Selection<SVGGElement, unknown, null, undefined>,
   centerNode: InfographicNode,
-  interactive: boolean,
-  setHoveredNode: (id: string | null) => void,
-  hoveredNode: string | null
+  props: InteractionProps
 ) {
   const nodeGroup = g.append('g')
     .attr('class', 'center-node')
-    .style('cursor', interactive ? 'pointer' : 'default');
+    .attr('pointer-events', 'all') // CRITICAL: Ensure events are captured
+    .style('cursor', props.interactive ? 'pointer' : 'default');
 
   // Shadow filter
   const defs = g.append('defs');
@@ -191,7 +251,7 @@ function renderCenterNode(
 
   // Circle
   nodeGroup.append('circle')
-    .attr('r', 70)
+    .attr('r', 80) // Increased size (70 -> 80)
     .attr('fill', centerNode.color || '#3b82f6')
     .attr('stroke', '#fff')
     .attr('stroke-width', 4)
@@ -204,26 +264,25 @@ function renderCenterNode(
     .attr('y', 0)
     .attr('fill', '#fff')
     .attr('font-weight', 'bold')
-    .attr('font-size', '14px')
+    .attr('font-size', '16px') // Increased font (14px -> 16px)
+    .style('pointer-events', 'none') // Let events pass through text to the group/circle
     .text(centerNode.label);
 
-  const wasTruncated = wrapText(text, 110, 3);
+  wrapText(text, 130, 3); // Increased wrap width (110 -> 130)
 
-    if (interactive) {
-      nodeGroup
-        .on('mouseenter', () => {
-          setHoveredNode(centerNode.id);
-          nodeGroup.style('cursor', 'pointer');
-        })
-        .on('mouseleave', () => {
-          setHoveredNode(null);
-          nodeGroup.style('cursor', null);
-        });
-    }
-
-  // Add tooltip if truncated
-  if (wasTruncated) {
-    nodeGroup.append('title').text(centerNode.label);
+  if (props.interactive) {
+    nodeGroup
+      .on('mouseenter', () => {
+        props.setHoveredNodeData(centerNode);
+        nodeGroup.style('cursor', 'pointer');
+      })
+      .on('mouseleave', () => {
+        props.setHoveredNodeData(null);
+      })
+      .on('click', (event) => {
+        event.stopPropagation(); // Stop background click from firing
+        props.setSelectedNodeData(centerNode);
+      });
   }
 }
 
@@ -234,25 +293,25 @@ function renderPrimaryBranches(
   g: d3.Selection<SVGGElement, unknown, null, undefined>,
   primaryNodes: InfographicNode[],
   secondaryNodes: InfographicNode[],
-  interactive: boolean,
-  setHoveredNode: (id: string | null) => void,
-  hoveredNode: string | null
+  props: InteractionProps
 ) {
   const angleStep = (2 * Math.PI) / primaryNodes.length;
+  const primaryRadius = 280; // Matches connection radius
 
   primaryNodes.forEach((node, i) => {
     const angle = i * angleStep - Math.PI / 2; // Start from top
-    const x = Math.cos(angle) * 220;
-    const y = Math.sin(angle) * 220;
+    const x = Math.cos(angle) * primaryRadius;
+    const y = Math.sin(angle) * primaryRadius;
 
     const nodeGroup = g.append('g')
       .attr('class', 'primary-node')
+      .attr('pointer-events', 'all') // CRITICAL: Ensure events are captured
       .attr('transform', `translate(${x}, ${y})`)
-      .style('cursor', interactive ? 'pointer' : 'default');
+      .style('cursor', props.interactive ? 'pointer' : 'default');
 
     // Circle
     nodeGroup.append('circle')
-      .attr('r', 50)
+      .attr('r', 60) // Increased size (50 -> 60)
       .attr('fill', node.color || '#60a5fa')
       .attr('stroke', '#fff')
       .attr('stroke-width', 3)
@@ -266,52 +325,35 @@ function renderPrimaryBranches(
       .attr('y', 0)
       .attr('fill', '#fff')
       .attr('font-weight', '600')
-      .attr('font-size', '12px')
+      .attr('font-size', '14px') // Increased font (12px -> 14px)
+      .style('pointer-events', 'none') // Let events pass through text
       .text(node.label);
 
-    const wasTruncated = wrapText(text, 75, 2);
+    wrapText(text, 90, 3); // Increased wrap width (75 -> 90)
 
-    // Add tooltip if truncated
-    if (wasTruncated) {
-      nodeGroup.append('title').text(node.label);
-    }
-
-    if (interactive) {
+    if (props.interactive) {
       nodeGroup
         .style('cursor', 'pointer')
         .on('mouseenter', function() {
-          setHoveredNode(node.id);
+          props.setHoveredNodeData(node);
           d3.select(this).select('circle')
             .transition()
             .duration(200)
-            .attr('r', 55)
+            .attr('r', 65)
             .attr('stroke-width', 4);
         })
         .on('mouseleave', function() {
-          setHoveredNode(null);
+          props.setHoveredNodeData(null);
           d3.select(this).select('circle')
             .transition()
             .duration(200)
-            .attr('r', 50)
+            .attr('r', 60)
             .attr('stroke-width', 3);
+        })
+        .on('click', (event) => {
+          event.stopPropagation();
+          props.setSelectedNodeData(node);
         });
-    }
-
-    // Show description on hover if available
-    if (node.description && hoveredNode === node.id) {
-      nodeGroup.append('foreignObject')
-        .attr('x', -100)
-        .attr('y', 65)
-        .attr('width', 200)
-        .attr('height', 60)
-        .append('xhtml:div')
-        .style('background', 'rgba(0,0,0,0.9)')
-        .style('color', '#fff')
-        .style('padding', '8px')
-        .style('border-radius', '4px')
-        .style('font-size', '11px')
-        .style('text-align', 'center')
-        .text(node.description);
     }
   });
 }
@@ -323,11 +365,10 @@ function renderSecondaryNodes(
   g: d3.Selection<SVGGElement, unknown, null, undefined>,
   primaryNodes: InfographicNode[],
   secondaryNodes: InfographicNode[],
-  interactive: boolean,
-  setHoveredNode: (id: string | null) => void,
-  hoveredNode: string | null
+  props: InteractionProps
 ) {
   const angleStep = (2 * Math.PI) / primaryNodes.length;
+  const secondaryRadius = 450; // Matches connection radius
 
   primaryNodes.forEach((primary, i) => {
     const angle = i * angleStep - Math.PI / 2;
@@ -336,17 +377,18 @@ function renderSecondaryNodes(
     
     children.forEach((child, j) => {
       const childAngle = angle + ((j - (children.length - 1) / 2) * 0.35);
-      const cx = Math.cos(childAngle) * 360;
-      const cy = Math.sin(childAngle) * 360;
+      const cx = Math.cos(childAngle) * secondaryRadius;
+      const cy = Math.sin(childAngle) * secondaryRadius;
 
       const nodeGroup = g.append('g')
         .attr('class', 'secondary-node')
+        .attr('pointer-events', 'all') // CRITICAL: Ensure events are captured
         .attr('transform', `translate(${cx}, ${cy})`)
-        .style('cursor', interactive ? 'pointer' : 'default');
+        .style('cursor', props.interactive ? 'pointer' : 'default');
 
       // Circle
       nodeGroup.append('circle')
-        .attr('r', 35)
+        .attr('r', 40) // Increased size (35 -> 40)
         .attr('fill', '#f1f5f9')
         .attr('stroke', primary.color || '#60a5fa')
         .attr('stroke-width', 2.5)
@@ -358,53 +400,36 @@ function renderSecondaryNodes(
         .attr('text-anchor', 'middle')
         .attr('y', 0)
         .attr('fill', '#1e293b')
-        .attr('font-size', '10px')
+        .attr('font-size', '12px') // Increased font (10px -> 12px)
         .attr('font-weight', '500')
+        .style('pointer-events', 'none') // Let events pass through text
         .text(child.label);
 
-      const wasTruncated = wrapText(text, 55, 2);
+      wrapText(text, 65, 2); // Increased wrap width (55 -> 65)
 
-      // Add tooltip if truncated
-      if (wasTruncated) {
-        nodeGroup.append('title').text(child.label);
-      }
-
-      if (interactive) {
+      if (props.interactive) {
         nodeGroup
           .style('cursor', 'pointer')
           .on('mouseenter', function() {
-            setHoveredNode(child.id);
+            props.setHoveredNodeData(child);
             d3.select(this).select('circle')
               .transition()
               .duration(200)
-              .attr('r', 38)
+              .attr('r', 45)
               .attr('stroke-width', 3);
           })
           .on('mouseleave', function() {
-            setHoveredNode(null);
+            props.setHoveredNodeData(null);
             d3.select(this).select('circle')
               .transition()
               .duration(200)
-              .attr('r', 35)
+              .attr('r', 40)
               .attr('stroke-width', 2.5);
+          })
+          .on('click', (event) => {
+            event.stopPropagation();
+            props.setSelectedNodeData(child);
           });
-      }
-
-      // Show description on hover
-      if (child.description && hoveredNode === child.id) {
-        nodeGroup.append('foreignObject')
-          .attr('x', -80)
-          .attr('y', 45)
-          .attr('width', 160)
-          .attr('height', 50)
-          .append('xhtml:div')
-          .style('background', 'rgba(0,0,0,0.9)')
-          .style('color', '#fff')
-          .style('padding', '6px')
-          .style('border-radius', '4px')
-          .style('font-size', '10px')
-          .style('text-align', 'center')
-          .text(child.description);
       }
     });
   });
@@ -471,7 +496,7 @@ function wrapText(
     }
 
     // Add final line if not truncated
-    if (currentLine && tspans.length < maxLines) {
+    if (currentLine && tspans.length < maxLines && !wasTruncated) {
       const finalTspan = textSel.append('tspan')
         .attr('x', 0)
         .attr('y', 0)

@@ -56,22 +56,23 @@ Analyze the following summary text and determine the BEST infographic type to re
 
 ## Output Format:
 
-Return ONLY valid JSON matching this exact schema:
+Return ONLY valid JSON matching this schema:
 
 {
   "type": "mindmap" | "cycle" | "pyramid" | "timeline" | "comparison" | "process" | "hierarchy",
   "title": "Brief descriptive title (max 60 chars)",
   "subtitle": "Optional clarification (max 100 chars)",
   "confidence": 0.85,
-  "reasoning": "Brief explanation of why you chose this type (max 100 chars)",
+  "reasoning": "Brief explanation of why you chose this type",
   "nodes": [
     {
-      "id": "unique_snake_case_id",
+      "id": "unique_id",
       "label": "Node text (max 40 chars)",
-      "description": "Optional longer description (max 150 chars)",
+      "description": "Optional description",
       "level": 0,
       "position": 0,
-      "children": ["child_id1", "child_id2"],
+      "parentId": "optional_parent_id_for_easier_linking",
+      "children": ["optional_child_id1", "optional_child_id2"],
       "color": "#3b82f6"
     }
   ],
@@ -79,65 +80,19 @@ Return ONLY valid JSON matching this exact schema:
     {
       "from": "node_id_1",
       "to": "node_id_2",
-      "label": "Relationship label (optional, max 30 chars)",
-      "type": "arrow",
-      "bidirectional": false
+      "type": "arrow"
     }
   ]
 }
 
-## Type-Specific Rules:
-
-### For MINDMAP:
-- Exactly 1 central node (level=0)
-- 4-8 primary branches (level=1), each with meaningful color
-- 2-4 secondary nodes per primary branch (level=2)
-- Use children array to link primary nodes to their secondaries
-- Colors should be distinct and visually appealing (#3b82f6, #10b981, #f59e0b, #ef4444, #8b5cf6, #ec4899)
-
-### For CYCLE:
-- 3-6 nodes in circular arrangement (use position: 0, 1, 2... for ordering)
-- Each node connects to the next, last connects back to first
-- Include descriptive connection labels showing the flow
-- All connections should be type: "arrow"
-
-### For PYRAMID:
-- 3-5 hierarchical levels
-- Top level (level=0): 1 node
-- Each subsequent level should have more nodes than the one above
-- Use colors to differentiate levels (lighter at top, darker at base)
-
-### For TIMELINE:
-- Use position field for chronological ordering (0, 1, 2, ...)
-- Include dates or time periods in descriptions when available
-- Keep to 4-8 major events/milestones
-
-### For COMPARISON:
-- 2-4 items being compared (these are your main nodes at level=0)
-- 3-6 comparison attributes (level=1 nodes)
-- Link attributes to the items being compared using connections
-
-### For PROCESS:
-- 4-8 sequential steps (use position: 0, 1, 2... for ordering)
-- Each step connects to the next with arrow connections
-- Include brief action-oriented labels
-
-### For HIERARCHY:
-- Clear parent-child relationships using children array
-- Root node at level=0
-- Maximum 4 levels deep
-- Each node can have multiple children
-
 ## Important Guidelines:
 
-- **CRITICAL**: Every node MUST have both "id" and "label" fields
-- Keep all labels concise and readable (max 40 chars)
-- Use descriptive snake_case IDs (e.g., "central_concept", "branch_marketing", "step_planning")
-- Only include connections array when relationships need explicit definition (cycle, process, comparison)
-- Colors should be hex codes and visually harmonious
-- Confidence should reflect how well the content fits the chosen type (0.6-1.0)
-- If content fits multiple types, choose the one with highest clarity and impact
-- Avoid overly complex structures - simplicity is key for visual understanding
+- **NO EMOJIS**: Do NOT use emojis in any labels or descriptions.
+- **NO DUPLICATES**: Ensure all concepts are unique.
+- **Relationships**: You can use EITHER "children" array on parent nodes OR "parentId" on child nodes. You don't need both.
+- **Root Node**: For mindmaps/hierarchies, ensure there is ONE central node (level=0).
+- **Structure**: Create a rich, deep structure. Don't just list top-level items. Dive into details (level 2).
+- **IDs**: Use simple, unique IDs (e.g., "node_1", "node_2", "center").
 
 ## Summary Text to Analyze:
 
@@ -146,12 +101,9 @@ ${summaryText}
 ## Response:
 
 IMPORTANT: Return ONLY valid, well-formed JSON. 
-- No markdown code blocks (no \`\`\`)
+- No markdown code blocks
 - No trailing commas
-- No comments
 - All strings must use double quotes
-- Ensure all arrays and objects are properly closed
-- Test that your JSON is valid before responding
 
 Return the JSON now:`;
 }
@@ -166,12 +118,6 @@ A mind map has:
 - ONE central concept (the main idea) - level 0
 - 5-8 main branches (key topics) - level 1
 - 2-4 sub-concepts per main branch - level 2
-
-Rules:
-- Use clear, concise labels (max 40 characters)
-- Suggest distinct colors for visual grouping
-- Use descriptive snake_case IDs
-- Link sub-concepts to their parent branches using the children array
 
 Output ONLY this JSON format:
 
@@ -189,31 +135,31 @@ Output ONLY this JSON format:
       "color": "#3b82f6"
     },
     {
-      "id": "branch_name",
+      "id": "branch_1",
       "label": "Main Branch Label",
       "level": 1,
-      "children": ["sub_1", "sub_2"],
+      "parentId": "center",
       "color": "#10b981"
     },
     {
       "id": "sub_1",
       "label": "Sub Concept",
       "level": 2,
-      "description": "Optional longer description"
+      "parentId": "branch_1",
+      "description": "Optional description"
     }
   ]
 }
 
+Key Rules:
+1. Use "parentId" to link nodes (e.g. sub-node points to branch ID, branch points to center ID).
+2. Ensure there is EXACTLY ONE Level 0 node.
+3. Keep labels concise (under 40 chars).
+
 Summary Text:
 ${summaryText}
 
-IMPORTANT: Return ONLY valid JSON with:
-- No markdown code blocks
-- No trailing commas
-- Double quotes for all strings
-- Properly closed brackets
-
-Return the JSON now:`;
+IMPORTANT: Return ONLY valid JSON. No markdown.`;
 }
 
 /**
@@ -242,7 +188,8 @@ Return ONLY valid JSON in this format:
       "id": "node_1",
       "label": "Node Label",
       "level": 0,
-      "position": 0
+      "position": 0,
+      "parentId": "optional_parent_id"
     }
   ],
   "connections": [
@@ -254,18 +201,15 @@ Return ONLY valid JSON in this format:
   ]
 }
 
-CRITICAL: Every node MUST have an "id" field!
+Guidelines:
+- Use "parentId" to establish hierarchy where applicable.
+- Ensure every node has a unique "id".
+- Keep labels concise.
 
 Summary Text:
 ${summaryText}
 
-IMPORTANT: Return ONLY valid JSON with:
-- No markdown code blocks (no \`\`\`)
-- No trailing commas
-- Double quotes for all strings
-- All arrays and objects properly closed
-
-Return the JSON now:`;
+IMPORTANT: Return ONLY valid JSON. No markdown.`;
 }
 
 /**
@@ -372,14 +316,16 @@ export function extractAndValidateJSON(responseText: string): any | null {
       }
     }
     
-    // Step 4: Validate structure
+  // Step 5: Repair and Normalize data
+    // This is the critical fix for "bad" infographics - we accept imperfect AI output
+    // and algorithmically fix it (linking orphans, supporting parentId, etc)
+    repairInfographicData(parsed);
+
+    // Step 6: Final validation
     if (!validateInfographicStructure(parsed)) {
-      console.error('❌ Invalid infographic structure');
+      console.error('❌ Invalid infographic structure even after repair');
       return tryAlternativeParsing(responseText);
     }
-    
-    // Step 5: Ensure required fields
-    normalizeInfographicData(parsed);
     
     console.log('✓ Validation complete, nodes:', parsed.nodes?.length);
     return parsed;
@@ -653,14 +599,181 @@ function generateNodeId(label: string, index: number): string {
 }
 
 /**
- * Normalize infographic data, adding missing fields
+ * Repair and normalize infographic data
+ * This is the "secret sauce" that makes AI generation robust
  */
-function normalizeInfographicData(parsed: any): void {
+function repairInfographicData(parsed: any): void {
+  // 1. Ensure basic fields
   if (!parsed.title) parsed.title = 'Untitled Infographic';
   if (!parsed.confidence) parsed.confidence = 0.7;
   if (!parsed.connections) parsed.connections = [];
   if (!parsed.subtitle) parsed.subtitle = '';
   if (!parsed.reasoning) parsed.reasoning = '';
+  
+  if (!parsed.nodes || !Array.isArray(parsed.nodes)) {
+    parsed.nodes = [];
+    return;
+  }
+
+  // 2. Ensure all nodes have IDs and Labels, and clean them
+  const labelMap = new Map<string, any>(); // For deduplication
+  const uniqueNodes: any[] = [];
+
+  parsed.nodes.forEach((node: any, i: number) => {
+    if (!node.label) node.label = `Node ${i + 1}`;
+    
+    // Clean label: Remove emojis, markdown, and extra whitespace
+    // Remove emojis (ranges for common emojis)
+    node.label = node.label.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
+    // Remove markdown bold/italic
+    node.label = node.label.replace(/[*_#`~]/g, '');
+    // Trim
+    node.label = node.label.trim();
+    
+    // Check for duplicates
+    const normalizedLabel = node.label.toLowerCase();
+    if (labelMap.has(normalizedLabel)) {
+      // Merge logic: If this duplicate has children/connections, move them to the original
+      const original = labelMap.get(normalizedLabel);
+      
+      // Merge children
+      if (node.children && Array.isArray(node.children)) {
+        if (!original.children) original.children = [];
+        original.children.push(...node.children);
+      }
+      
+      // Don't add to uniqueNodes
+      console.log(`🔧 Repair: Merged duplicate node "${node.label}"`);
+      return;
+    }
+    
+    labelMap.set(normalizedLabel, node);
+    
+    if (!node.id) node.id = generateNodeId(node.label, i);
+    // Ensure level is a number
+    if (typeof node.level !== 'number') node.level = 1;
+    
+    uniqueNodes.push(node);
+  });
+  
+  parsed.nodes = uniqueNodes;
+
+  // 3. Ensure distinct IDs (re-check after deduplication)
+  const idSet = new Set();
+  parsed.nodes.forEach((node: any, i: number) => {
+    if (idSet.has(node.id)) {
+      node.id = `${node.id}_${i}`; // Make unique
+    }
+    idSet.add(node.id);
+  });
+
+  // 4. Ensure EXACTLY ONE Level 0 (Center) node
+  const level0 = parsed.nodes.filter((n: any) => n.level === 0);
+  
+  if (level0.length === 0) {
+    // Promote first node to center
+    if (parsed.nodes.length > 0) {
+      console.log('🔧 Repair: Promoting first node to Level 0 (Center)');
+      parsed.nodes[0].level = 0;
+      parsed.nodes[0].color = '#3b82f6'; // Standard center color
+    }
+  } else if (level0.length > 1) {
+    // Demote extras to Level 1
+    console.log('🔧 Repair: Demoting extra Level 0 nodes to Level 1');
+    for (let i = 1; i < level0.length; i++) {
+      level0[i].level = 1;
+    }
+  }
+
+  // 5. Build relationships (The most critical part)
+  // We support both 'children' arrays AND 'parentId' references
+  
+  // First, index all nodes by ID for fast lookup
+  const nodeMap = new Map(parsed.nodes.map((n: any) => [n.id, n]));
+  
+  // Track valid IDs to filter non-existent children
+  const validIds = new Set(parsed.nodes.map((n: any) => n.id));
+
+  // 5a. Handle 'parentId' if present (AI often prefers this)
+  parsed.nodes.forEach((node: any) => {
+    if (node.parentId && validIds.has(node.parentId)) {
+      const parent = nodeMap.get(node.parentId);
+      if (parent) {
+        if (!parent.children) parent.children = [];
+        if (!parent.children.includes(node.id)) {
+          parent.children.push(node.id);
+        }
+      }
+    }
+  });
+
+  // 5b. Fix orphan nodes (Nodes with Level > 0 but no parent claiming them)
+  // This fixes the "no sub-branches" issue where AI makes Level 2 nodes but forgets to link them
+  
+  // Find all nodes that are NOT claimed as children by anyone
+  const claimedChildren = new Set<string>();
+  parsed.nodes.forEach((node: any) => {
+    if (node.children && Array.isArray(node.children)) {
+      node.children.forEach((childId: string) => {
+        if (validIds.has(childId)) {
+          claimedChildren.add(childId);
+        }
+      });
+    } else {
+      node.children = []; // Ensure array exists
+    }
+  });
+
+  // Link orphans to the nearest valid parent of (level - 1)
+  // We iterate through nodes to maintain "context" (assuming AI outputs in logical order)
+  let lastLevel0: any = parsed.nodes.find((n: any) => n.level === 0);
+  let lastLevel1: any = null;
+  let lastLevel2: any = null;
+
+  parsed.nodes.forEach((node: any) => {
+    // Update context
+    if (node.level === 0) lastLevel0 = node;
+    if (node.level === 1) lastLevel1 = node;
+    if (node.level === 2) lastLevel2 = node;
+
+    // Skip center node
+    if (node.level === 0) return;
+
+    // If node is already claimed, we're good
+    if (claimedChildren.has(node.id)) return;
+
+    // ORPHAN DETECTED - Let's adopt it
+    console.log(`🔧 Repair: Linking orphan node "${node.label}" (Level ${node.level})`);
+
+    if (node.level === 1) {
+      // Level 1 nodes attach to Center
+      if (lastLevel0) {
+        lastLevel0.children.push(node.id);
+        claimedChildren.add(node.id);
+      }
+    } else if (node.level === 2) {
+      // Level 2 nodes attach to last Level 1
+      if (lastLevel1) {
+        lastLevel1.children.push(node.id);
+        claimedChildren.add(node.id);
+      } else if (lastLevel0) {
+        // Fallback to center if no level 1 seen yet
+        node.level = 1; // Demote to level 1
+        lastLevel0.children.push(node.id);
+        claimedChildren.add(node.id);
+      }
+    } else if (node.level >= 3) {
+      // Deeper nodes attach to last Level 2
+      if (lastLevel2) {
+        lastLevel2.children.push(node.id);
+        claimedChildren.add(node.id);
+      } else if (lastLevel1) {
+        node.level = 2;
+        lastLevel1.children.push(node.id);
+        claimedChildren.add(node.id);
+      }
+    }
+  });
 }
 
 /**
@@ -891,47 +1004,112 @@ function parseNodesArray(arrayStr: string): any[] {
 export function generateFallbackInfographic(summaryText: string): any {
   console.log('=== Generating fallback infographic structure ===');
   
-  // Extract key sentences or phrases from the summary
+  // Extract clean sentences
   const sentences = summaryText
     .split(/[.!?]+/)
     .map(s => s.trim())
-    .filter(s => s.length > 10 && s.length < 150)
-    .slice(0, 8); // Take up to 8 sentences
-  
-  if (sentences.length === 0) {
-    // Absolute fallback - split by words
-    const words = summaryText.split(/\s+/).filter(w => w.length > 3).slice(0, 8);
-    sentences.push(...words);
+    .filter(s => s.length > 5 && s.length < 200); // Filter out noise
+    
+  // Need at least a few sentences
+  if (sentences.length < 3) {
+    const words = summaryText.split(/\s+/).filter(w => w.length > 4);
+    // If really short, just use words
+    sentences.push(...words.slice(0, 8));
   }
   
-  // Create nodes from sentences
   const nodes: any[] = [];
   
-  // Central node
+  // 1. Center Node (First sentence or title)
+  const centerText = sentences[0] || 'Summary Overview';
+  const centerLabel = centerText.length > 35 ? centerText.substring(0, 35) + '...' : centerText;
+  
   nodes.push({
     id: 'center',
-    label: sentences[0]?.substring(0, 40) || 'Main Concept',
+    label: centerLabel,
     level: 0,
-    color: '#3b82f6'
+    color: '#3b82f6',
+    description: centerText.length > 35 ? centerText : undefined,
+    children: []
   });
+
+  // 2. Identify Branches (Level 1)
+  // We'll take the next 3-5 sentences as main branches
+  const branchCount = Math.min(5, Math.max(3, Math.floor(sentences.length / 3)));
+  const branchSentences = sentences.slice(1, 1 + branchCount);
   
-  // Create branch nodes from remaining sentences
   const colors = ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
-  sentences.slice(1, 7).forEach((sentence, idx) => {
+  
+  branchSentences.forEach((text, i) => {
+    const id = `branch_${i}`;
+    const label = text.length > 30 ? text.substring(0, 30) + '...' : text;
+    
     nodes.push({
-      id: `branch_${idx}`,
-      label: sentence.substring(0, 40),
+      id,
+      label,
       level: 1,
-      color: colors[idx % colors.length]
+      color: colors[i % colors.length],
+      description: text.length > 30 ? text : undefined,
+      children: []
     });
+    
+    // Link to center
+    nodes[0].children.push(id);
   });
+
+  // 3. Create Sub-branches (Level 2)
+  // Distribute remaining sentences among branches
+  const remainingSentences = sentences.slice(1 + branchCount);
+  
+  remainingSentences.forEach((text, i) => {
+    // Round-robin assignment to branches
+    const branchIndex = i % branchSentences.length;
+    const branchId = `branch_${branchIndex}`;
+    const parent = nodes.find(n => n.id === branchId);
+    
+    if (parent) {
+      const id = `sub_${i}`;
+      const label = text.length > 25 ? text.substring(0, 25) + '...' : text;
+      
+      nodes.push({
+        id,
+        label,
+        level: 2,
+        description: text.length > 25 ? text : undefined
+      });
+      
+      parent.children.push(id);
+    }
+  });
+
+  // If we have very few nodes, try to extract keywords from branches to make sub-nodes
+  if (remainingSentences.length === 0 && branchSentences.length > 0) {
+    branchSentences.forEach((text, i) => {
+      const parent = nodes.find(n => n.id === `branch_${i}`);
+      if (!parent) return;
+      
+      // Extract comma-separated parts or long words
+      const parts = text.split(/,|;/).map(p => p.trim()).filter(p => p.length > 4);
+      if (parts.length > 1) {
+        // Use parts as sub-nodes
+        parts.slice(1).forEach((part, j) => {
+          const id = `sub_extracted_${i}_${j}`;
+          nodes.push({
+            id,
+            label: part.substring(0, 25),
+            level: 2
+          });
+          parent.children.push(id);
+        });
+      }
+    });
+  }
   
   return {
     type: 'mindmap',
     title: 'Summary Overview',
-    subtitle: 'Automatically generated structure',
-    confidence: 0.3,
-    reasoning: 'Fallback structure - AI parsing failed',
+    subtitle: 'Generated from key points',
+    confidence: 0.5,
+    reasoning: 'Fallback structure with hierarchy',
     nodes: nodes
   };
 }
