@@ -105,7 +105,7 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, 
               aria-label="Switch to Graph View (Premium)"
             >
               <Network className="subtab-icon" />
-              Graph View
+              Map View
             </button>
           </div>
         </div>

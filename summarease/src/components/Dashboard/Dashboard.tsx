@@ -9,6 +9,8 @@ import { SettingsTab } from './tabs/SettingsTab'
 import { ContentViewer } from '../ContentViewer/ContentViewer'
 import { TrialExpiringModal } from '../Subscription/TrialExpiringModal'
 import { TrialAcknowledgment } from '../Subscription/TrialAcknowledgment'
+import { OnboardingTour } from '../Onboarding/OnboardingTour'
+import { useAuth } from '../Auth/AuthProvider'
 import { useSubscription } from '../../contexts/SubscriptionContext'
 import { useTrialNotifications } from '../../hooks/useTrialNotifications'
 import { type FileWithMetadata } from '../../lib/api'
@@ -19,6 +21,7 @@ import { type DocumentItem } from '../DocumentList'
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { subscription, isTrialing, canAccessPremiumFeatures, localTrialStatus, localTrialExpiresAt } = useSubscription()
   const { showModal, daysLeft, closeModal } = useTrialNotifications()
   
@@ -26,6 +29,72 @@ export const Dashboard: React.FC = () => {
   const [showTrialAcknowledgment, setShowTrialAcknowledgment] = useState(false)
   const [selectedFile, setSelectedFile] = useState<FileWithMetadata | null>(null)
   const [showContentViewer, setShowContentViewer] = useState(false)
+  
+  // Onboarding (one-time per user)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false)
+
+  const onboardingStorageKey = React.useMemo(() => {
+    if (!user?.id) return null
+    return `sat-brain:onboarding:v1:${user.id}`
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!onboardingStorageKey) return
+
+    // Reset the check when a new user signs in.
+    setHasCheckedOnboarding(false)
+
+    try {
+      const seen = localStorage.getItem(onboardingStorageKey) === 'true'
+      setShowOnboarding(!seen)
+    } catch (e) {
+      console.error('Error reading onboarding flag', e)
+      setShowOnboarding(false)
+    } finally {
+      setHasCheckedOnboarding(true)
+    }
+  }, [onboardingStorageKey])
+
+  const markOnboardingSeenAndClose = () => {
+    try {
+      if (onboardingStorageKey) {
+        localStorage.setItem(onboardingStorageKey, 'true')
+      }
+    } catch (e) {
+      console.error('Error setting onboarding flag', e)
+    }
+
+    setShowOnboarding(false)
+  }
+
+  // If onboarding is open, ensure other overlays don’t stack.
+  useEffect(() => {
+    if (showOnboarding) {
+      setShowTrialAcknowledgment(false)
+    }
+  }, [showOnboarding])
+
+  // Decide when to show the one-time trial acknowledgment overlay (after onboarding)
+  useEffect(() => {
+    if (!isTrialing) {
+      setShowTrialAcknowledgment(false)
+      return
+    }
+
+    // Wait until we know whether onboarding should show for this user.
+    if (!hasCheckedOnboarding) return
+    if (showOnboarding) return
+
+    try {
+      const acknowledged = localStorage.getItem('trial_acknowledged_v1') === 'true'
+      if (!acknowledged) {
+        setShowTrialAcknowledgment(true)
+      }
+    } catch (e) {
+      console.error('Error reading trial acknowledgment flag', e)
+    }
+  }, [isTrialing, hasCheckedOnboarding, showOnboarding])
   
   // Track upgrade banner dismissal
   const [isBannerDismissed, setIsBannerDismissed] = useState(() => {
@@ -42,19 +111,6 @@ export const Dashboard: React.FC = () => {
 
   // Show Local Trial Banner if active
   const showLocalTrialBanner = localTrialStatus === 'active';
-
-  // Decide when to show the one-time trial acknowledgment overlay
-  useEffect(() => {
-    if (!isTrialing) return
-    try {
-      const acknowledged = localStorage.getItem('trial_acknowledged_v1') === 'true'
-      if (!acknowledged) {
-        setShowTrialAcknowledgment(true)
-      }
-    } catch (e) {
-      console.error('Error reading trial acknowledgment flag', e)
-    }
-  }, [isTrialing])
 
   const handleTrialAcknowledge = () => {
     try {
@@ -98,7 +154,8 @@ export const Dashboard: React.FC = () => {
     setShowContentViewer(true)
   }
 
-  const handleFileDelete = (fileId: string) => {
+  const handleFileDelete = (_fileId: string) => {
+    void _fileId
     // File will be deleted from the backend, just reset the viewer
     setShowContentViewer(false)
     setSelectedFile(null)
@@ -247,7 +304,14 @@ export const Dashboard: React.FC = () => {
     <div className="dashboard">
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
       
-      {showTrialAcknowledgment && (
+      {showOnboarding && (
+        <OnboardingTour
+          onComplete={markOnboardingSeenAndClose}
+          onSkip={markOnboardingSeenAndClose}
+        />
+      )}
+
+      {showTrialAcknowledgment && !showOnboarding && (
         <TrialAcknowledgment onAcknowledge={handleTrialAcknowledge} />
       )}
       
