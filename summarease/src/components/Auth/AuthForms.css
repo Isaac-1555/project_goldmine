@@ -20,6 +20,7 @@
   pointer-events: none;
   filter: blur(60px);
   opacity: 0.35;
+  z-index: 0;
 }
 .auth-container::before {
   top: -22%;
@@ -34,8 +35,63 @@
   background: radial-gradient(closest-side, rgba(99,102,241,0.42), rgba(18,18,27,0));
 }
 
+.auth-back {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+  z-index: 2;
+}
+
+.auth-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.04);
+  color: #e5e7eb;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.auth-back-button svg {
+  width: 16px;
+  height: 16px;
+  color: #a8b1ff;
+}
+
+.auth-back-button:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.22);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.auth-back-button:focus-visible {
+  outline: none;
+  border-color: rgba(139,92,246,0.65);
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.18);
+}
+
+@media (max-width: 480px) {
+  .auth-back {
+    top: 0.75rem;
+    left: 0.75rem;
+  }
+
+  .auth-back-button {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.825rem;
+  }
+}
+
 .auth-card {
   position: relative;
+  z-index: 1;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 16px;

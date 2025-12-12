@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthProvider'
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import './AuthForms.css'
 
 interface SignUpFormProps {
@@ -51,6 +51,12 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
   if (success) {
     return (
       <div className="auth-container">
+        <div className="auth-back">
+          <Link to="/" className="auth-back-button" aria-label="Back to Landing Page">
+            <ArrowLeft />
+            Back to Landing
+          </Link>
+        </div>
         <div className="auth-card">
           <div className="auth-header">
             <h1>Confirm your email to start your trial</h1>
@@ -79,6 +85,12 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onToggleMode }) => {
 
   return (
     <div className="auth-container">
+      <div className="auth-back">
+        <Link to="/" className="auth-back-button" aria-label="Back to Landing Page">
+          <ArrowLeft />
+          Back to Landing
+        </Link>
+      </div>
       <div className="auth-card">
         <div className="auth-header">
           <h1>Create your account</h1>

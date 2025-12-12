@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from './AuthProvider'
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import './AuthForms.css'
 
 interface LoginFormProps {
@@ -31,6 +32,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
 
   return (
     <div className="auth-container">
+      <div className="auth-back">
+        <Link to="/" className="auth-back-button" aria-label="Back to Landing Page">
+          <ArrowLeft />
+          Back to Landing
+        </Link>
+      </div>
       <div className="auth-card">
         <div className="auth-header">
           <h1>Welcome back</h1>
