@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Mic, Upload, Save, Check, Play, Pause, Square, Plus, X as XIcon, Brain } from 'lucide-react'
 import { FileUploadModal } from '../../Upload/FileUploadModal'
-import { createUnifiedContent, updateNotebookContent, addTagsToSummary } from '../../../lib/api'
+import { createUnifiedContent, updateNotebookContent, addTagsToSummary, type Tag } from '../../../lib/api'
 import { sanitizeTagName, isJunkTagName } from '../../../lib/tagUtils'
 import { supabase } from '../../../lib/supabase'
 import { processAudioTranscript } from '../../../lib/audioProcessor'
-import type { SummaryConfig } from '../../../types/summaryTypes'
-import { LiveTranscriber, getFallbackTranscript } from '../../../lib/webSpeechTranscription'
+import { LiveTranscriber } from '../../../lib/webSpeechTranscription'
 import { transcribeLecture } from '../../../lib/transcriptionService'
 import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
 import { useNotebookState } from '../../../hooks/useNotebookState'
@@ -14,7 +13,26 @@ import { ResizableDivider } from '../../ResizableDivider'
 import { NoteTaking } from '../../NoteTaking'
 import { DocumentList, type DocumentItem } from '../../DocumentList'
 import { FolderSelector } from '../../FolderSelector'
+import {
+  getDoneLimitStatus,
+  NOTEBOOK_DONE_LIMIT,
+  recordDoneSuccess,
+} from '../../../lib/notebookDoneRateLimit'
 import './RecordTab.css'
+
+const MAX_NOTEBOOK_SUBMISSION_ITEMS = 10
+const MAX_NOTEBOOK_SUBMISSION_FILE_BYTES = 50 * 1024 * 1024 // 50MB
+
+function formatRemainingTime(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}m ${seconds.toString().padStart(2, '0')}s`
+}
+
+function formatMB(bytes: number): string {
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`
+}
 
 // Helper function to save summary and tags
 async function saveProcessedContent(fileId: string, summary: string, tags: string[]) {
@@ -24,7 +42,7 @@ async function saveProcessedContent(fileId: string, summary: string, tags: strin
     .insert({
       file_id: fileId,
       summary_text: summary,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     })
     .select()
     .single()
@@ -33,56 +51,76 @@ async function saveProcessedContent(fileId: string, summary: string, tags: strin
     throw new Error('Failed to save summary')
   }
 
+  const tagErrors: string[] = []
+
   // Save tags
   for (const tagName of tags) {
-    try {
-      // Check if tag exists, create if not
-      let { data: existingTag, error: tagSelectError } = await supabase
-        .from('tags')
-        .select('id')
-        .eq('name', tagName)
-        .maybeSingle()
+    // Check if tag exists, create if not
+    const { data: existingTag, error: tagSelectError } = await supabase
+      .from('tags')
+      .select('id')
+      .eq('name', tagName)
+      .maybeSingle()
 
-      if (tagSelectError) {
-        console.error('Error checking tag:', tagSelectError)
+    if (tagSelectError) {
+      console.error('Error checking tag:', tagSelectError)
+      tagErrors.push(tagName)
+      continue
+    }
+
+    let tagId: string | null = null
+
+    if (existingTag) {
+      tagId = existingTag.id
+    } else {
+      const { data: newTag, error: tagInsertError } = await supabase
+        .from('tags')
+        .insert({ name: tagName })
+        .select('id')
+        .single()
+
+      if (tagInsertError) {
+        console.error('Error creating tag:', tagInsertError)
+        tagErrors.push(tagName)
         continue
       }
+      tagId = newTag.id
+    }
 
-      let tagId: string
+    if (!tagId) {
+      tagErrors.push(tagName)
+      continue
+    }
 
-      if (existingTag) {
-        tagId = existingTag.id
-      } else {
-        const { data: newTag, error: tagInsertError } = await supabase
-          .from('tags')
-          .insert({ name: tagName })
-          .select('id')
-          .single()
+    // Link tag to summary
+    const { error: linkError } = await supabase
+      .from('summary_tags')
+      .insert({
+        summary_id: summaryData.id,
+        tag_id: tagId,
+      })
 
-        if (tagInsertError) {
-          console.error('Error creating tag:', tagInsertError)
-          continue
-        }
-        tagId = newTag.id
-      }
-
-      // Link tag to summary
-      await supabase
-        .from('summary_tags')
-        .insert({
-          summary_id: summaryData.id,
-          tag_id: tagId
-        })
-    } catch (error) {
-      console.error('Error saving tag:', tagName, error)
+    if (linkError) {
+      console.error('Error linking tag to summary:', tagName, linkError)
+      tagErrors.push(tagName)
+      continue
     }
   }
 
   // Update file status to completed
-  await supabase
+  const { error: statusError } = await supabase
     .from('files')
     .update({ status: 'completed' })
     .eq('id', fileId)
+
+  if (statusError) {
+    throw new Error('Failed to finalize notebook upload')
+  }
+
+  // Surface tag issues so callers can decide whether to count this as a full success.
+  if (tagErrors.length > 0) {
+    throw new Error(`Failed to save ${tagErrors.length} tag(s)`)
+  }
 }
 
 interface NotebookTabProps {
@@ -158,6 +196,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       if (!Array.isArray(all) || all.length === 0) return
 
       // Pick the most recently saved local notebook
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const latest = [...all].sort((a: any, b: any) => {
         const aTime = new Date(a.lastSaved || a.last_saved || 0).getTime()
         const bTime = new Date(b.lastSaved || b.last_saved || 0).getTime()
@@ -178,6 +217,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       setNotes(latest.notes || '')
 
       if (Array.isArray(latest.documents)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const restoredDocs: DocumentItem[] = latest.documents.map((doc: any) => ({
           id: doc.id,
           name: doc.name,
@@ -193,11 +233,13 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         // Backward compatibility for older shapes that stored audioTranscript/uploadedFiles separately
         const fallbackDocs: DocumentItem[] = []
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (typeof (latest as any).audioTranscript === 'string' && (latest as any).audioTranscript.trim()) {
           fallbackDocs.push({
             id: `transcript_local_${Date.now()}`,
             name: 'Transcript',
             type: 'transcript',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             content: (latest as any).audioTranscript,
             size: undefined,
             file: undefined,
@@ -205,7 +247,9 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           })
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (Array.isArray((latest as any).uploadedFiles)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (latest as any).uploadedFiles.forEach((f: any, index: number) => {
             fallbackDocs.push({
               id: f.id || `file_local_${Date.now()}_${index}`,
@@ -567,6 +611,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         const existingRaw = localStorage.getItem('sat-brain-local-notebooks') || '[]'
         const existingLocal = JSON.parse(existingRaw)
         if (Array.isArray(existingLocal)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const filtered = existingLocal.filter((item: any) => item.id !== localSaveId)
           localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(filtered))
         }
@@ -670,6 +715,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       
       // Save to localStorage
       const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existingIndex = existingLocal.findIndex((item: any) => item.id === localData.id)
       
       if (existingIndex >= 0) {
@@ -701,6 +747,51 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     if (!hasContent) {
       alert('Please add some content before saving.')
       return
+    }
+
+    // Enforce per-submission limits
+    if (documents.length > MAX_NOTEBOOK_SUBMISSION_ITEMS) {
+      const over = documents.length - MAX_NOTEBOOK_SUBMISSION_ITEMS
+      showNotification(
+        `Too many items attached (max ${MAX_NOTEBOOK_SUBMISSION_ITEMS}). Please remove ${over} item(s) to continue.`
+      )
+      return
+    }
+
+    const totalFileBytes = documents.reduce((sum, doc) => {
+      if (doc.type === 'file' && doc.file) return sum + doc.file.size
+      return sum
+    }, 0)
+
+    if (totalFileBytes > MAX_NOTEBOOK_SUBMISSION_FILE_BYTES) {
+      const over = totalFileBytes - MAX_NOTEBOOK_SUBMISSION_FILE_BYTES
+      showNotification(
+        `Attachments exceed 50MB (currently ${formatMB(totalFileBytes)}). Remove ~${formatMB(over)} to continue.`
+      )
+      return
+    }
+
+    // Rate limit (skip for local-only notebooks which do not run the LLM pipeline)
+    const isLocalNotebookEdit =
+      mode === 'edit' && !!editingFileId && editingFileId.startsWith('local_')
+
+    let rateLimitUserId: string | null = null
+    if (!isLocalNotebookEdit) {
+      const { data: authData } = await supabase.auth.getUser()
+      rateLimitUserId = authData.user?.id || null
+
+      if (!rateLimitUserId) {
+        showNotification('Please log in to continue.')
+        return
+      }
+
+      const limitStatus = getDoneLimitStatus(rateLimitUserId, Date.now())
+      if (!limitStatus.allowed) {
+        showNotification(
+          `Upload limit reached (${NOTEBOOK_DONE_LIMIT}/hour). Try again in ${formatRemainingTime(limitStatus.remainingMs || 0)}.`
+        )
+        return
+      }
     }
 
     // Warn if there are "metadata-only" file documents that were restored from a previous session
@@ -749,6 +840,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           
           // Update in localStorage
           const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const existingIndex = existingLocal.findIndex((item: any) => item.id === editingFileId)
           
           if (existingIndex >= 0) {
@@ -815,7 +907,16 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
               .filter(t => t && !isJunkTagName(t))
             )).slice(0, MAX_TAGS)
             if (summaryId && finalTags.length) {
-              await addTagsToSummary(summaryId, finalTags as any)
+              const tagObjects: Tag[] = finalTags.map((name) => ({
+                name,
+                type: 'general',
+              }))
+              await addTagsToSummary(summaryId, tagObjects)
+            }
+
+            // Count only when the full Done/Update pipeline succeeded.
+            if (rateLimitUserId) {
+              recordDoneSuccess(rateLimitUserId)
             }
           } catch (error) {
             console.error('Failed to generate/update summary:', error)
@@ -867,6 +968,12 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
               .filter(t => t && !isJunkTagName(t))
             )).slice(0, MAX_TAGS)
             await saveProcessedContent(fileId, summary, finalTags)
+
+            // Count only when the full Done/Update pipeline succeeded.
+            if (rateLimitUserId) {
+              recordDoneSuccess(rateLimitUserId)
+            }
+
             console.log('✅ Summary generated and saved successfully')
           } catch (error) {
             console.error('Failed to generate summary:', error)
@@ -877,6 +984,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         if (localSaveId) {
           try {
             const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const filtered = existingLocal.filter((item: any) => item.id !== localSaveId)
             localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(filtered))
           } catch (error) {
