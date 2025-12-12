@@ -822,6 +822,46 @@
   animation: slide-in-right 0.3s ease-out;
 }
 
+.notification-toast.notification-toast--confirm {
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  border: 1px solid var(--border-primary);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.35);
+}
+
+.notification-toast__message {
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.notification-toast__subtext {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-inverse);
+}
+
+.notification-toast__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+
+.notification-toast__actions .btn {
+  box-shadow: none;
+}
+
+/* Make outline buttons actually look like outline buttons on dark backgrounds */
+.notification-toast.notification-toast--confirm .notification-toast__actions .btn-outline {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+}
+
+.notification-toast.notification-toast--confirm .notification-toast__actions .btn-outline:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
 @keyframes slide-in-right {
   from {
     transform: translateX(100%);

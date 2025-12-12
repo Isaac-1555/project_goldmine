@@ -135,6 +135,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   
   // Toast notification state
   const [notification, setNotification] = useState<string | null>(null)
+  const [confirmNewNotebookOpen, setConfirmNewNotebookOpen] = useState(false)
   
   // Restore latest local notebook draft on initial mount (create mode only)
   useEffect(() => {
@@ -559,16 +560,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     return Boolean(title.trim() || notes.trim() || documents.length > 0)
   }
 
-  const handleNewNotebook = () => {
-    if (mode !== 'create') return
-
-    if (hasNotebookContent()) {
-      const confirmed = window.confirm(
-        'Start a new notebook? This will clear the current title, notes, transcripts, and locally saved attachments for this draft.'
-      )
-      if (!confirmed) return
-    }
-
+  const startNewNotebook = () => {
     // Remove this draft from localStorage collections
     try {
       if (localSaveId) {
@@ -624,6 +616,18 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     setShowUploadModal(false)
 
     showNotification('Started a new notebook')
+  }
+
+  const handleNewNotebook = () => {
+    if (mode !== 'create') return
+
+    if (hasNotebookContent()) {
+      setNotification(null)
+      setConfirmNewNotebookOpen(true)
+      return
+    }
+
+    startNewNotebook()
   }
 
   const handleFileUpload = (files: File[]) => {
@@ -1156,11 +1160,39 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
 
   return (
     <div className="record-tab">
-      {/* Notification Toast */}
-      {notification && (
-        <div className="notification-toast">
-          {notification}
+      {/* Notification Toasts */}
+      {confirmNewNotebookOpen ? (
+        <div className="notification-toast notification-toast--confirm" role="alertdialog" aria-live="polite">
+          <div className="notification-toast__message">Start a new notebook?</div>
+          <div className="notification-toast__subtext">
+            This will clear the current title, notes, transcripts, and locally saved attachments for this draft.
+          </div>
+          <div className="notification-toast__actions">
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => setConfirmNewNotebookOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => {
+                setConfirmNewNotebookOpen(false)
+                startNewNotebook()
+              }}
+            >
+              OK
+            </button>
+          </div>
         </div>
+      ) : (
+        notification && (
+          <div className="notification-toast">
+            {notification}
+          </div>
+        )
       )}
       
       <ResizableDivider
