@@ -244,9 +244,9 @@ export const Dashboard: React.FC = () => {
         notesHtml: localNotebook.notes || '',
         transcriptText: '', // Will be extracted from documents if any transcript exists
         documents,
-        tags: [], // Local notebooks don't store tags separately yet
+        tags: Array.isArray(localNotebook.customTags) ? localNotebook.customTags : [],
         summaryId: undefined, // Local notebooks don't have summaries
-        folderId: null, // Local notebooks don't support folders yet
+        folderId: localNotebook.selectedFolderId ?? null,
       })
       setActiveTab('notebook')
     } catch (e) {

@@ -1,0 +1,106 @@
+/* Radix Toast styling */
+.toast-viewport {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 420px;
+  max-width: calc(100vw - 2rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  outline: none;
+}
+
+.toast-root {
+  position: relative;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-left: 4px solid var(--accent-primary);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+.toast-root[data-variant='success'] { border-left-color: var(--color-success); }
+.toast-root[data-variant='error'] { border-left-color: var(--color-error); }
+.toast-root[data-variant='warning'] { border-left-color: var(--color-warning); }
+.toast-root[data-variant='info'] { border-left-color: var(--color-info); }
+.toast-root[data-variant='confirm'] { border-left-color: var(--accent-primary); }
+
+.toast-root[data-state='open'] {
+  animation: toast-slide-in 180ms ease-out;
+}
+
+.toast-root[data-state='closed'] {
+  animation: toast-slide-out 140ms ease-in;
+}
+
+@keyframes toast-slide-in {
+  from { transform: translateX(18px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes toast-slide-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(18px); opacity: 0; }
+}
+
+.toast-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 30px; /* space for close button */
+}
+
+.toast-title {
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.toast-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.toast-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 6px;
+}
+
+.toast-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.toast-close:hover {
+  background: var(--bg-tertiary);
+}
+
+@media (max-width: 768px) {
+  .toast-viewport {
+    right: 1rem;
+    top: 1rem;
+    width: calc(100vw - 2rem);
+  }
+}

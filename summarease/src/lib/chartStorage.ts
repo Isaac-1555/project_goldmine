@@ -13,7 +13,11 @@ function loadAll(): Record<string, ChartSpec> {
 }
 
 function saveAll(map: Record<string, ChartSpec>) {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(map)) } catch {}
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(map))
+  } catch {
+    // ignore
+  }
 }
 
 export function getChartSpec(summaryId: string): ChartSpec | null {

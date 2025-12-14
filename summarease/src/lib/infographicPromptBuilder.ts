@@ -689,7 +689,7 @@ function repairInfographicData(parsed: any): void {
   // We support both 'children' arrays AND 'parentId' references
   
   // First, index all nodes by ID for fast lookup
-  const nodeMap = new Map(parsed.nodes.map((n: any) => [n.id, n]));
+  const nodeMap = new Map<string, any>(parsed.nodes.map((n: any) => [n.id, n]));
   
   // Track valid IDs to filter non-existent children
   const validIds = new Set(parsed.nodes.map((n: any) => n.id));
@@ -697,11 +697,11 @@ function repairInfographicData(parsed: any): void {
   // 5a. Handle 'parentId' if present (AI often prefers this)
   parsed.nodes.forEach((node: any) => {
     if (node.parentId && validIds.has(node.parentId)) {
-      const parent = nodeMap.get(node.parentId);
+      const parent = nodeMap.get(node.parentId) as any
       if (parent) {
-        if (!parent.children) parent.children = [];
+        if (!Array.isArray(parent.children)) parent.children = []
         if (!parent.children.includes(node.id)) {
-          parent.children.push(node.id);
+          parent.children.push(node.id)
         }
       }
     }
@@ -872,7 +872,7 @@ function tryAlternativeParsing(responseText: string): any | null {
           if (!obj.label) obj.label = obj.id;
           validNodes.push(obj);
         }
-      } catch (e) {
+      } catch {
         // Skip invalid objects
       }
     }
@@ -971,7 +971,7 @@ function parseNodesArray(arrayStr: string): any[] {
       });
       return validNodes;
     }
-  } catch (e) {
+  } catch {
     console.warn('⚠️  Could not parse nodes array as a whole, trying individual nodes');
   }
   
@@ -990,7 +990,7 @@ function parseNodesArray(arrayStr: string): any[] {
         }
         nodes.push(node);
       }
-    } catch (e) {
+    } catch {
       console.warn('⚠️  Failed to parse node:', nodeStr.substring(0, 100));
     }
   }

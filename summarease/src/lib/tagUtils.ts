@@ -5,7 +5,7 @@ export function sanitizeTagName(name: string): string {
   s = s.replace(/```\w*/g, '')
        .replace(/```/g, '')
   // Remove surrounding quotes and stray JSON punctuation
-  s = s.replace(/[\[{\]}]/g, ' ')
+  s = s.replace(/[\\[\]{}]/g, ' ')
        .replace(/"/g, '')
        .replace(/:\s*/g, ' ')
   // Collapse whitespace and trim
@@ -24,7 +24,7 @@ export function isJunkTagName(name: string): boolean {
   const s = String(name).toLowerCase().trim()
   if (!s) return true
   // Likely junk if it contains JSON structure keywords or braces heavily
-  if (/[{}\[\]]/.test(s)) return true
+  if (/[{}[\]]/.test(s)) return true
   if (s.includes('"general"') || s.includes('"specific"')) return true
   if (s.startsWith('json') || s.startsWith('```')) return true
   // Very long single token is likely junk

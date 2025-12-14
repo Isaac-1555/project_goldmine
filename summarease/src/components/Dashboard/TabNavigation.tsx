@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { NotebookPen, Mic, Eye, BookOpen, Settings } from 'lucide-react'
+import { NotebookPen, Eye, BookOpen, Settings } from 'lucide-react'
 import { useSubscription } from '../../contexts/SubscriptionContext'
 import './TabNavigation.css'
 import { SatBrainMark } from '../brand/SatBrainMark'

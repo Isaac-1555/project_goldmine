@@ -103,7 +103,7 @@ function cleanAndDeduplicateSummary(summary: string): string {
   let blockIndex = 0;
   
   // Extract and replace blocks with placeholders
-  let processedSummary = summary.replace(blockRegex, (match) => {
+  const processedSummary = summary.replace(blockRegex, (match) => {
     blocks.push(match);
     return `__BLOCK_${blockIndex++}__`;
   });
@@ -233,6 +233,8 @@ export async function processAudioTranscript(
 
 // For processing uploaded audio files (fallback when live transcription isn't available)
 export async function processUploadedAudio(audioBlob: Blob): Promise<AudioProcessingResult> {
+  void audioBlob
+
   // For now, return a placeholder since browser-based audio file transcription
   // requires more complex setup. This could be enhanced with services like
   // Web Speech API for file processing or integration with external APIs

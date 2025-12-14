@@ -1,5 +1,6 @@
 import React from 'react'
 import { FileText, AudioWaveform, X, Eye } from 'lucide-react'
+import { AppTooltip } from '../ui/AppTooltip'
 import './DocumentList.css'
 
 export interface DocumentItem {
@@ -101,21 +102,25 @@ export const DocumentList: React.FC<DocumentListProps> = ({
             
             <div className="document-actions">
               {onViewDocument && (
-                <button
-                  className="btn btn-soft-primary btn-sm"
-                  onClick={() => onViewDocument(document)}
-                  title="View document"
-                >
-                  <Eye size={16} />
-                </button>
+                <AppTooltip content="View document">
+                  <button
+                    type="button"
+                    className="btn btn-soft-primary btn-sm"
+                    onClick={() => onViewDocument(document)}
+                  >
+                    <Eye size={16} />
+                  </button>
+                </AppTooltip>
               )}
-              <button
-                className="btn btn-soft-danger btn-sm"
-                onClick={() => onRemoveDocument(document.id)}
-                title="Remove document"
-              >
-                <X size={16} />
-              </button>
+              <AppTooltip content="Remove document">
+                <button
+                  type="button"
+                  className="btn btn-soft-danger btn-sm"
+                  onClick={() => onRemoveDocument(document.id)}
+                >
+                  <X size={16} />
+                </button>
+              </AppTooltip>
             </div>
           </div>
         ))}

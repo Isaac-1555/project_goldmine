@@ -41,7 +41,7 @@ export const RemoteMicClient: React.FC = () => {
       }
     })()
 
-    return () => { active = false; try { pc?.close() } catch {} }
+    return () => { active = false; try { pc?.close() } catch { /* noop */ } }
   }, [sessionId])
 
   return (

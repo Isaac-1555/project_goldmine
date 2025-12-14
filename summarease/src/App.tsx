@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './components/Auth/AuthProvider'
 import { ThemeProvider } from './contexts/ThemeContext'
@@ -14,6 +14,9 @@ import { TermsOfService } from './components/TermsOfService'
 import ScrollToTop from './components/ScrollToTop'
 import './App.css'
 import './styles/buttons.css'
+import './styles/toast.css'
+import './styles/tooltip.css'
+import { ToastProvider } from './components/Toast/ToastProvider'
 
 function AppContent() {
   const { user, loading } = useAuth()
@@ -104,20 +107,22 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      {/* Ensure each route change scrolls to top and handles hash anchors */}
-      <ScrollToTop />
-      <ThemeProvider>
-        <AuthProvider>
-          <SubscriptionProvider>
-            {/* Google Analytics */}
-            <Analytics 
-              trackingId={import.meta.env.VITE_GA_TRACKING_ID}
-              enabled={true}
-            />
-            <AppContent />
-          </SubscriptionProvider>
-        </AuthProvider>
-      </ThemeProvider>
+      <ToastProvider>
+        {/* Ensure each route change scrolls to top and handles hash anchors */}
+        <ScrollToTop />
+        <ThemeProvider>
+          <AuthProvider>
+            <SubscriptionProvider>
+              {/* Google Analytics */}
+              <Analytics 
+                trackingId={import.meta.env.VITE_GA_TRACKING_ID}
+                enabled={true}
+              />
+              <AppContent />
+            </SubscriptionProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </ToastProvider>
     </Router>
   )
 }

@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
-import { User, Palette, Bot, Save, Info, Monitor, MessageSquare, Zap, ExternalLink, CreditCard } from 'lucide-react'
+import { User, Palette, Bot, Info, Monitor, MessageSquare, Zap, ExternalLink } from 'lucide-react'
 import { useAuth } from '../../Auth/AuthProvider'
 import { useSubscription } from '../../../contexts/SubscriptionContext'
 import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
 import { useTheme } from '../../../contexts/ThemeContext'
 import { FeedbackModal } from '../../Feedback/FeedbackModal'
-import { CustomSelect, type SelectOption } from '../../CustomSelect'
+import { CustomSelect } from '../../CustomSelect'
 import './SettingsTab.css'
 
 export const SettingsTab: React.FC = () => {
@@ -15,7 +15,6 @@ export const SettingsTab: React.FC = () => {
   const { themeMode, actualTheme, setThemeMode } = useTheme()
   
   const [email, setEmail] = useState(user?.email || '')
-  const [showSaveSuccess, setShowSaveSuccess] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
 
   const subscriptionStatus = React.useMemo(() => {

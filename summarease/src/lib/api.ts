@@ -443,7 +443,7 @@ export async function createUnifiedContent(
     }
 
     // Handle uploaded files as separate documents
-    let docsExtractedText: string[] = []
+    const docsExtractedText: string[] = []
     if (sources.uploadedFiles && sources.uploadedFiles.length > 0) {
       for (const file of sources.uploadedFiles) {
         try {
@@ -619,7 +619,7 @@ export async function addCustomTagsToFile(fileId: string, tagNames: string[]): P
 
       try {
         // Check if tag exists in the global tags table
-        let { data: existingTag, error: tagSelectError } = await supabase
+        const { error: tagSelectError } = await supabase
           .from('tags')
           .select('id, name')
           .eq('name', name)
@@ -807,7 +807,7 @@ export async function updateNotebookContent(
     }
 
     // Append any newly uploaded files to documents
-    let newDocsExtractedText: string[] = []
+    const newDocsExtractedText: string[] = []
     if (changes.newFiles && changes.newFiles.length > 0) {
       const { data: user } = await supabase.auth.getUser()
       if (!user.user) throw new Error('User not authenticated')

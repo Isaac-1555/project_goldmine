@@ -30,7 +30,7 @@ const FEATURES = {
 export function PricingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isPremium, isTrialing, subscription, localTrialStatus, startLocalTrial } = useSubscription();
+  const { subscription, localTrialStatus, startLocalTrial } = useSubscription();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

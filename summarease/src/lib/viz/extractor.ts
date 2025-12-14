@@ -14,8 +14,8 @@ export function extractVisualizationCandidates(text: string): VisualizationCandi
   const listRows: { category: string; value: number; unit?: string }[] = []
   for (const line of lines) {
     // - bullets and plain lines
-    const m1 = line.match(/^[-•\*]?\s*([^:()]+?)\s*[:\-–]\s*([+-]?[0-9]+(?:\.[0-9]+)?)\s*(%|[a-zA-Z]+)?\s*$/)
-    const m2 = line.match(/^[-•\*]?\s*([^:()]+?)\s*\((\d+(?:\.\d+)?)%\)\s*$/)
+    const m1 = line.match(/^[-•*]?\s*([^:()]+?)\s*[:\-–]\s*([+-]?[0-9]+(?:\.[0-9]+)?)\s*(%|[a-zA-Z]+)?\s*$/)
+    const m2 = line.match(/^[-•*]?\s*([^:()]+?)\s*\((\d+(?:\.\d+)?)%\)\s*$/)
     if (m1) {
       const [, label, num, unit] = m1
       const value = Number(num)
@@ -72,7 +72,7 @@ export function extractVisualizationCandidates(text: string): VisualizationCandi
   // 3) Detect two-number pairs on one line => correlation scatter chance
   const pairRows: { x: number; y: number; label?: string }[] = []
   for (const line of lines) {
-    const pair = line.match(/^[-•\*]?\s*([^:]+?)\s*[:\-–]\s*([+-]?[0-9]+(?:\.[0-9]+)?)\s*[;,]\s*([+-]?[0-9]+(?:\.[0-9]+)?)\s*$/)
+    const pair = line.match(/^[-•*]?\s*([^:]+?)\s*[:\-–]\s*([+-]?[0-9]+(?:\.[0-9]+)?)\s*[;,]\s*([+-]?[0-9]+(?:\.[0-9]+)?)\s*$/)
     if (pair) {
       const [, label, a, b] = pair
       const x = Number(a), y = Number(b)
@@ -120,7 +120,7 @@ function hasPercentUnit(rows: { unit?: string }[]) {
 }
 
 function sanitizeLabel(s: string) {
-  return s.replace(/^[-•\*]\s*/, '').replace(/\s{2,}/g, ' ').trim()
+  return s.replace(/^[-•*]\s*/, '').replace(/\s{2,}/g, ' ').trim()
 }
 
 function inferTitle(text: string): string | undefined {
@@ -140,7 +140,7 @@ function dedupTimeRows(rows: { date: string; value: number }[]) {
 function extractTiers(lines: string[]): string[] {
   const tiers: { text: string; indent: number }[] = []
   for (const line of lines) {
-    const m = line.match(/^(\s*)([-•\*]|\d+\.)\s+(.+)$/)
+    const m = line.match(/^(\s*)([-•*]|\d+\.)\s+(.+)$/)
     if (m) {
       tiers.push({ text: sanitizeLabel(m[3]), indent: m[1].length })
     }
@@ -171,7 +171,9 @@ function extractFromInfographicBlocks(text: string): VisualizationCandidate[] {
       if (jsonMatch) {
         rows = JSON.parse(jsonMatch[0])
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     // Fallback: scan bullet pairs inside the block
     if (!rows) {
@@ -179,8 +181,8 @@ function extractFromInfographicBlocks(text: string): VisualizationCandidate[] {
       const lines = body.split(/\n+/)
       for (const line of lines) {
         const l = line.trim()
-        const p1 = l.match(/^[-•\*]?\s*([^:()]+?)\s*[:\-–]\s*([+-]?[0-9]+(?:\.[0-9]+)?)\s*(%|[a-zA-Z]+)?\s*$/)
-        const p2 = l.match(/^[-•\*]?\s*([^:()]+?)\s*\((\d+(?:\.\d+)?)%\)\s*$/)
+        const p1 = l.match(/^[-•*]?\s*([^:()]+?)\s*[:\-–]\s*([+-]?[0-9]+(?:\.[0-9]+)?)\s*(%|[a-zA-Z]+)?\s*$/)
+        const p2 = l.match(/^[-•*]?\s*([^:()]+?)\s*\((\d+(?:\.\d+)?)%\)\s*$/)
         if (p1) {
           const [, label, num, unit] = p1
           const value = Number(num)

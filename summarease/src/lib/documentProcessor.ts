@@ -2,7 +2,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { Tag } from './types'
-// @ts-ignore
+// @ts-expect-error - mammoth's typings/exports don't align with our bundler import style
 import * as mammoth from 'mammoth'
 import * as pdfjsLib from 'pdfjs-dist'
 import PizZip from 'pizzip'

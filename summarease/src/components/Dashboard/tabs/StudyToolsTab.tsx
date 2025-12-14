@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { BookOpen, ArrowLeft, Search, X, Clock, Play, BarChart3, HelpCircle, ChevronRight, ChevronLeft, Trash2, Brain } from 'lucide-react'
-import { SatBrainMark } from '../../brand/SatBrainMark'
+import { BookOpen, ArrowLeft, Search, X, Clock, Play, HelpCircle, ChevronRight, ChevronLeft, Trash2, Brain } from 'lucide-react'
 import { getUserFiles, type FileWithMetadata } from '../../../lib/api'
 import { useSubscription } from '../../../contexts/SubscriptionContext'
+import { useToast } from '../../../hooks/useToast'
 import { PremiumLock } from '../../Subscription/PremiumLock'
 import {
   createSimpleQuiz, 
@@ -11,18 +11,15 @@ import {
   submitQuizAttempt,
   deleteSimpleQuiz,
   type SimpleQuizSet,
-  type SimpleQuiz,
   type SimpleQuizAttempt
 } from '../../../lib/quizServiceSimple'
 import {
   createFlashcardSet,
   getUserFlashcardSets,
   getFlashcardSetById,
-  submitFlashcardReviews,
   deleteFlashcardSet,
   computePerSourceMax,
   type FlashcardSet,
-  type Flashcard,
   type FlashcardType,
   type GenerateFlashcardsOptions
 } from '../../../lib/flashcardsServiceV2'
@@ -44,16 +41,7 @@ interface QuizState {
 
 export const StudyToolsTab: React.FC = () => {
   const { canAccessPremiumFeatures } = useSubscription();
-
-  // Check premium access
-  if (!canAccessPremiumFeatures) {
-    return (
-      <PremiumLock 
-        feature="Advanced Study Tools"
-        description="Access quizzes, flashcards, spaced repetition, and other powerful study features to master your material."
-      />
-    );
-  }
+  const toast = useToast();
 
   // Main state
   const [view, setView] = useState<ViewState>('menu')
@@ -97,8 +85,7 @@ export const StudyToolsTab: React.FC = () => {
   // Generation state
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false)
   
-  // Notification and new quiz state
-  const [notification, setNotification] = useState<string | null>(null)
+  // New quiz state
   const [newlyCreatedQuizId, setNewlyCreatedQuizId] = useState<string | null>(null)
   
   // User preference for auto-opening quizzes (default: true for better UX)
@@ -109,16 +96,18 @@ export const StudyToolsTab: React.FC = () => {
 
   // Load files when switching to quiz-select view
   useEffect(() => {
+    if (!canAccessPremiumFeatures) return
     if (view === 'quiz-select' || view === 'flashcard-select') {
       loadFiles()
     }
-  }, [view])
+  }, [view, canAccessPremiumFeatures])
 
   // Load quiz and flashcard sets on component mount
   useEffect(() => {
+    if (!canAccessPremiumFeatures) return
     loadQuizSets()
     loadFlashcardSets()
-  }, [])
+  }, [canAccessPremiumFeatures])
 
   // Filter files based on search query
   useEffect(() => {
@@ -127,7 +116,7 @@ export const StudyToolsTab: React.FC = () => {
     } else {
       const filtered = files.filter(file => 
         file.tags?.some(tag => 
-          tag.toLowerCase().includes(searchQuery.toLowerCase())
+          tag.name.toLowerCase().includes(searchQuery.toLowerCase())
         ) || 
         file.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         file.filename?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -148,11 +137,6 @@ export const StudyToolsTab: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Notification utility
-  const showNotification = (message: string, duration: number = 4000) => {
-    setNotification(message)
-    setTimeout(() => setNotification(null), duration)
-  }
 
   // Save user preference for auto-opening quizzes
   const toggleAutoOpenQuiz = () => {
@@ -202,7 +186,7 @@ export const StudyToolsTab: React.FC = () => {
 
   // Get unique tags from all files
   const getAllTags = () => {
-    const allTags = files.flatMap(file => file.tags || [])
+    const allTags = files.flatMap(file => (file.tags || []).map(t => t.name))
     return [...new Set(allTags)].sort()
   }
 
@@ -303,7 +287,7 @@ export const StudyToolsTab: React.FC = () => {
       
       if (autoOpenNewQuiz) {
         // Auto-open the newly created quiz
-        showNotification(`Quiz "${title}" created! Opening quiz...`, 2000)
+        toast.success('Quiz created', `Opening “${title}”…`)
         
         // Small delay to allow UI to update, then start the quiz
         setTimeout(() => {
@@ -311,7 +295,7 @@ export const StudyToolsTab: React.FC = () => {
         }, 500)
       } else {
         // Just show notification
-        showNotification(`Quiz "${title}" created successfully! Find it in the Previous Quizzes panel.`, 4000)
+        toast.success('Quiz created', `Find “${title}” in Previous Quizzes.`)
       }
       
       // Clear the newly created quiz highlight after some time
@@ -361,10 +345,10 @@ export const StudyToolsTab: React.FC = () => {
       setSelectedFiles([])
       setSearchQuery('')
       if (autoOpenNewFlashcards) {
-        showNotification(`Flashcards "${title}" created! Opening...`, 2000)
+        toast.success('Flashcards created', `Opening “${title}”…`)
         setTimeout(() => handleStartFlashcards(set.id), 400)
       } else {
-        showNotification(`Flashcards "${title}" created. Find it in the sidebar.`, 4000)
+        toast.success('Flashcards created', `Find “${title}” in the sidebar.`)
       }
     } catch (err: any) {
       console.error('Error generating flashcards:', err)
@@ -399,14 +383,20 @@ export const StudyToolsTab: React.FC = () => {
   }
 
   const handleDeleteQuiz = async (summaryId: string) => {
-    if (!window.confirm('Are you sure you want to delete this quiz? This action cannot be undone.')) {
-      return
-    }
+    const ok = await toast.confirm({
+      title: 'Delete quiz?',
+      description: 'This action cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      durationMs: 30000,
+    })
+    if (!ok) return
 
     try {
       await deleteSimpleQuiz(summaryId)
       // Refresh quiz sets
       await loadQuizSets()
+      toast.success('Quiz deleted')
     } catch (err: any) {
       console.error('Error deleting quiz:', err)
       setError(err.message || 'Failed to delete quiz')
@@ -493,10 +483,18 @@ export const StudyToolsTab: React.FC = () => {
   }
 
   const handleDeleteFlashcards = async (summaryId: string) => {
-    if (!window.confirm('Are you sure you want to delete this flashcard set? This action cannot be undone.')) return
+    const ok = await toast.confirm({
+      title: 'Delete flashcards?',
+      description: 'This action cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      durationMs: 30000,
+    })
+    if (!ok) return
     try {
       await deleteFlashcardSet(summaryId)
       await loadFlashcardSets()
+      toast.success('Flashcards deleted')
     } catch (err: any) {
       setError(err.message || 'Failed to delete flashcards')
     }
@@ -534,22 +532,6 @@ export const StudyToolsTab: React.FC = () => {
   const handleFlashPrev = () => {
     setIsFlipped(false)
     setFlashcardIndex(i => Math.max(0, i - 1))
-  }
-
-  const handleFlashMark = async (ease: 'again' | 'good') => {
-    const card = currentFlashcardSet?.cards[flashcardIndex]
-    if (!card) return
-    try {
-      await submitFlashcardReviews([{ card_id: card.id, ease }])
-      if (ease === 'good') {
-        handleFlashNext()
-      } else {
-        // keep in place but flip back
-        setIsFlipped(false)
-      }
-    } catch (err) {
-      console.error('review failed', err)
-    }
   }
 
   const handleBackToMenu = () => {
@@ -632,7 +614,7 @@ export const StudyToolsTab: React.FC = () => {
     
     return (
       <>
-        {dotsToShow.map((item, idx) => {
+        {dotsToShow.map((item) => {
           if (item === 'ellipsis-start' || item === 'ellipsis-end') {
             return (
               <div key={item} className="progress-ellipsis">
@@ -1190,7 +1172,6 @@ export const StudyToolsTab: React.FC = () => {
 
     if (view === 'quiz-results' && quizState.currentQuiz) {
       const totalQuestions = quizState.currentQuiz.questions.length
-      const answeredQuestions = Object.keys(quizState.userAttempts).length
       const correctAnswers = Object.values(quizState.userAttempts).filter(attempt => attempt.is_correct).length
       const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
       const timeSpent = quizState.startTime ? Math.floor((Date.now() - quizState.startTime) / 1000) : 0
@@ -1346,15 +1327,17 @@ export const StudyToolsTab: React.FC = () => {
     )
   }
 
+  if (!canAccessPremiumFeatures) {
+    return (
+      <PremiumLock
+        feature="Advanced Study Tools"
+        description="Access quizzes, flashcards, spaced repetition, and other powerful study features to master your material."
+      />
+    )
+  }
+
   return (
     <div className="study-tools-container">
-      {/* Notification Toast */}
-      {notification && (
-        <div className="notification-toast">
-          {notification}
-        </div>
-      )}
-      
       {renderLeftSidebar()}
       <div className="study-tools-main">
         {renderMainContent()}

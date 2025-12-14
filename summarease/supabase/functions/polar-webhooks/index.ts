@@ -7,6 +7,9 @@ serve(async (request) => {
 
   // Verify webhook signature
   // TODO: Add signature verification logic once Polar SDK is available or signature spec is confirmed
+  if (!webhookSecret || !signature) {
+    console.warn('Polar webhook signature or secret missing; skipping signature verification.')
+  }
 
   try {
     const body = await request.json()

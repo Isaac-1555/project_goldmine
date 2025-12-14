@@ -39,7 +39,7 @@ export const ChartGallery: React.FC<ChartGalleryProps> = ({ summaryId, summaryTe
         if (serverKey && suggestions.some(s => s.key === serverKey)) {
           setSelectedKey(serverKey)
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
     })()

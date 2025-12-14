@@ -69,6 +69,7 @@ export interface SimpleQuiz {
   question: string
   options: string[]
   correct_index: number
+  created_at?: string
 }
 
 export interface SimpleQuizAttempt {

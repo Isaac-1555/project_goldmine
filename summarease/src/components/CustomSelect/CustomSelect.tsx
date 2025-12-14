@@ -17,6 +17,9 @@ interface CustomSelectProps<T = string> {
   ariaLabel?: string;
   className?: string;
   error?: boolean;
+  closeOnSelect?: boolean;
+  renderOption?: (opt: SelectOption<T>, state: { selected: boolean; focused: boolean }) => React.ReactNode;
+  onOptionDoubleClick?: (opt: SelectOption<T>) => void;
 }
 
 function CustomSelect<T = string>({
@@ -28,6 +31,9 @@ function CustomSelect<T = string>({
   ariaLabel = 'Select',
   className = '',
   error = false,
+  closeOnSelect = true,
+  renderOption,
+  onOptionDoubleClick,
 }: CustomSelectProps<T>) {
   const [open, setOpen] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
@@ -110,7 +116,9 @@ function CustomSelect<T = string>({
     const opt = options[idx];
     if (!opt || opt.disabled) return;
     onChange(opt.value);
-    setOpen(false);
+    if (closeOnSelect) {
+      setOpen(false);
+    }
   };
 
   const onTriggerKeyDown = (e: React.KeyboardEvent) => {
@@ -232,8 +240,15 @@ function CustomSelect<T = string>({
                 tabIndex={focused ? 0 : -1}
                 onMouseEnter={() => !opt.disabled && setFocusIndex(idx)}
                 onClick={() => selectIndex(idx)}
+                onDoubleClick={() => {
+                  if (!opt.disabled) {
+                    onOptionDoubleClick?.(opt);
+                  }
+                }}
               >
-                <span className="custom-select-option-label">{opt.label}</span>
+                {renderOption ? renderOption(opt, { selected, focused }) : (
+                  <span className="custom-select-option-label">{opt.label}</span>
+                )}
                 {selected && <Check className="custom-select-checkmark" size={16} />}
               </div>
             );

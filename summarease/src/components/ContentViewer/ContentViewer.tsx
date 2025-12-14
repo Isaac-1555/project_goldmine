@@ -67,7 +67,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
       if (!segment) return null
 
       // Normalize: ensure markdown-style headings (#, ##, ###) start on their own line
-      let normalized = segment
+      const normalized = segment
         // Insert a newline before a heading token that appears inline
         .replace(/([^\n])\s*(#{1,3})\s+(?=\S)/g, '$1\n$2 ')
         // Collapse multiple blank lines
@@ -87,7 +87,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
       // Patterns
       const headingRegex = /^(#{1,3})\s*(.+)$/
       const legacyHeaderRegex = /^(KEY CONCEPTS:|DETAILS\s*&\s*EXAMPLES:|APPLICATIONS\s*&\s*REFLECTIONS:|KEY TERMS.*|SUMMARY)$/i
-      const bulletRegex = /^\s*(?:•|\-|\*|\d+\.)\s+(.+)$/
+      const bulletRegex = /^\s*(?:•|-|\*|\d+\.)\s+(.+)$/
 
       for (const raw of lines) {
         const line = raw.trim()
@@ -795,7 +795,7 @@ const res = await regenerateSummary(fileDetails!.file.id, getSummaryConfig())
                         <button
                           className="tag-delete-button"
                           onClick={() => setShowDeleteTagConfirm(tagId)}
-                          title={`Remove \"${tagName}\" tag`}
+                          title={`Remove "${tagName}" tag`}
                           aria-label={`Remove ${tagName} tag`}
                         >
                           <X className="tag-delete-icon" />

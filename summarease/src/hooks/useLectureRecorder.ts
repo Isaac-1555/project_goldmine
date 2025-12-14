@@ -67,7 +67,11 @@ const mediaRecorderRef = useRef<MediaRecorder | null>(null)
 
   const listInputDevices = async () => {
     // Request once so device labels populate
-    try { await navigator.mediaDevices.getUserMedia({ audio: true }) } catch {}
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true })
+    } catch {
+      // ignore
+    }
     const devices = await navigator.mediaDevices.enumerateDevices()
     return devices.filter(d => d.kind === 'audioinput')
   }
@@ -102,7 +106,11 @@ const mediaRecorderRef = useRef<MediaRecorder | null>(null)
       accum += db; n++
       await new Promise(r => setTimeout(r, 50))
     }
-    try { node.disconnect(analyser) } catch {}
+    try {
+      node.disconnect(analyser)
+    } catch {
+      // ignore
+    }
     return accum / Math.max(1, n)
   }
 
@@ -123,7 +131,7 @@ const start: LectureRecorder['start'] = async (opts) => {
     } = (opts || {})
 
     // Constraints
-    let constraints: MediaStreamConstraints = {
+    const constraints: MediaStreamConstraints = {
       audio: {
         deviceId: deviceId ? { exact: deviceId } : undefined,
         channelCount: { ideal: 1 },
@@ -141,7 +149,7 @@ let stream: MediaStream
     } else {
       try {
         stream = await navigator.mediaDevices.getUserMedia(constraints)
-      } catch (e) {
+      } catch {
         // fallback
         stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       }
@@ -238,7 +246,9 @@ let rnnoiseNode: AudioWorkletNode | null = null
       const thresholdDb = Math.min(-30, noiseFloorDb + 6)
       if (expanderNode instanceof AudioWorkletNode) expanderNode.port.postMessage({ type: 'set', thresholdDb })
       if (expanderNode instanceof DynamicsCompressorNode) expanderNode.threshold.value = thresholdDb
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     // Metering
     const buf = new Float32Array(analyser.fftSize)
@@ -301,14 +311,14 @@ let rnnoiseNode: AudioWorkletNode | null = null
   }
 
   const cleanup = () => {
-    try { sourceRef.current?.disconnect() } catch {}
-    try { hpfRef.current?.disconnect() } catch {}
-    try { rnnoiseRef.current?.disconnect() } catch {}
-    try { (expanderRef.current as any)?.disconnect?.() } catch {}
-    try { compressorRef.current?.disconnect() } catch {}
-    try { limiterRef.current?.disconnect() } catch {}
-    try { analyserRef.current?.disconnect() } catch {}
-    try { destRef.current?.disconnect() } catch {}
+    try { sourceRef.current?.disconnect() } catch { /* ignore */ }
+    try { hpfRef.current?.disconnect() } catch { /* ignore */ }
+    try { rnnoiseRef.current?.disconnect() } catch { /* ignore */ }
+    try { (expanderRef.current as any)?.disconnect?.() } catch { /* ignore */ }
+    try { compressorRef.current?.disconnect() } catch { /* ignore */ }
+    try { limiterRef.current?.disconnect() } catch { /* ignore */ }
+    try { analyserRef.current?.disconnect() } catch { /* ignore */ }
+    try { destRef.current?.disconnect() } catch { /* ignore */ }
 
     mediaStreamRef.current?.getTracks().forEach(t => t.stop())
     if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') audioCtxRef.current.close()

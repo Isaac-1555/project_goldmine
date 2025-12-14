@@ -71,16 +71,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
 }) => {
   const { canAccessPremiumFeatures } = useSubscription();
 
-  // Check premium access
-  if (!canAccessPremiumFeatures) {
-    return (
-      <PremiumLock 
-        feature="Graph View"
-        description="Visualize your notes and documents as an interactive knowledge graph with connections and relationships."
-      />
-    );
-  }
-
   const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
   const [nodes, setNodes] = useState<GraphNode[]>([])
@@ -157,11 +147,13 @@ export const GraphView: React.FC<GraphViewProps> = ({
   }
 
   useEffect(() => {
+    if (!canAccessPremiumFeatures) return
     loadData()
-  }, [])
+  }, [canAccessPremiumFeatures])
   
   // Initialize graph view with stored state - only run once after mount
   useEffect(() => {
+    if (!canAccessPremiumFeatures) return
     if (!svgRef.current || !initialPanPosition) return
     
     // Only run this once to avoid infinite loops
@@ -183,6 +175,8 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
 
   useEffect(() => {
+    if (!canAccessPremiumFeatures) return
+
     // Update container dimensions on resize
     const updateDimensions = () => {
       if (svgRef.current) {
@@ -709,6 +703,15 @@ export const GraphView: React.FC<GraphViewProps> = ({
       }
     }
   }, [])
+
+  if (!canAccessPremiumFeatures) {
+    return (
+      <PremiumLock
+        feature="Graph View"
+        description="Visualize your notes and documents as an interactive knowledge graph with connections and relationships."
+      />
+    )
+  }
 
   if (loading) {
     return (

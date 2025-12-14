@@ -33,7 +33,7 @@ export const FileList: React.FC<FileListProps> = ({ onFileSelect, selectedFileId
 
   const filteredFiles = files.filter(file =>
     file.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    file.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+    file.tags?.some(tag => tag.name.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
   const getFileIcon = (fileType: string) => {
@@ -142,8 +142,8 @@ export const FileList: React.FC<FileListProps> = ({ onFileSelect, selectedFileId
                 {file.tags && file.tags.length > 0 && (
                   <div className="file-tags">
                     {file.tags.slice(0, 3).map((tag, tagIndex) => (
-                      <span key={`file-${fileIndex}-tag-${tagIndex}-${tag}`} className="tag">
-                        {tag}
+                      <span key={`file-${fileIndex}-tag-${tagIndex}-${tag.id ?? tag.name}`} className="tag">
+                        {tag.name}
                       </span>
                     ))}
                     {file.tags.length > 3 && (

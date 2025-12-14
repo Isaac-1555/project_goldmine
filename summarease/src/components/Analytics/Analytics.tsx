@@ -120,14 +120,14 @@ export const Analytics: React.FC<AnalyticsProps> = ({
 
     // Store tracking ID globally for event tracking
     ;(window as any).GA_TRACKING_ID = trackingId
-    ;(window as any).gtag = function() {
-      ;(window as any).dataLayer.push(arguments)
+    ;(window as any).gtag = (...args: any[]) => {
+      ;(window as any).dataLayer.push(args)
     }
 
     console.log('[Analytics] Google Analytics initialized with ID:', trackingId)
 
     // Optional: Track scroll depth
-    let scrollDepthTracked = { 25: false, 50: false, 75: false, 100: false }
+    const scrollDepthTracked = { 25: false, 50: false, 75: false, 100: false }
     const handleScroll = () => {
       const scrollPercentage = 
         (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100

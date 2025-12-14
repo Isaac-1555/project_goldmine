@@ -124,7 +124,7 @@ export const SatBrainMark: React.FC<SatBrainMarkProps> = ({
     const lineW = detail === 'low' ? 0.55 : 0.6
     const nodeR = detail === 'low' ? 0.65 : 0.7
 
-    const lines: JSX.Element[] = []
+    const lines: React.ReactElement[] = []
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
         const [x1, y1] = nodes[i];
@@ -141,7 +141,7 @@ export const SatBrainMark: React.FC<SatBrainMarkProps> = ({
     }
 
     // Faint dotted ring around cluster (12 dots)
-    const orbit: JSX.Element[] = []
+    const orbit: React.ReactElement[] = []
     for (let k = 0; k < 12; k++) {
       const ang = (Math.PI * 2 * k) / 12
       const rx = 8.4, ry = 6.0

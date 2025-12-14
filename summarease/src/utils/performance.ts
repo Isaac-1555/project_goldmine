@@ -229,14 +229,18 @@ export const measureWebVitals = () => {
       const lcpObserver = new PerformanceObserver((list) => {
         const entries = list.getEntries()
         const lastEntry = entries[entries.length - 1]
+        if (!lastEntry) return
+
+        const lcpEntry = lastEntry as PerformanceEntry & { renderTime?: number; loadTime?: number }
+
         reportMetric({
           name: 'LCP',
-          value: lastEntry.renderTime || lastEntry.loadTime,
+          value: lcpEntry.renderTime || lcpEntry.loadTime || lastEntry.startTime,
           entries: entries
         })
       })
       lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true })
-    } catch (e) {
+    } catch {
       console.warn('[Web Vitals] LCP measurement not supported')
     }
   }
@@ -255,7 +259,7 @@ export const measureWebVitals = () => {
         })
       })
       fidObserver.observe({ type: 'first-input', buffered: true })
-    } catch (e) {
+    } catch {
       console.warn('[Web Vitals] FID measurement not supported')
     }
   }
@@ -278,7 +282,7 @@ export const measureWebVitals = () => {
         })
       })
       clsObserver.observe({ type: 'layout-shift', buffered: true })
-    } catch (e) {
+    } catch {
       console.warn('[Web Vitals] CLS measurement not supported')
     }
   }

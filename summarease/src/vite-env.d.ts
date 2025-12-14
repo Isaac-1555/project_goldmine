@@ -5,11 +5,13 @@ interface SpeechRecognition extends EventTarget {
   continuous: boolean
   interimResults: boolean
   lang: string
+  maxAlternatives: number
   start(): void
   stop(): void
   onresult: (event: SpeechRecognitionEvent) => void
   onerror: (event: SpeechRecognitionErrorEvent) => void
   onend: () => void
+  onstart: () => void
 }
 
 interface SpeechRecognitionEvent {
@@ -40,12 +42,12 @@ interface SpeechRecognitionErrorEvent {
   message: string
 }
 
-declare var SpeechRecognition: {
+declare const SpeechRecognition: {
   prototype: SpeechRecognition
   new(): SpeechRecognition
 }
 
-declare var webkitSpeechRecognition: {
+declare const webkitSpeechRecognition: {
   prototype: SpeechRecognition
   new(): SpeechRecognition
 }

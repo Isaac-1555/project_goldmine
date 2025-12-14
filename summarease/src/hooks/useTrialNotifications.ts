@@ -10,9 +10,12 @@ export function useTrialNotifications() {
     if (!isTrialing || !subscription?.trial_end) return;
 
     const checkTrialExpiry = () => {
-      const now = new Date();
-      const trialEnd = new Date(subscription.trial_end);
-      const daysRemaining = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const trialEndValue = subscription?.trial_end
+      if (!trialEndValue) return
+
+      const now = new Date()
+      const trialEnd = new Date(trialEndValue)
+      const daysRemaining = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
       // Show modal at 3, 2, 1 days before expiry
       if (daysRemaining <= 3 && daysRemaining > 0) {

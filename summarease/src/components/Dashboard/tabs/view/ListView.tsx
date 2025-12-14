@@ -3,6 +3,7 @@ import { FileText, Tag, Calendar, Edit3, Trash2, Filter, X, Settings, FolderPlus
 import { getUserFiles, deleteFile, type FileWithMetadata, getUserFolders, createFolder, updateFolder, deleteFolder, moveFileToFolder, type Folder } from '../../../../lib/api'
 import './ListView.css'
 import { sanitizeTagName, isJunkTagName } from '../../../../lib/tagUtils'
+import { useToast } from '../../../../hooks/useToast'
 
 interface ListViewProps {
   onFileSelect: (file: FileWithMetadata) => void
@@ -47,6 +48,8 @@ export const ListView: React.FC<ListViewProps> = ({
   selectedTargetFolder: externalSelectedTargetFolder,
   onSelectedTargetFolderChange
 }) => {
+  const toast = useToast()
+
   const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [localNotebooks, setLocalNotebooks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -226,18 +229,18 @@ export const ListView: React.FC<ListViewProps> = ({
     // Convert local notebook to FileWithMetadata format with all content
     const mockFile: FileWithMetadata = {
       id: localNotebook.id,
-      title: localNotebook.title,
+      title: localNotebook.title || 'Local notebook',
       file_type: 'notebook',
       status: 'completed',
-      created_at: localNotebook.lastSaved,
+      created_at: localNotebook.lastSaved || new Date().toISOString(),
       summary: 'Local notebook (not uploaded)',
       tags: [],
       // Add local notebook content
       localNotebookData: {
-        notes: localNotebook.notes,
-        audioTranscript,
-        uploadedFiles,
-        recordingTime: localNotebook.recordingTime
+        notes: (localNotebook.notes ?? '').toString(),
+        audioTranscript: audioTranscript ?? '',
+        uploadedFiles: uploadedFiles ?? [],
+        recordingTime: typeof localNotebook.recordingTime === 'number' ? localNotebook.recordingTime : 0
       }
     }
     onFileSelect(mockFile)
@@ -290,7 +293,7 @@ export const ListView: React.FC<ListViewProps> = ({
     if (result.success) {
       await loadFolders()
     } else {
-      alert(result.error || 'Failed to delete folder')
+      toast.error('Failed to delete folder', result.error || 'Please try again.')
     }
   }
   

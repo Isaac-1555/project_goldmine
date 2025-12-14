@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Mic, Upload, Save, Check, Play, Pause, Square, Plus, X as XIcon, Brain } from 'lucide-react'
+import { Mic, Upload, Check, Play, Pause, Square, Plus, X as XIcon, Brain } from 'lucide-react'
+import * as Tooltip from '@radix-ui/react-tooltip'
 import { FileUploadModal } from '../../Upload/FileUploadModal'
 import { createUnifiedContent, updateNotebookContent, addTagsToSummary, type Tag } from '../../../lib/api'
 import { sanitizeTagName, isJunkTagName } from '../../../lib/tagUtils'
@@ -9,10 +10,12 @@ import { LiveTranscriber } from '../../../lib/webSpeechTranscription'
 import { transcribeLecture } from '../../../lib/transcriptionService'
 import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
 import { useNotebookState } from '../../../hooks/useNotebookState'
+import { useToast } from '../../../hooks/useToast'
 import { ResizableDivider } from '../../ResizableDivider'
 import { NoteTaking } from '../../NoteTaking'
 import { DocumentList, type DocumentItem } from '../../DocumentList'
 import { FolderSelector } from '../../FolderSelector'
+import { AppTooltip } from '../../ui/AppTooltip'
 import {
   getDoneLimitStatus,
   NOTEBOOK_DONE_LIMIT,
@@ -151,6 +154,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   // Hooks
   const { getSummaryConfig } = useSettingsConfig()
   const [notebookState, notebookActions] = useNotebookState()
+  const toast = useToast()
   
   // State management
   const [title, setTitle] = useState(initialTitle || '')
@@ -159,22 +163,23 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [localSaving, setLocalSaving] = useState(false)
-  const [isLocalSave, setIsLocalSave] = useState(false)
   const [localSaveId, setLocalSaveId] = useState<string | undefined>(undefined)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(initialFolderId || null)
+  const [autosaveEnabled, setAutosaveEnabled] = useState(true)
 
   // Track whether we've already attempted to restore from local cache in this session
   const hasRestoredFromLocalRef = useRef(false)
+
+  // Autosave helpers
+  const untitledCreatedAtRef = useRef<number>(Date.now())
+  const lastAutosaveSnapshotRef = useRef<string>('')
+  const autosaveTimeoutRef = useRef<number | null>(null)
 
   // Custom tags state
   const [customTagInput, setCustomTagInput] = useState('')
   const [customTags, setCustomTags] = useState<string[]>(initialTags)
   const [existingSummaryId] = useState<string | undefined>(initialSummaryId)
-  
-  // Toast notification state
-  const [notification, setNotification] = useState<string | null>(null)
-  const [confirmNewNotebookOpen, setConfirmNewNotebookOpen] = useState(false)
-  
+
   // Restore latest local notebook draft on initial mount (create mode only)
   useEffect(() => {
     if (mode !== 'create') return
@@ -215,6 +220,14 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       // Restore core notebook content
       setTitle(latest.title || '')
       setNotes(latest.notes || '')
+
+      // Restore folder + tags (newer draft shapes)
+      if (Object.prototype.hasOwnProperty.call(latest, 'selectedFolderId')) {
+        setSelectedFolderId(latest.selectedFolderId ?? null)
+      }
+      if (Array.isArray(latest.customTags)) {
+        setCustomTags(latest.customTags)
+      }
 
       if (Array.isArray(latest.documents)) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -268,7 +281,6 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         }
       }
 
-      setIsLocalSave(true)
       setLocalSaveId(latest.id)
       hasRestoredFromLocalRef.current = true
     } catch (error) {
@@ -289,11 +301,6 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   const [lectureProcessingError, setLectureProcessingError] = useState<string | null>(null)
   const finalTranscriptRef = useRef<string>('')
 
-  // Notification utility
-  const showNotification = (message: string, duration: number = 4000) => {
-    setNotification(message)
-    setTimeout(() => setNotification(null), duration)
-  }
 
   // Recording timer
   useEffect(() => {
@@ -309,10 +316,10 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   // If entering edit mode later, sync initial props
   useEffect(() => {
     if (mode === 'edit') {
-      if (initialTitle) setTitle(initialTitle)
-      if (initialNotesHtml) setNotes(initialNotesHtml)
-      if (initialDocuments?.length) setDocuments(initialDocuments)
-      if (initialTags?.length) setCustomTags(initialTags)
+      if (initialTitle !== undefined) setTitle(initialTitle)
+      if (initialNotesHtml !== undefined) setNotes(initialNotesHtml)
+      setDocuments(initialDocuments)
+      setCustomTags(initialTags)
       if (initialFolderId !== undefined) setSelectedFolderId(initialFolderId)
       // If transcript text exists but not present as a DocumentItem, add it
       if (initialTranscriptText && !initialDocuments.some(d => d.type === 'transcript')) {
@@ -328,16 +335,34 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     }
   }, [mode, initialTitle, initialNotesHtml, initialDocuments, initialTranscriptText, initialTags, initialFolderId])
 
-  // Auto-save locally every 5 seconds if there's content
+  // Auto-save locally (50ms debounce) when there are meaningful changes
   useEffect(() => {
-    if (!title.trim() && !notes.trim() && documents.length === 0) return
-    
-    const interval = setInterval(() => {
-      handleLocalSave()
-    }, 5000)
-    
-    return () => clearInterval(interval)
-  }, [title, notes, documents])
+    if (!autosaveEnabled) return
+
+    const hasAnyDraftContent = Boolean(
+      title.trim() ||
+      notes.trim() ||
+      documents.length > 0 ||
+      customTags.length > 0 ||
+      selectedFolderId
+    )
+    if (!hasAnyDraftContent) return
+
+    if (autosaveTimeoutRef.current) {
+      window.clearTimeout(autosaveTimeoutRef.current)
+    }
+
+    autosaveTimeoutRef.current = window.setTimeout(() => {
+      void handleLocalSave()
+    }, 50)
+
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        window.clearTimeout(autosaveTimeoutRef.current)
+        autosaveTimeoutRef.current = null
+      }
+    }
+  }, [autosaveEnabled, title, notes, documents, customTags, selectedFolderId])
 
   // Recording functions
   const startRecording = async () => {
@@ -426,7 +451,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       setRecordingTime(0)
     } catch (error) {
       console.error('Error starting recording:', error)
-      alert('Unable to access microphone. Please check permissions.')
+      toast.error('Microphone access denied', 'Please check browser permissions and try again.')
     }
   }
 
@@ -601,7 +626,13 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
 
   // Handler functions
   const hasNotebookContent = () => {
-    return Boolean(title.trim() || notes.trim() || documents.length > 0)
+    return Boolean(
+      title.trim() ||
+      notes.trim() ||
+      documents.length > 0 ||
+      customTags.length > 0 ||
+      selectedFolderId
+    )
   }
 
   const startNewNotebook = () => {
@@ -656,20 +687,28 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     setCustomTags([])
     setCustomTagInput('')
     setSelectedFolderId(null)
-    setIsLocalSave(false)
     setLocalSaveId(undefined)
     setShowUploadModal(false)
 
-    showNotification('Started a new notebook')
+    untitledCreatedAtRef.current = Date.now()
+    lastAutosaveSnapshotRef.current = ''
+
+    toast.info('Notebook cleared')
   }
 
-  const handleNewNotebook = () => {
+  const handleNewNotebook = async () => {
     if (mode !== 'create') return
 
     if (hasNotebookContent()) {
-      setNotification(null)
-      setConfirmNewNotebookOpen(true)
-      return
+      const ok = await toast.confirm({
+        title: 'Clear notebook?',
+        description:
+          'This will clear the current title, notes, transcripts, attachments, tags, and local draft for this notebook.',
+        confirmLabel: 'Clear',
+        cancelLabel: 'Cancel',
+        durationMs: 30000,
+      })
+      if (!ok) return
     }
 
     startNewNotebook()
@@ -695,40 +734,72 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   }
 
   const handleLocalSave = async () => {
-    if (localSaving || !title.trim()) return
-    
+    if (localSaving) return
+
+    const hasAnyDraftContent = Boolean(
+      title.trim() ||
+      notes.trim() ||
+      documents.length > 0 ||
+      customTags.length > 0 ||
+      selectedFolderId
+    )
+    if (!hasAnyDraftContent) return
+
+    const standInTitle = new Date(untitledCreatedAtRef.current).toLocaleString(undefined, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
+    const draftTitle = title.trim() || `Notebook ${standInTitle}`
+
+    const persistedDocuments = documents.map((doc) => ({
+      ...doc,
+      // Don't store file blob in localStorage for performance
+      file: undefined,
+    }))
+
+    const snapshot = JSON.stringify({
+      title: draftTitle,
+      notes,
+      documents: persistedDocuments,
+      customTags,
+      selectedFolderId,
+    })
+
+    if (snapshot === lastAutosaveSnapshotRef.current) return
+
     try {
       setLocalSaving(true)
-      
+
       const localData = {
         id: localSaveId || `local_${Date.now()}`,
-        title: title.trim(),
-        notes: notes,
-        documents: documents.map(doc => ({
-          ...doc,
-          // Don't store file blob in localStorage for performance
-          file: undefined
-        })),
+        title: draftTitle,
+        notes,
+        documents: persistedDocuments,
+        customTags,
+        selectedFolderId,
         lastSaved: new Date().toISOString(),
-        isLocalSave: true
+        isLocalSave: true,
       }
-      
+
       // Save to localStorage
       const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existingIndex = existingLocal.findIndex((item: any) => item.id === localData.id)
-      
+
       if (existingIndex >= 0) {
         existingLocal[existingIndex] = localData
       } else {
         existingLocal.push(localData)
       }
-      
+
       localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(existingLocal))
-      
-      setIsLocalSave(true)
+
       setLocalSaveId(localData.id)
-      
+      lastAutosaveSnapshotRef.current = snapshot
     } catch (error) {
       console.error('Error saving locally:', error)
     } finally {
@@ -738,22 +809,23 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
 
   const handleDoneContent = async () => {
     if (!title.trim()) {
-      alert('Please enter a title for your content.')
+      toast.error('Title required', 'Please enter a title before uploading.')
       return
     }
 
     // Check if there's any content to save
     const hasContent = (notes && notes.trim()) || documents.length > 0
     if (!hasContent) {
-      alert('Please add some content before saving.')
+      toast.error('Nothing to upload', 'Add notes or attach documents before clicking Done.')
       return
     }
 
     // Enforce per-submission limits
     if (documents.length > MAX_NOTEBOOK_SUBMISSION_ITEMS) {
       const over = documents.length - MAX_NOTEBOOK_SUBMISSION_ITEMS
-      showNotification(
-        `Too many items attached (max ${MAX_NOTEBOOK_SUBMISSION_ITEMS}). Please remove ${over} item(s) to continue.`
+      toast.error(
+        'Too many attachments',
+        `Max ${MAX_NOTEBOOK_SUBMISSION_ITEMS}. Remove ${over} item(s) to continue.`
       )
       return
     }
@@ -765,8 +837,9 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
 
     if (totalFileBytes > MAX_NOTEBOOK_SUBMISSION_FILE_BYTES) {
       const over = totalFileBytes - MAX_NOTEBOOK_SUBMISSION_FILE_BYTES
-      showNotification(
-        `Attachments exceed 50MB (currently ${formatMB(totalFileBytes)}). Remove ~${formatMB(over)} to continue.`
+      toast.error(
+        'Attachments too large',
+        `Over 50MB (currently ${formatMB(totalFileBytes)}). Remove ~${formatMB(over)} to continue.`
       )
       return
     }
@@ -781,14 +854,15 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
       rateLimitUserId = authData.user?.id || null
 
       if (!rateLimitUserId) {
-        showNotification('Please log in to continue.')
+        toast.error('Login required', 'Please log in to continue.')
         return
       }
 
       const limitStatus = getDoneLimitStatus(rateLimitUserId, Date.now())
       if (!limitStatus.allowed) {
-        showNotification(
-          `Upload limit reached (${NOTEBOOK_DONE_LIMIT}/hour). Try again in ${formatRemainingTime(limitStatus.remainingMs || 0)}.`
+        toast.warning(
+          'Upload limit reached',
+          `${NOTEBOOK_DONE_LIMIT}/hour. Try again in ${formatRemainingTime(limitStatus.remainingMs || 0)}.`
         )
         return
       }
@@ -798,15 +872,16 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     const missingFileDocs = documents.filter(doc => doc.type === 'file' && !doc.file)
     if (missingFileDocs.length > 0) {
       const names = missingFileDocs.map(doc => doc.name).join(', ')
-      const proceed = window.confirm(
-        `Some attached files came from a previous session and cannot be uploaded automatically.\n\n` +
-        `${names}\n\n` +
-        'You can reattach them using the Upload button before clicking Done.\n\n' +
-        'Press OK to continue without these files, or Cancel to go back and reattach them.'
-      )
-      if (!proceed) {
-        return
-      }
+      const proceed = await toast.confirm({
+        title: 'Some files need to be reattached',
+        description:
+          `These files came from a previous session and can’t be uploaded automatically: ${names}. ` +
+          'Reattach them using Upload, or continue without them.',
+        confirmLabel: 'Continue',
+        cancelLabel: 'Go Back',
+        durationMs: 30000,
+      })
+      if (!proceed) return
     }
 
     try {
@@ -834,6 +909,8 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
               // Don't store file blob in localStorage for performance
               file: undefined
             })),
+            customTags,
+            selectedFolderId,
             lastSaved: new Date().toISOString(),
             isLocalSave: true
           }
@@ -850,8 +927,8 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           }
           
           localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(existingLocal))
-          
-          alert('Local notebook updated successfully!')
+
+          toast.success('Local notebook updated')
           onExitEdit?.()
           return
         }
@@ -866,7 +943,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         })
 
         if (!updateResult.success) {
-          showNotification('Failed to update content. Please try again.')
+          toast.error('Update failed', 'Please try again.')
           return
         }
 
@@ -923,7 +1000,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           }
         }
 
-        showNotification('Content updated successfully!')
+        toast.success('Content updated')
         onExitEdit?.()
         return
       }
@@ -996,18 +1073,20 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         setTitle('')
         setNotes('')
         setDocuments([])
-        setIsLocalSave(false)
         setLocalSaveId(undefined)
         setCustomTags([])
         setSelectedFolderId(null)
+
+        untitledCreatedAtRef.current = Date.now()
+        lastAutosaveSnapshotRef.current = ''
         
-        showNotification('Content saved successfully!')
+        toast.success('Content saved')
       } else {
-        showNotification('Failed to save content. Please try again.')
+        toast.error('Save failed', 'Please try again.')
       }
     } catch (error) {
       console.error('Error saving content:', error)
-      showNotification('Failed to save content. Please try again.')
+      toast.error('Save failed', 'Please try again.')
     } finally {
       setSaving(false)
     }
@@ -1024,144 +1103,52 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
-        
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: 8,
-            marginTop: 8,
-          }}
-        >
-          <FolderSelector
-            selectedFolderId={selectedFolderId}
-            onFolderSelect={setSelectedFolderId}
-            label="Save to folder"
-            placeholder="Select folder (optional)"
-          />
-          {mode === 'create' && (
-            <button
-              type="button"
-              className="btn new-notebook-button"
-              onClick={handleNewNotebook}
-            >
-              New Notebook
-            </button>
-          )}
-        </div>
-        <div className="save-buttons">
-          <button 
-            className="btn btn-primary"
-            onClick={handleLocalSave}
-            disabled={localSaving}
-          >
-            <Save className="save-icon" />
-            {localSaving ? 'Saving...' : 'Save'}
-          </button>
-          <button 
-            className="btn btn-success"
-            onClick={handleDoneContent}
-            disabled={saving || !title.trim()}
-          >
-            <Check className="save-icon" />
-            {mode === 'edit' ? (saving ? 'Updating...' : 'Update') : (saving ? 'Uploading...' : 'Done')}
-          </button>
-        </div>
-        {isLocalSave && mode !== 'edit' && (
-          <div className="local-save-indicator">
-            ✓ Saved locally - Auto-saving every 5s
-          </div>
-        )}
 
-        {/* Custom Tags Input */}
-        <div style={{ marginTop: '12px' }}>
-          <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Tags</label>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            {customTags.map((tag) => (
-              <span key={tag} className="tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => setCustomTags((prev) => prev.filter((t) => t !== tag))}
-                  className="btn btn-soft-danger btn-sm"
-                  title="Remove tag"
-                  style={{ width: 20, height: 20, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <XIcon size={12} />
-                </button>
-              </span>
-            ))}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <input
-                type="text"
-                value={customTagInput}
-                onChange={(e) => setCustomTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    const v = customTagInput.trim()
-                    if (v && v.length > 0 && !customTags.includes(v)) {
-                      setCustomTags((prev) => [...prev, v])
-                    }
-                    setCustomTagInput('')
-                  }
-                }}
-                placeholder="Add a tag and press Enter"
-                style={{
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 6,
-                  padding: '6px 8px',
-                  fontSize: 14,
-                  outline: 'none',
-                }}
-              />
-              <button
-                type="button"
-                className="btn btn-soft-primary btn-sm"
-                onClick={() => {
-                  const v = customTagInput.trim()
-                  if (v && v.length > 0 && !customTags.includes(v)) {
-                    setCustomTags((prev) => [...prev, v])
-                  }
-                  setCustomTagInput('')
-                }}
-                title="Add tag"
-              >
-                <Plus size={14} />
-              </button>
-            </div>
-          </div>
-        </div>
+        <FolderSelector
+          selectedFolderId={selectedFolderId}
+          onFolderSelect={setSelectedFolderId}
+          label="Save to folder"
+          placeholder="Select folder (optional)"
+          enableTooltips
+        />
       </div>
 
       {/* Control Buttons */}
       <div className="control-buttons">
         {!isRecording ? (
-<button className="btn btn-danger" onClick={startRecording}>
-            <Mic className="btn-icon" />
-            Record
-          </button>
+          <AppTooltip content="Start recording">
+            <button type="button" className="btn btn-danger" onClick={startRecording}>
+              <Mic className="btn-icon" />
+              Record
+            </button>
+          </AppTooltip>
         ) : (
           <div className="recording-controls">
-<button 
-              className="btn btn-warning" 
-              onClick={isPaused ? resumeRecording : pauseRecording}
-            >
-              {isPaused ? <Play className="btn-icon" /> : <Pause className="btn-icon" />}
-              {isPaused ? 'Resume' : 'Pause'}
-            </button>
-<button className="btn btn-gray" onClick={stopRecording}>
-              <Square className="btn-icon" />
-              Stop
-            </button>
+            <AppTooltip content={isPaused ? 'Resume recording' : 'Pause recording'}>
+              <button
+                type="button"
+                className="btn btn-warning"
+                onClick={isPaused ? resumeRecording : pauseRecording}
+              >
+                {isPaused ? <Play className="btn-icon" /> : <Pause className="btn-icon" />}
+                {isPaused ? 'Resume' : 'Pause'}
+              </button>
+            </AppTooltip>
+            <AppTooltip content="Stop recording">
+              <button type="button" className="btn btn-gray" onClick={stopRecording}>
+                <Square className="btn-icon" />
+                Stop
+              </button>
+            </AppTooltip>
           </div>
         )}
-        
-<button className="btn btn-primary" onClick={() => setShowUploadModal(true)}>
-          <Upload className="btn-icon" />
-          Upload
-        </button>
+
+        <AppTooltip content="Upload files">
+          <button type="button" className="btn btn-primary" onClick={() => setShowUploadModal(true)}>
+            <Upload className="btn-icon" />
+            Upload
+          </button>
+        </AppTooltip>
       </div>
 
       {/* Recording Indicator */}
@@ -1250,15 +1237,106 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   const renderRightPanel = () => (
     <div className="notebook-right-panel">
       <div className="notes-header">
-        <h3>Notes</h3>
+        <div className="notes-header-left">
+          <h3>Notes</h3>
+          <div className="notes-autosave">
+            <span className="notes-autosave-label">Autosave</span>
+            <label className="nb-toggle" aria-label="Autosave">
+              <input
+                type="checkbox"
+                checked={autosaveEnabled}
+                onChange={(e) => setAutosaveEnabled(e.target.checked)}
+              />
+              <span className="nb-toggle-slider" />
+            </label>
+          </div>
+        </div>
+
+        <div className="notes-header-actions">
+          {mode === 'create' && (
+            <AppTooltip content="Clear notebook">
+              <button
+                type="button"
+                className="btn new-notebook-button"
+                onClick={() => void handleNewNotebook()}
+              >
+                Clear Notebook
+              </button>
+            </AppTooltip>
+          )}
+          <AppTooltip content={mode === 'edit' ? 'Update content' : 'Upload content'}>
+            <button
+              type="button"
+              className="btn btn-success"
+              onClick={handleDoneContent}
+              disabled={saving || !title.trim()}
+            >
+              <Check className="btn-icon" />
+              {mode === 'edit' ? (saving ? 'Updating...' : 'Update') : (saving ? 'Uploading...' : 'Done')}
+            </button>
+          </AppTooltip>
+        </div>
       </div>
+
+      <div className="notes-tags">
+        <div className="notes-tags-label">Tags</div>
+        <div className="notes-tags-row">
+          {customTags.map((tag) => (
+            <span key={tag} className="tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {tag}
+              <AppTooltip content="Remove tag">
+                <button
+                  type="button"
+                  onClick={() => setCustomTags((prev) => prev.filter((t) => t !== tag))}
+                  className="btn btn-soft-danger btn-sm"
+                  style={{ width: 24, height: 24, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <XIcon size={12} />
+                </button>
+              </AppTooltip>
+            </span>
+          ))}
+
+          <div className="notes-tags-input">
+            <input
+              type="text"
+              value={customTagInput}
+              onChange={(e) => setCustomTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  const v = customTagInput.trim()
+                  if (v && v.length > 0 && !customTags.includes(v)) {
+                    setCustomTags((prev) => [...prev, v])
+                  }
+                  setCustomTagInput('')
+                }
+              }}
+              placeholder="Add a tag and press Enter"
+              className="notes-tags-text"
+            />
+            <AppTooltip content="Add tag">
+              <button
+                type="button"
+                className="btn btn-soft-primary btn-sm"
+                onClick={() => {
+                  const v = customTagInput.trim()
+                  if (v && v.length > 0 && !customTags.includes(v)) {
+                    setCustomTags((prev) => [...prev, v])
+                  }
+                  setCustomTagInput('')
+                }}
+              >
+                <Plus size={14} />
+              </button>
+            </AppTooltip>
+          </div>
+        </div>
+      </div>
+
       <NoteTaking
         initialContent={notes}
         onChange={(newNotes) => {
-          if (!title.trim() && newNotes.trim() && !notes.trim()) {
-            showNotification('Please enter a notebook title before taking notes.')
-            return
-          }
           setNotes(newNotes)
         }}
         placeholder="Start typing your notes here..."
@@ -1267,58 +1345,25 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   )
 
   return (
-    <div className="record-tab">
-      {/* Notification Toasts */}
-      {confirmNewNotebookOpen ? (
-        <div className="notification-toast notification-toast--confirm" role="alertdialog" aria-live="polite">
-          <div className="notification-toast__message">Start a new notebook?</div>
-          <div className="notification-toast__subtext">
-            This will clear the current title, notes, transcripts, and locally saved attachments for this draft.
-          </div>
-          <div className="notification-toast__actions">
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => setConfirmNewNotebookOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => {
-                setConfirmNewNotebookOpen(false)
-                startNewNotebook()
-              }}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      ) : (
-        notification && (
-          <div className="notification-toast">
-            {notification}
-          </div>
-        )
-      )}
-      
-      <ResizableDivider
-        leftContent={renderLeftPanel()}
-        rightContent={renderRightPanel()}
-        initialLeftWidth={notebookState.leftPanelWidth}
-        onResize={(width) => notebookActions.setLeftPanelWidth(width)}
-        minLeftWidth={30}
-        maxLeftWidth={70}
-      />
+    <Tooltip.Provider delayDuration={200}>
+      <div className="record-tab">
+        <ResizableDivider
+          leftContent={renderLeftPanel()}
+          rightContent={renderRightPanel()}
+          initialLeftWidth={notebookState.leftPanelWidth}
+          onResize={(width) => notebookActions.setLeftPanelWidth(width)}
+          minLeftWidth={30}
+          maxLeftWidth={70}
+        />
 
-      {/* Upload Modal */}
-      <FileUploadModal
-        isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-        onFilesSelected={handleFileUpload}
-        mode="select"
-      />
-    </div>
+        {/* Upload Modal */}
+        <FileUploadModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          onFilesSelected={handleFileUpload}
+          mode="select"
+        />
+      </div>
+    </Tooltip.Provider>
   )
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { InfographicRenderer, InfographicErrorBoundary } from './InfographicRenderer';
-import { getInfographicSpec, saveInfographicSpec, hasInfographic } from '../../lib/infographicStorage';
+import { getInfographicSpec, saveInfographicSpec } from '../../lib/infographicStorage';
 import { generateInfographic, suggestInfographicTypes } from '../../lib/infographicService';
 import type { InfographicSpec, InfographicType } from '../../lib/viz/types';
 import { Loader2, Sparkles, RefreshCw } from 'lucide-react';
@@ -27,18 +27,10 @@ export const InfographicGallery: React.FC<InfographicGalleryProps> = ({
   const [suggestedTypes, setSuggestedTypes] = useState<InfographicType[]>([]);
   const [selectedType, setSelectedType] = useState<InfographicType | null>(null);
 
-  // Check premium access
-  if (!canAccessPremiumFeatures) {
-    return (
-      <PremiumLock 
-        feature="Infographics"
-        description="Transform your summaries into beautiful visual representations like mind maps, diagrams, and more."
-      />
-    );
-  }
-
   // Load existing infographic on mount
   useEffect(() => {
+    if (!canAccessPremiumFeatures) return
+
     const existing = getInfographicSpec(summaryId);
     if (existing) {
       setCurrentSpec(existing);
@@ -55,6 +47,15 @@ export const InfographicGallery: React.FC<InfographicGalleryProps> = ({
       }
     }
   }, [summaryId]);
+
+  if (!canAccessPremiumFeatures) {
+    return (
+      <PremiumLock
+        feature="Infographics"
+        description="Transform your summaries into beautiful visual representations like mind maps, diagrams, and more."
+      />
+    )
+  }
 
   const handleGenerate = async (type?: InfographicType) => {
     setIsGenerating(true);

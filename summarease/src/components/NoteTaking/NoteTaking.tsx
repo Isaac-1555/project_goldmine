@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight } from 'lucide-react'
+import { AppTooltip } from '../ui/AppTooltip'
 import './NoteTaking.css'
 
 interface NoteTakingProps {
@@ -81,80 +82,88 @@ export const NoteTaking: React.FC<NoteTakingProps> = ({
     <div className="note-taking">
       <div className="note-toolbar">
         <div className="toolbar-group">
-          <button
-            type="button"
-            className="toolbar-button"
-            onClick={() => execCommand('bold')}
-            title="Bold (Ctrl+B)"
-          >
-            <Bold size={16} />
-          </button>
-          <button
-            type="button"
-            className="toolbar-button"
-            onClick={() => execCommand('italic')}
-            title="Italic (Ctrl+I)"
-          >
-            <Italic size={16} />
-          </button>
-          <button
-            type="button"
-            className="toolbar-button"
-            onClick={() => execCommand('underline')}
-            title="Underline (Ctrl+U)"
-          >
-            <Underline size={16} />
-          </button>
+          <AppTooltip content="Bold (Ctrl+B)">
+            <button
+              type="button"
+              className="toolbar-button"
+              onClick={() => execCommand('bold')}
+            >
+              <Bold size={16} />
+            </button>
+          </AppTooltip>
+          <AppTooltip content="Italic (Ctrl+I)">
+            <button
+              type="button"
+              className="toolbar-button"
+              onClick={() => execCommand('italic')}
+            >
+              <Italic size={16} />
+            </button>
+          </AppTooltip>
+          <AppTooltip content="Underline (Ctrl+U)">
+            <button
+              type="button"
+              className="toolbar-button"
+              onClick={() => execCommand('underline')}
+            >
+              <Underline size={16} />
+            </button>
+          </AppTooltip>
         </div>
 
         <div className="toolbar-divider"></div>
 
         <div className="toolbar-group">
-          <button
-            type="button"
-            className="toolbar-button"
-            onClick={() => execCommand('insertUnorderedList')}
-            title="Bullet List"
-          >
-            <List size={16} />
-          </button>
-          <button
-            type="button"
-            className="toolbar-button"
-            onClick={() => execCommand('insertOrderedList')}
-            title="Numbered List"
-          >
-            <ListOrdered size={16} />
-          </button>
+          <AppTooltip content="Bullet list">
+            <button
+              type="button"
+              className="toolbar-button"
+              onClick={() => execCommand('insertUnorderedList')}
+            >
+              <List size={16} />
+            </button>
+          </AppTooltip>
+          <AppTooltip content="Numbered list">
+            <button
+              type="button"
+              className="toolbar-button"
+              onClick={() => execCommand('insertOrderedList')}
+            >
+              <ListOrdered size={16} />
+            </button>
+          </AppTooltip>
         </div>
 
         <div className="toolbar-divider"></div>
 
         <div className="toolbar-group">
-          <button
-            type="button"
-            className="toolbar-button"
-            onClick={() => execCommand('justifyLeft')}
-            title="Align Left"
-          >
-            <AlignLeft size={16} />
-          </button>
-          <button
-            type="button"
-            className="toolbar-button"
-            onClick={() => execCommand('justifyCenter')}
-            title="Align Center"
-          >
-            <AlignCenter size={16} />
-          </button>
-          <button
-            type="button"
-            className="toolbar-button"
-            onClick={() => execCommand('justifyRight')}
-            title="Align Right"
-          >
-            <AlignRight size={16} />
-          </button>
+          <AppTooltip content="Align left">
+            <button
+              type="button"
+              className="toolbar-button"
+              onClick={() => execCommand('justifyLeft')}
+            >
+              <AlignLeft size={16} />
+            </button>
+          </AppTooltip>
+          <AppTooltip content="Align center">
+            <button
+              type="button"
+              className="toolbar-button"
+              onClick={() => execCommand('justifyCenter')}
+            >
+              <AlignCenter size={16} />
+            </button>
+          </AppTooltip>
+          <AppTooltip content="Align right">
+            <button
+              type="button"
+              className="toolbar-button"
+              onClick={() => execCommand('justifyRight')}
+            >
+              <AlignRight size={16} />
+            </button>
+          </AppTooltip>
         </div>
       </div>
 

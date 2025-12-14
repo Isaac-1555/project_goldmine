@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { defaultIceServers, createSignalingChannel } from '../lib/rtcSignaling'
 import { useLectureRecorder } from '../hooks/useLectureRecorder'
 
@@ -22,7 +22,6 @@ export const RemoteMicHost: React.FC = () => {
   }, [sessionId])
 
   useEffect(() => {
-    let closed = false
     ;(async () => {
       const channel = await createSignalingChannel(sessionId)
       const pc = new RTCPeerConnection({ iceServers: defaultIceServers() })
@@ -55,7 +54,7 @@ export const RemoteMicHost: React.FC = () => {
       })
     })()
 
-    return () => { try { pcRef.current?.close() } catch {} }
+    return () => { try { pcRef.current?.close() } catch { /* noop */ } }
   }, [sessionId])
 
   const startWithRemote = async () => {

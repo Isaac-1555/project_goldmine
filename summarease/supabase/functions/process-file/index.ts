@@ -376,7 +376,7 @@ async function saveTags(summaryId: string, tags: string[], supabase: any): Promi
   for (const tagName of tags) {
     try {
       // Check if tag exists, create if not
-      let { data: existingTag, error: tagSelectError } = await supabase
+      const { data: existingTag, error: tagSelectError } = await supabase
         .from('tags')
         .select('id')
         .eq('name', tagName)

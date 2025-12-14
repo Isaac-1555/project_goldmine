@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Mic, BookOpen, ArrowRight, Sparkles, Play, Upload, CheckCircle, GitBranch, Brain, Menu, X } from 'lucide-react'
+import { Mic, BookOpen, ArrowRight, Sparkles, Upload, CheckCircle, GitBranch, Brain, Menu, X } from 'lucide-react'
 import { SatBrainMark } from '../brand/SatBrainMark'
 import { FAQSection } from './FAQSection'
 import { BuiltWithSection } from './BuiltWithSection'
@@ -10,6 +10,7 @@ import './LandingPage.modern.css'
 
 // Allow custom element without TS complaints
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
     interface IntrinsicElements {
       'spline-viewer': any
@@ -251,7 +252,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
         {splineUrl && (
           <div className="spline-wrap" aria-hidden="true">
             <div className="spline-inner">
-              {/* @ts-ignore: custom web component provided by Spline */}
+              {/* @ts-expect-error - custom web component provided by Spline */}
               <spline-viewer url={splineUrl} style={{ width: '100%', height: '100%' }}></spline-viewer>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { useAuth } from '../Auth/AuthProvider'
 import { useSettingsConfig } from '../../hooks/useSettingsConfig'
 import { useSubscription } from '../../contexts/SubscriptionContext'
 import { supabase } from '../../lib/supabase'
+import { useToast } from '../../hooks/useToast'
 import './FileUpload.css'
 
 interface FileUploadProps {
@@ -17,6 +18,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onClos
   const { user } = useAuth()
   const { settings } = useSettingsConfig()
   const { usage, incrementSummaryUsage, canAccessPremiumFeatures } = useSubscription()
+  const toast = useToast()
   const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
@@ -93,10 +95,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onClos
 
     // Check usage limits for free users
     if (!canAccessPremiumFeatures && !usage.canGenerateSummary) {
-      if (window.confirm(
-        `You've reached your limit of ${usage.summaryLimit} summaries per week. ` +
-        `Upgrade to Premium for unlimited summaries! Start with a 30-day free trial.`
-      )) {
+      const ok = await toast.confirm({
+        title: 'Upgrade to Premium?',
+        description:
+          `You've reached your limit of ${usage.summaryLimit} summaries per week. ` +
+          'Upgrade to Premium for unlimited summaries (30-day free trial).',
+        confirmLabel: 'Upgrade',
+        cancelLabel: 'Not now',
+        durationMs: 30000,
+      })
+      if (ok) {
         navigate('/pricing')
       }
       return

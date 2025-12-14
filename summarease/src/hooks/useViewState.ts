@@ -205,7 +205,7 @@ export const useViewState = (): [ViewTabState, ViewTabActions] => {
       } catch (error) {
         console.warn('Failed to save view state to localStorage:', error)
       }
-    }, 500) // 500ms debounce
+    }, 50) // 50ms debounce
   }, [])
   
   // Update state helper
