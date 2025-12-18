@@ -218,17 +218,19 @@ export const useViewState = (): [ViewTabState, ViewTabActions] => {
     setState((prev) => {
       const newState = typeof updates === 'function' ? updates(prev) : { ...prev, ...updates }
       newState.lastModified = new Date().toISOString()
-      
-      // Auto-save to localStorage for non-runtime state changes
-      if (typeof updates === 'object' && (
-        updates.activeSubTab !== undefined ||
-        updates.listView !== undefined ||
-        updates.graphView !== undefined ||
-        updates.preferences !== undefined
-      )) {
+
+      // Auto-save to localStorage for non-runtime state changes.
+      // Many actions use functional updates, so detect changes by comparing prev vs new.
+      const shouldPersist =
+        newState.activeSubTab !== prev.activeSubTab ||
+        newState.listView !== prev.listView ||
+        newState.graphView !== prev.graphView ||
+        newState.preferences !== prev.preferences
+
+      if (shouldPersist) {
         saveToStorage(newState)
       }
-      
+
       return newState
     })
   }, [saveToStorage])
