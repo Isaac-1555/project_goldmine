@@ -10,11 +10,10 @@ import './ViewTab.css'
 interface ViewTabProps {
   onFileSelect: (file: FileWithMetadata) => void
   selectedFileId?: string
-  onEditFile?: (fileId: string) => void
   onEditLocalNotebook?: (localNotebook: any) => void
 }
 
-export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, onEditFile, onEditLocalNotebook }) => {
+export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, onEditLocalNotebook }) => {
   // Use the new useViewState hook instead of individual useState calls
   const [viewState, viewActions] = useViewState()
   const listViewRef = useRef<HTMLDivElement>(null)
@@ -123,7 +122,6 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, 
             <ListView 
               onFileSelect={onFileSelect} 
               selectedFileId={selectedFileId} 
-              onEditFile={onEditFile} 
               onEditLocalNotebook={onEditLocalNotebook}
               searchResults={isSearching ? searchResults : undefined}
               isSearching={isSearching}
@@ -140,6 +138,8 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, 
               onShowMoveModalChange={viewActions.setShowMoveModal}
               selectedTargetFolder={listView.selectedTargetFolder}
               onSelectedTargetFolderChange={viewActions.setSelectedTargetFolder}
+              showTags={listView.showTags}
+              onShowTagsChange={viewActions.setShowTags}
             />
           </div>
         ) : (

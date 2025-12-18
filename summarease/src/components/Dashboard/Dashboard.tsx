@@ -287,7 +287,6 @@ export const Dashboard: React.FC = () => {
           <ViewTab
             onFileSelect={handleFileSelect}
             selectedFileId={selectedFile?.id}
-            onEditFile={handleEditFromView}
             onEditLocalNotebook={handleEditLocalNotebook}
           />
         )

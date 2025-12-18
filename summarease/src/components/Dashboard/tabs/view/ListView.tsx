@@ -8,7 +8,6 @@ import { useToast } from '../../../../hooks/useToast'
 interface ListViewProps {
   onFileSelect: (file: FileWithMetadata) => void
   selectedFileId?: string
-  onEditFile?: (fileId: string) => void
   onEditLocalNotebook?: (localNotebook: any) => void
   searchResults?: FileWithMetadata[]
   isSearching?: boolean
@@ -25,13 +24,14 @@ interface ListViewProps {
   onShowMoveModalChange?: (modal: { fileId: string; fileName: string } | null) => void
   selectedTargetFolder?: string | null
   onSelectedTargetFolderChange?: (folderId: string | null) => void
+  showTags?: boolean
+  onShowTagsChange?: (show: boolean) => void
 }
 
 export const ListView: React.FC<ListViewProps> = ({ 
   onFileSelect, 
   selectedFileId, 
-  onEditFile, 
-  onEditLocalNotebook, 
+  onEditLocalNotebook,
   searchResults, 
   isSearching,
   // State management props with fallback to internal state for backward compatibility
@@ -46,7 +46,9 @@ export const ListView: React.FC<ListViewProps> = ({
   showMoveModal: externalShowMoveModal,
   onShowMoveModalChange,
   selectedTargetFolder: externalSelectedTargetFolder,
-  onSelectedTargetFolderChange
+  onSelectedTargetFolderChange,
+  showTags: externalShowTags,
+  onShowTagsChange
 }) => {
   const toast = useToast()
 
@@ -101,6 +103,7 @@ export const ListView: React.FC<ListViewProps> = ({
   const [internalNewFolderName, setInternalNewFolderName] = useState('')
   const [internalShowMoveModal, setInternalShowMoveModal] = useState<{ fileId: string; fileName: string } | null>(null)
   const [internalSelectedTargetFolder, setInternalSelectedTargetFolder] = useState<string | null>(null)
+  const [internalShowTags, setInternalShowTags] = useState(true)
   
   // Folder management state
   const [folders, setFolders] = useState<Folder[]>([])
@@ -118,6 +121,12 @@ export const ListView: React.FC<ListViewProps> = ({
   const setShowMoveModal = onShowMoveModalChange || setInternalShowMoveModal
   const selectedTargetFolder = externalSelectedTargetFolder !== undefined ? externalSelectedTargetFolder : internalSelectedTargetFolder
   const setSelectedTargetFolder = onSelectedTargetFolderChange || setInternalSelectedTargetFolder
+  const showTags = externalShowTags !== undefined ? externalShowTags : internalShowTags
+  const setShowTags = onShowTagsChange || setInternalShowTags
+
+  useEffect(() => {
+    if (!showTags) setOpenTagsFor(null)
+  }, [showTags])
   
   // Filter files by selected folder and search results
   const filteredFiles = React.useMemo(() => {
@@ -352,14 +361,29 @@ export const ListView: React.FC<ListViewProps> = ({
           <div className="filter-header">
             <Filter className="filter-icon" />
             <span>Filter by folder:</span>
-            <button
-              className="manage-folders-btn"
-              onClick={() => setShowFolderManagement(!showFolderManagement)}
-              title="Manage folders"
-            >
-              <Settings size={14} />
-              Manage
-            </button>
+
+            <div className="filter-header-actions">
+              <div className="tags-toggle">
+                <span className="tags-toggle-label">Tags</span>
+                <label className="lv-toggle" aria-label="Show tags">
+                  <input
+                    type="checkbox"
+                    checked={showTags}
+                    onChange={(e) => setShowTags(e.target.checked)}
+                  />
+                  <span className="lv-toggle-slider" />
+                </label>
+              </div>
+
+              <button
+                className="manage-folders-btn"
+                onClick={() => setShowFolderManagement(!showFolderManagement)}
+                title="Manage folders"
+              >
+                <Settings size={14} />
+                Manage
+              </button>
+            </div>
           </div>
           <div className="filter-options">
             <button
@@ -576,13 +600,6 @@ export const ListView: React.FC<ListViewProps> = ({
                           <Move size={16} />
                         </button>
                         <button
-                          className="action-btn edit"
-                          title="Edit in Notebook"
-                          onClick={() => onEditFile?.(file.id)}
-                        >
-                          <Edit3 size={16} />
-                        </button>
-                        <button
                           className="action-btn delete"
                           title="Delete"
                           onClick={() => setShowConfirm({ id: file.id, title: file.title || file.filename || 'Untitled' })}
@@ -592,7 +609,7 @@ export const ListView: React.FC<ListViewProps> = ({
                       </div>
                     </div>
                     
-                    {file.tags && file.tags.length > 0 && (
+                    {showTags && file.tags && file.tags.length > 0 && (
                       <div className="file-tags" onClick={(e) => e.stopPropagation()}>
                         <Tag className="tags-icon" />
                         {(() => {

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react'
-import { Edit3, Pencil, Sparkles, Save, X, FileText, MessageSquare, Tag as TagIcon, Clock, ArrowLeft, Trash2, File as FileIcon, Eye } from 'lucide-react'
+import * as Tooltip from '@radix-ui/react-tooltip'
+import { Edit3, Pencil, Sparkles, Save, X, FileText, MessageSquare, Tag as TagIcon, Clock, ArrowLeft, Trash2, File as FileIcon, Eye, Plus } from 'lucide-react'
 import { StatusIndicator } from '../FileStatus/StatusIndicator'
-import { getFileDetails, updateSummary, deleteFile, regenerateSummary, removeTagFromFile, type FileWithMetadata, type Tag as TagType } from '../../lib/api'
+import { getFileDetails, updateSummary, deleteFile, regenerateSummary, removeTagFromFile, updateNotebookContent, type FileWithMetadata, type Tag as TagType } from '../../lib/api'
 import { useSettingsConfig } from '../../hooks/useSettingsConfig'
 import { supabase } from '../../lib/supabase'
 import { CodeBlockRenderer } from '../ContentBlocks/CodeBlockRenderer'
 import { MathBlockRenderer } from '../ContentBlocks/MathBlockRenderer'
 import { TagEditor } from '../TagEditor'
+import { NoteTaking } from '../NoteTaking/NoteTaking'
+import { FileUploadModal } from '../Upload/FileUploadModal'
+import { useToast } from '../../hooks/useToast'
 import './ContentViewer.css'
 import { InfographicGallery } from '../Infographics/InfographicGallery'
 import '../Infographics/Infographics.css'
@@ -50,6 +54,7 @@ interface FileDetails {
 }
 
 export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDelete }) => {
+  const toast = useToast()
   const { settings, getSummaryConfig } = useSettingsConfig()
   const [fileDetails, setFileDetails] = useState<FileDetails | null>(null)
   const [loading, setLoading] = useState(false)
@@ -256,6 +261,14 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
   const [saving, setSaving] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
+  const [editedNotesHtml, setEditedNotesHtml] = useState('')
+  const [savingNotes, setSavingNotes] = useState(false)
+
+  const [showAddDocModal, setShowAddDocModal] = useState(false)
+  const [addingDoc, setAddingDoc] = useState(false)
+  const [showRegenPrompt, setShowRegenPrompt] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deletingTag, setDeletingTag] = useState<string | null>(null)
   const [showDeleteTagConfirm, setShowDeleteTagConfirm] = useState<string | null>(null)
@@ -321,7 +334,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
     try {
       setSaving(true)
       const success = await updateSummary(latestSummaryId, editedSummary)
-      
+
       if (success) {
         setFileDetails(prev => prev ? {
           ...prev,
@@ -329,11 +342,12 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
           summaries: prev.summaries ? [{ ...(prev.summaries[0] || {}), summary_text: editedSummary }, ...prev.summaries.slice(1)] : prev.summaries
         } : null)
         setIsEditing(false)
+        toast.success('Summary saved')
       } else {
-        setError('Failed to save summary')
+        toast.error('Failed to save summary', 'Please try again.')
       }
     } catch (err: any) {
-      setError('Failed to save summary')
+      toast.error('Failed to save summary', err?.message || 'Please try again.')
       console.error('Error saving summary:', err)
     } finally {
       setSaving(false)
@@ -343,6 +357,90 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
   const handleCancelEdit = () => {
     setEditedSummary(fileDetails?.summary?.summary_text || '')
     setIsEditing(false)
+  }
+
+  const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim()
+
+  const handleRegenerate = async () => {
+    if (!fileDetails?.file.id) return
+
+    try {
+      setRegenerating(true)
+      const res = await regenerateSummary(fileDetails.file.id, getSummaryConfig())
+      if (res.success && res.summary_text) {
+        await loadFileDetails(fileDetails.file.id)
+        setEditedSummary(res.summary_text)
+        toast.success('Summary regenerated')
+      } else {
+        toast.error('Failed to regenerate summary', res.error || 'Please try again.')
+      }
+    } catch (e: any) {
+      toast.error('Failed to regenerate summary', e?.message || 'Please try again.')
+      console.error('Regeneration error:', e)
+    } finally {
+      setRegenerating(false)
+    }
+  }
+
+  const handleStartEditNotes = () => {
+    if (file.localNotebookData) return
+    const initial = fileDetails?.notes?.html_content || fileDetails?.notes?.content || ''
+    setEditedNotesHtml(initial)
+    setIsEditingNotes(true)
+  }
+
+  const handleSaveNotes = async () => {
+    if (!fileDetails?.file.id) return
+    if (file.localNotebookData) return
+
+    try {
+      setSavingNotes(true)
+      const res = await updateNotebookContent(fileDetails.file.id, {
+        notesHtml: editedNotesHtml,
+        notesText: stripHtml(editedNotesHtml)
+      })
+
+      if (res.success) {
+        await loadFileDetails(fileDetails.file.id)
+        setIsEditingNotes(false)
+        toast.success('Notes saved')
+      } else {
+        toast.error('Failed to save notes', 'Please try again.')
+      }
+    } catch (e: any) {
+      toast.error('Failed to save notes', e?.message || 'Please try again.')
+      console.error('Failed to save notes:', e)
+    } finally {
+      setSavingNotes(false)
+    }
+  }
+
+  const handleCancelNotesEdit = () => {
+    setEditedNotesHtml('')
+    setIsEditingNotes(false)
+  }
+
+  const handleAddDoc = async (filesToAdd: File[]) => {
+    if (!fileDetails?.file.id) return
+    if (file.localNotebookData) return
+    if (!filesToAdd.length) return
+
+    try {
+      setAddingDoc(true)
+      const res = await updateNotebookContent(fileDetails.file.id, { newFiles: filesToAdd })
+      if (res.success) {
+        await loadFileDetails(fileDetails.file.id)
+        setShowRegenPrompt(true)
+        toast.success('Document added')
+      } else {
+        toast.error('Failed to add document', 'Please try again.')
+      }
+    } catch (e: any) {
+      toast.error('Failed to add document', e?.message || 'Please try again.')
+      console.error('Failed to add document:', e)
+    } finally {
+      setAddingDoc(false)
+    }
   }
 
   const handleDelete = async () => {
@@ -490,7 +588,8 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
   }
 
   return (
-    <div className="content-viewer">
+    <Tooltip.Provider delayDuration={200}>
+      <div className="content-viewer">
       <div className="content-header">
         {onBack && (
           <button onClick={onBack} className="back-button" title="Back">
@@ -573,26 +672,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                         <Pencil className="icon" />
                       </button>
                       <button
-                        onClick={async () => {
-                          try {
-                            setRegenerating(true)
-                            setError('') // Clear any previous errors
-const res = await regenerateSummary(fileDetails!.file.id, getSummaryConfig())
-                            if (res.success && res.summary_text) {
-                              // Refresh file details from backend to get updated data
-                              await loadFileDetails(fileDetails!.file.id)
-                              // Also update the edited summary state
-                              setEditedSummary(res.summary_text)
-                            } else {
-                              setError(res.error || 'Failed to regenerate summary')
-                            }
-                          } catch (e) {
-                            setError('Failed to regenerate summary')
-                            console.error('Regeneration error:', e)
-                          } finally {
-                            setRegenerating(false)
-                          }
-                        }}
+                        onClick={handleRegenerate}
                         className="action-icon-btn regen-icon-btn"
                         disabled={regenerating}
                         title={regenerating ? "Regenerating summary..." : "Regenerate summary"}
@@ -674,16 +754,59 @@ const res = await regenerateSummary(fileDetails!.file.id, getSummaryConfig())
 
         {activeTab === 'notes' && (
           <div className="notes-content">
-            {fileDetails.notes ? (
-              <div className="notes-text">
-                {fileDetails.notes.html_content ? (
-                  <div dangerouslySetInnerHTML={{ __html: fileDetails.notes.html_content }} />
+            {!file.localNotebookData && fileDetails.notes && (
+              <div className="content-actions">
+                {!isEditingNotes ? (
+                  <button
+                    onClick={handleStartEditNotes}
+                    className="action-icon-btn edit-icon-btn"
+                    title="Edit notes"
+                  >
+                    <Pencil className="icon" />
+                  </button>
                 ) : (
-                  fileDetails.notes.content.split('\n').map((paragraph, index) => (
-                    <p key={`notes-p-${index}`}>{paragraph}</p>
-                  ))
+                  <div className="edit-actions">
+                    <button
+                      onClick={handleSaveNotes}
+                      disabled={savingNotes}
+                      className="save-button"
+                    >
+                      <Save className="icon" />
+                      {savingNotes ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={handleCancelNotesEdit}
+                      className="cancel-button"
+                      disabled={savingNotes}
+                    >
+                      <X className="icon" />
+                      Cancel
+                    </button>
+                  </div>
                 )}
               </div>
+            )}
+
+            {fileDetails.notes ? (
+              isEditingNotes && !file.localNotebookData ? (
+                <div className="notes-editor">
+                  <NoteTaking
+                    initialContent={editedNotesHtml}
+                    onChange={(html) => setEditedNotesHtml(html)}
+                    placeholder="Start typing your notes here..."
+                  />
+                </div>
+              ) : (
+                <div className="notes-text">
+                  {fileDetails.notes.html_content ? (
+                    <div dangerouslySetInnerHTML={{ __html: fileDetails.notes.html_content }} />
+                  ) : (
+                    fileDetails.notes.content.split('\n').map((paragraph, index) => (
+                      <p key={`notes-p-${index}`}>{paragraph}</p>
+                    ))
+                  )}
+                </div>
+              )
             ) : (
               <div className="no-content">
                 <p>No notes available.</p>
@@ -694,6 +817,44 @@ const res = await regenerateSummary(fileDetails!.file.id, getSummaryConfig())
 
         {activeTab === 'docs' && (
           <div className="docs-content">
+            {!file.localNotebookData && (
+              <div className="content-actions">
+                <button
+                  onClick={() => setShowAddDocModal(true)}
+                  className="action-icon-btn edit-icon-btn"
+                  title="Add document"
+                  disabled={addingDoc}
+                >
+                  <Plus className="icon" />
+                </button>
+              </div>
+            )}
+
+            {showRegenPrompt && !file.localNotebookData && (
+              <div className="regen-prompt">
+                <span>Document added. Regenerate summary?</span>
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={async () => {
+                    await handleRegenerate()
+                    setShowRegenPrompt(false)
+                  }}
+                  disabled={regenerating}
+                  title="Regenerate summary"
+                >
+                  <Sparkles className="icon" />
+                  Regenerate
+                </button>
+                <button
+                  className="btn btn-gray btn-sm"
+                  onClick={() => setShowRegenPrompt(false)}
+                  disabled={regenerating}
+                >
+                  Later
+                </button>
+              </div>
+            )}
+
             {(fileDetails.documents?.length || 0) === 0 ? (
               <div className="no-content">
                 <p>No uploaded documents.</p>
@@ -817,6 +978,19 @@ const res = await regenerateSummary(fileDetails!.file.id, getSummaryConfig())
         )}
       </div>
 
+      {/* Add Doc Modal */}
+      {showAddDocModal && !file.localNotebookData && (
+        <FileUploadModal
+          isOpen={showAddDocModal}
+          onClose={() => setShowAddDocModal(false)}
+          mode="select"
+          onFilesSelected={async (files) => {
+            setShowAddDocModal(false)
+            await handleAddDoc(files)
+          }}
+        />
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="modal-overlay">
@@ -879,6 +1053,7 @@ const res = await regenerateSummary(fileDetails!.file.id, getSummaryConfig())
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </Tooltip.Provider>
   )
 }

@@ -22,6 +22,7 @@ export interface ViewTabState {
     scrollPosition: number
     sortBy: 'date' | 'title' | 'folder'
     sortOrder: 'asc' | 'desc'
+    showTags: boolean
   }
   
   // GraphView specific state
@@ -71,6 +72,7 @@ export interface ViewTabActions {
   updateScrollPosition: (position: number) => void
   setSortBy: (sortBy: 'date' | 'title' | 'folder') => void
   setSortOrder: (order: 'asc' | 'desc') => void
+  setShowTags: (show: boolean) => void
   
   // GraphView actions
   setZoomLevel: (zoom: number) => void
@@ -110,7 +112,8 @@ const getDefaultState = (): ViewTabState => ({
     selectedTargetFolder: null,
     scrollPosition: 0,
     sortBy: 'date',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
+    showTags: true
   },
   
   graphView: {
@@ -163,6 +166,8 @@ export const useViewState = (): [ViewTabState, ViewTabActions] => {
         return {
           ...defaultState,
           ...parsedState,
+          listView: { ...defaultState.listView, ...(parsedState.listView || {}) },
+          graphView: { ...defaultState.graphView, ...(parsedState.graphView || {}) },
           preferences: { ...defaultState.preferences, ...parsedPrefs },
           // Always start fresh with these runtime states
           loading: false,
@@ -321,6 +326,13 @@ export const useViewState = (): [ViewTabState, ViewTabActions] => {
       updateState(prev => ({
         ...prev,
         listView: { ...prev.listView, sortOrder: order }
+      }))
+    }, [updateState]),
+
+    setShowTags: useCallback((show: boolean) => {
+      updateState(prev => ({
+        ...prev,
+        listView: { ...prev.listView, showTags: show }
       }))
     }, [updateState]),
     

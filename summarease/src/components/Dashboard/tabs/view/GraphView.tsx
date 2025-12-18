@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { ZoomIn, ZoomOut, RotateCcw, FileText } from 'lucide-react'
+import { ZoomIn, ZoomOut, FileText } from 'lucide-react'
 import * as d3 from 'd3'
 import { getUserFiles, getUserFolders, type FileWithMetadata, type Folder } from '../../../../lib/api'
 import { useSubscription } from '../../../../contexts/SubscriptionContext'
@@ -81,6 +81,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   const svgRef = useRef<SVGSVGElement>(null)
   const simulationRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null)
   const transformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity)
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
   
   // Container dimensions and zoom state (use external state if available)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -151,29 +152,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
     loadData()
   }, [canAccessPremiumFeatures])
   
-  // Initialize graph view with stored state - only run once after mount
-  useEffect(() => {
-    if (!canAccessPremiumFeatures) return
-    if (!svgRef.current || !initialPanPosition) return
-    
-    // Only run this once to avoid infinite loops
-    const hasInitialized = transformRef.current !== d3.zoomIdentity
-    if (hasInitialized) return
-    
-    const svg = d3.select(svgRef.current)
-    const transform = d3.zoomIdentity
-      .translate(initialPanPosition.x, initialPanPosition.y)
-      .scale(initialZoom)
-    
-    // Apply the stored transform without animation
-    svg.call(
-      d3.zoom<SVGSVGElement, unknown>().transform as any,
-      transform
-    )
-    transformRef.current = transform
-  }, [])
-
-
   useEffect(() => {
     if (!canAccessPremiumFeatures) return
 
@@ -537,6 +515,14 @@ export const GraphView: React.FC<GraphViewProps> = ({
 
     // Set up zoom behavior with level-of-detail
     const svg = d3.select(svgRef.current)
+
+    // Ensure we start from the persisted pan/zoom on first render
+    if (transformRef.current === d3.zoomIdentity) {
+      transformRef.current = d3.zoomIdentity
+        .translate(initialPanPosition.x, initialPanPosition.y)
+        .scale(initialZoom)
+    }
+
     const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .on('zoom', (event) => {
@@ -574,7 +560,10 @@ export const GraphView: React.FC<GraphViewProps> = ({
         }
       })
 
+    zoomBehaviorRef.current = zoomBehavior
     svg.call(zoomBehavior)
+    // Apply the current transform using the *same* zoom behavior, so buttons don't "queue" changes
+    svg.call(zoomBehavior.transform as any, transformRef.current)
 
     // Update nodes on simulation tick with throttling for performance
     let tickCount = 0
@@ -597,33 +586,21 @@ export const GraphView: React.FC<GraphViewProps> = ({
   }
 
   const handleZoomIn = () => {
-    if (!svgRef.current) return
+    if (!svgRef.current || !zoomBehaviorRef.current) return
     const svg = d3.select(svgRef.current)
-    svg.transition().call(
-      d3.zoom<SVGSVGElement, unknown>().scaleBy as any, 1.2
-    )
+    svg
+      .transition()
+      .duration(120)
+      .call(zoomBehaviorRef.current.scaleBy as any, 1.2)
   }
 
   const handleZoomOut = () => {
-    if (!svgRef.current) return
+    if (!svgRef.current || !zoomBehaviorRef.current) return
     const svg = d3.select(svgRef.current)
-    svg.transition().call(
-      d3.zoom<SVGSVGElement, unknown>().scaleBy as any, 0.8
-    )
-  }
-
-  const handleReset = () => {
-    if (!svgRef.current) return
-    const svg = d3.select(svgRef.current)
-    svg.transition().call(
-      d3.zoom<SVGSVGElement, unknown>().transform as any,
-      d3.zoomIdentity
-    )
-    transformRef.current = d3.zoomIdentity
-    
-    // Reset zoom and pan state through callbacks if provided
-    if (onZoomChange) onZoomChange(1)
-    if (onPanPositionChange) onPanPositionChange({ x: 0, y: 0 })
+    svg
+      .transition()
+      .duration(120)
+      .call(zoomBehaviorRef.current.scaleBy as any, 0.8)
   }
 
   const handleNodeClick = (node: GraphNode) => {
@@ -750,9 +727,6 @@ export const GraphView: React.FC<GraphViewProps> = ({
         </button>
         <button className="graph-control-btn" onClick={handleZoomOut} title="Zoom Out">
           <ZoomOut />
-        </button>
-        <button className="graph-control-btn" onClick={handleReset} title="Reset View">
-          <RotateCcw />
         </button>
       </div>
 
