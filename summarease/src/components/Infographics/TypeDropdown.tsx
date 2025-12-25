@@ -85,6 +85,7 @@ const TypeDropdown: React.FC<TypeDropdownProps> = ({ value, onChange, options, d
       <button
         type="button"
         className="themed-select-trigger"
+        aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}

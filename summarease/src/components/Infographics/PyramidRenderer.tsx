@@ -211,11 +211,6 @@ export const PyramidRenderer: React.FC<PyramidRendererProps> = ({
   );
 };
 
-function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength - 3) + '...';
-}
-
 // Text wrapping utility
 function wrapText(
   text: d3.Selection<SVGTextElement, unknown, null, undefined>,

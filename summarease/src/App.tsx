@@ -5,6 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { SubscriptionProvider } from './contexts/SubscriptionContext'
 import { LoginForm } from './components/Auth/LoginForm'
 import { SignUpForm } from './components/Auth/SignUpForm'
+import { ResetPassword } from './components/Auth/ResetPassword'
 import { Dashboard } from './components/Dashboard/Dashboard'
 import { LandingPage } from './components/LandingPage'
 import { PricingPage } from './components/Subscription'
@@ -67,6 +68,7 @@ function AppContent() {
           )
         } 
       />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route 
         path="/dashboard" 
         element={

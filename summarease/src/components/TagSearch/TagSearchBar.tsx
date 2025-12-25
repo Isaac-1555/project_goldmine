@@ -12,11 +12,6 @@ interface TagSearchBarProps {
   onSearchTagsChange?: (tags: string[]) => void
 }
 
-interface SelectedItem {
-  name: string
-  type: 'tag' | 'filename'
-}
-
 export const TagSearchBar: React.FC<TagSearchBarProps> = ({ 
   onResultsChange, 
   onSearchStateChange,

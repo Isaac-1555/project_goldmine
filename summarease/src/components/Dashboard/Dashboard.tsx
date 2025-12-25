@@ -16,7 +16,6 @@ import { useTrialNotifications } from '../../hooks/useTrialNotifications'
 import { type FileWithMetadata } from '../../lib/api'
 import './Dashboard.css'
 
-import { getNotebookDetails } from '../../lib/api'
 import { type DocumentItem } from '../DocumentList'
 
 export const Dashboard: React.FC = () => {
@@ -171,50 +170,6 @@ export const Dashboard: React.FC = () => {
     // Reset content viewer when switching tabs
     setShowContentViewer(false)
     setSelectedFile(null)
-  }
-
-  // Handle Edit from View tab list
-  const handleEditFromView = async (fileId: string) => {
-    try {
-      const details = await getNotebookDetails(fileId)
-      const documents: DocumentItem[] = []
-
-      if (details.transcript?.content?.trim()) {
-        documents.push({
-          id: `transcript_${details.transcript.id}`,
-          name: 'Transcript',
-          type: 'transcript',
-          content: details.transcript.content,
-          timestamp: new Date(details.transcript.created_at || Date.now()) as any
-        } as any)
-      }
-      if (Array.isArray(details.documents)) {
-        for (const d of details.documents) {
-          documents.push({
-            id: `doc_${d.id || d.storage_path || Math.random().toString(36).slice(2)}`,
-            name: d.original_filename || 'Document',
-            type: 'file',
-            size: undefined,
-            timestamp: new Date(d.created_at || Date.now()) as any
-          } as any)
-        }
-      }
-
-      setEditingContext({
-        fileId: details.file.id,
-        title: details.file.title,
-        notesHtml: details.notes?.html_content || details.notes?.content || '',
-        transcriptText: details.transcript?.content || '',
-        documents,
-        tags: (details.tags || []).map((t: any) => t.name),
-        summaryId: details.summary?.id,
-        folderId: details.file.folder_id,
-      })
-      setActiveTab('notebook')
-    } catch (e) {
-      console.error('Failed to load notebook for editing', e)
-      setActiveTab('notebook')
-    }
   }
 
   // Handle Edit from local notebook

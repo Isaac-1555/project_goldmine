@@ -81,11 +81,11 @@ ${combinedText}
 `
   const result = await model.generateContent(prompt)
   const response = await result.response
-  let text = response.text().replace(/```json/g, '').replace(/```/g, '').trim()
+  const text = response.text().replace(/```json/g, '').replace(/```/g, '').trim()
   let cards: any
   try {
     cards = JSON.parse(text)
-  } catch (e) {
+  } catch {
     throw new Error('AI returned malformed JSON for flashcards')
   }
   if (!Array.isArray(cards) || cards.length === 0) {

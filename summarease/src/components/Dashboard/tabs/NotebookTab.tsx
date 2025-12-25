@@ -11,6 +11,11 @@ import { transcribeLecture } from '../../../lib/transcriptionService'
 import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
 import { useNotebookState } from '../../../hooks/useNotebookState'
 import { useToast } from '../../../hooks/useToast'
+import {
+  clearLocalNotebookCache,
+  getLatestLocalNotebookDraft,
+  saveLatestLocalNotebookDraft,
+} from '../../../lib/localNotebookDraft'
 import { ResizableDivider } from '../../ResizableDivider'
 import { NoteTaking } from '../../NoteTaking'
 import { DocumentList, type DocumentItem } from '../../DocumentList'
@@ -194,20 +199,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
     if (hasInitialContent) return
 
     try {
-      const raw = localStorage.getItem('sat-brain-local-notebooks')
-      if (!raw) return
-
-      const all = JSON.parse(raw)
-      if (!Array.isArray(all) || all.length === 0) return
-
-      // Pick the most recently saved local notebook
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const latest = [...all].sort((a: any, b: any) => {
-        const aTime = new Date(a.lastSaved || a.last_saved || 0).getTime()
-        const bTime = new Date(b.lastSaved || b.last_saved || 0).getTime()
-        return bTime - aTime
-      })[0]
-
+      const latest = getLatestLocalNotebookDraft()
       if (!latest) return
 
       const hasAnyContent = Boolean(
@@ -636,21 +628,11 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
   }
 
   const startNewNotebook = () => {
-    // Remove this draft from localStorage collections
+    // Clear the local notebook cache (draft + any lingering draft state)
     try {
-      if (localSaveId) {
-        const existingRaw = localStorage.getItem('sat-brain-local-notebooks') || '[]'
-        const existingLocal = JSON.parse(existingRaw)
-        if (Array.isArray(existingLocal)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const filtered = existingLocal.filter((item: any) => item.id !== localSaveId)
-          localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(filtered))
-        }
-      }
-      // Also clear any working notebook state used by hooks
-      localStorage.removeItem('sat-brain-notebook-state')
+      clearLocalNotebookCache()
     } catch (error) {
-      console.error('Error clearing local notebook state:', error)
+      console.error('Error clearing local notebook cache:', error)
     }
 
     // Stop any active recording and reset recording-related state
@@ -785,18 +767,7 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         isLocalSave: true,
       }
 
-      // Save to localStorage
-      const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const existingIndex = existingLocal.findIndex((item: any) => item.id === localData.id)
-
-      if (existingIndex >= 0) {
-        existingLocal[existingIndex] = localData
-      } else {
-        existingLocal.push(localData)
-      }
-
-      localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(existingLocal))
+      saveLatestLocalNotebookDraft(localData)
 
       setLocalSaveId(localData.id)
       lastAutosaveSnapshotRef.current = snapshot
@@ -915,18 +886,8 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
             isLocalSave: true
           }
           
-          // Update in localStorage
-          const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const existingIndex = existingLocal.findIndex((item: any) => item.id === editingFileId)
-          
-          if (existingIndex >= 0) {
-            existingLocal[existingIndex] = localData
-          } else {
-            existingLocal.push(localData)
-          }
-          
-          localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(existingLocal))
+          // Keep a single-entry local draft cache.
+          saveLatestLocalNotebookDraft(localData)
 
           toast.success('Local notebook updated')
           onExitEdit?.()
@@ -1057,16 +1018,11 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
           }
         }
         
-        // Clear local storage and reset form
-        if (localSaveId) {
-          try {
-            const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const filtered = existingLocal.filter((item: any) => item.id !== localSaveId)
-            localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(filtered))
-          } catch (error) {
-            console.error('Error removing local save:', error)
-          }
+        // Clear local notebook cache (local draft) after successful upload
+        try {
+          clearLocalNotebookCache()
+        } catch (error) {
+          console.error('Error clearing local notebook cache:', error)
         }
         
         // Reset form

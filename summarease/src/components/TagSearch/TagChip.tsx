@@ -1,5 +1,5 @@
 import React from 'react'
-import { X, Tag, File, Hash, Zap, User } from 'lucide-react'
+import { X, File, Hash, Zap, User } from 'lucide-react'
 import './TagChip.css'
 
 export type TagType = 'general' | 'specific' | 'user_added'

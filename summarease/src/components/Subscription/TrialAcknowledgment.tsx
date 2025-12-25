@@ -25,7 +25,7 @@ export function TrialAcknowledgment({ onAcknowledge }: TrialAcknowledgmentProps)
               <h3>During your trial, you'll have access to:</h3>
               <ul>
                 <li>✓ Unlimited summaries</li>
-                <li>✓ Graph view visualization</li>
+                <li>✓ Map visualization</li>
                 <li>✓ Infographics generation</li>
                 <li>✓ Advanced study tools</li>
                 <li>✓ Quiz generation & Flashcards</li>

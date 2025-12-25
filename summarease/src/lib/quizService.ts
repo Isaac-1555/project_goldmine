@@ -165,7 +165,7 @@ Now, generate the quiz based on the text summary above.`
     let quizData: GeneratedQuizData[]
     try {
       quizData = JSON.parse(responseText)
-    } catch (parseError) {
+    } catch {
       console.error('Failed to parse Gemini response:', responseText)
       throw new Error('AI returned malformed JSON response')
     }

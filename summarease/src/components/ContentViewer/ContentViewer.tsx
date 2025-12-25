@@ -15,6 +15,7 @@ import './ContentViewer.css'
 import { InfographicGallery } from '../Infographics/InfographicGallery'
 import '../Infographics/Infographics.css'
 import { sanitizeTagName, isJunkTagName } from '../../lib/tagUtils'
+import { clearLocalNotebookCache } from '../../lib/localNotebookDraft'
 
 interface ContentViewerProps {
   file: FileWithMetadata
@@ -445,6 +446,24 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
 
   const handleDelete = async () => {
     if (!file?.id) return
+
+    // Local notebooks are not stored in the database.
+    if (file.localNotebookData) {
+      try {
+        setDeleting(true)
+        clearLocalNotebookCache()
+        setShowDeleteConfirm(false)
+        toast.success('Local draft deleted')
+        onDelete?.(file.id)
+        onBack?.()
+      } catch (err) {
+        console.error('Error deleting local notebook draft:', err)
+        setError('Failed to delete local draft')
+      } finally {
+        setDeleting(false)
+      }
+      return
+    }
 
     try {
       setDeleting(true)

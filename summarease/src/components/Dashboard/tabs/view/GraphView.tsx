@@ -684,7 +684,7 @@ export const GraphView: React.FC<GraphViewProps> = ({
   if (!canAccessPremiumFeatures) {
     return (
       <PremiumLock
-        feature="Graph View"
+        feature="Map View"
         description="Visualize your notes and documents as an interactive knowledge graph with connections and relationships."
       />
     )

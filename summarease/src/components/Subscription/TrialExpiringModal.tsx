@@ -35,7 +35,7 @@ export function TrialExpiringModal({ daysLeft, onClose, onUpgrade }: TrialExpiri
           <strong>Just $9.99/month</strong> to keep:
           <ul>
             <li>✓ Unlimited summaries</li>
-            <li>✓ Graph view & Infographics</li>
+            <li>✓ Mapped notes & Infographics</li>
             <li>✓ Quiz generation & Flashcards</li>
             <li>✓ Advanced study tools</li>
           </ul>

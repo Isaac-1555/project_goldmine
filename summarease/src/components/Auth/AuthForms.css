@@ -235,6 +235,26 @@
   text-align: center;
 }
 
+.success-message {
+  background: rgba(34,197,94,0.10);
+  border: 1px solid rgba(34,197,94,0.45);
+  color: #bbf7d0;
+  padding: 0.75rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.auth-helper-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.4rem;
+}
+
+.auth-helper-row .link-button {
+  font-size: 0.85rem;
+}
+
 .auth-footer {
   margin-top: 1.5rem;
   text-align: center;

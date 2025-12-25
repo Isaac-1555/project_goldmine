@@ -67,7 +67,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplet
 
       // Initialize Web Speech API transcriber
       const transcriber = new LiveTranscriber(
-        (transcript, isFinal) => {
+        (transcript) => {
           setLiveTranscript(transcript)
         },
         (error) => {

@@ -4,6 +4,7 @@ import { getUserFiles, deleteFile, type FileWithMetadata, getUserFolders, create
 import './ListView.css'
 import { sanitizeTagName, isJunkTagName } from '../../../../lib/tagUtils'
 import { useToast } from '../../../../hooks/useToast'
+import { clearLocalNotebookCache, getLatestLocalNotebookDraft } from '../../../../lib/localNotebookDraft'
 
 interface ListViewProps {
   onFileSelect: (file: FileWithMetadata) => void
@@ -191,12 +192,8 @@ export const ListView: React.FC<ListViewProps> = ({
 
   const loadLocalNotebooks = () => {
     try {
-      const localData = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
-      // Show only the latest local notebook
-      const latestNotebook = localData.length > 0 
-        ? [localData.sort((a: any, b: any) => new Date(b.lastSaved).getTime() - new Date(a.lastSaved).getTime())[0]]
-        : []
-      setLocalNotebooks(latestNotebook)
+      const latest = getLatestLocalNotebookDraft()
+      setLocalNotebooks(latest ? [latest] : [])
     } catch (error) {
       console.error('Error loading local notebooks:', error)
     }
@@ -259,10 +256,8 @@ export const ListView: React.FC<ListViewProps> = ({
     try {
       setDeletingId(fileId)
       if (isLocal) {
-        // Delete from localStorage
-        const existingLocal = JSON.parse(localStorage.getItem('sat-brain-local-notebooks') || '[]')
-        const filtered = existingLocal.filter((item: any) => item.id !== fileId)
-        localStorage.setItem('sat-brain-local-notebooks', JSON.stringify(filtered))
+        // Wipe all local notebook drafts/cache (this app only supports a single "latest" local draft).
+        clearLocalNotebookCache()
         loadLocalNotebooks()
       } else {
         const ok = await deleteFile(fileId)

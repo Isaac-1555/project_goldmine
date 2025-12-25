@@ -88,7 +88,7 @@ export const CycleDiagramRenderer: React.FC<CycleDiagramRendererProps> = ({
       const cx = Math.cos(midAngle) * controlRadius;
       const cy = Math.sin(midAngle) * controlRadius;
 
-      const path = g.append('path')
+      g.append('path')
         .attr('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`)
         .attr('fill', 'none')
         .attr('stroke', node.color || '#94a3b8')
@@ -221,7 +221,7 @@ function wrapText(
     const lineHeight = 1.1;
 
     textSel.text('');
-    let firstTspan = textSel.append('tspan').attr('x', 0).attr('y', 0).attr('dy', '0em');
+    const firstTspan = textSel.append('tspan').attr('x', 0).attr('y', 0).attr('dy', '0em');
     let tspan = firstTspan;
     let line: string = '';
     let linesCount = 1;
