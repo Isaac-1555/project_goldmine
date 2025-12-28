@@ -3,6 +3,9 @@
   padding: 2rem;
   max-width: 1000px;
   margin: 0 auto;
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .study-tools-header {
@@ -50,8 +53,20 @@
 /* Study Tools Menu */
 .study-tools-menu {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
+  /* Always lay cards out horizontally; scroll if they don't fit */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(260px, 1fr);
+  gap: 1.5rem;
+  align-items: stretch;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.25rem; /* room for scrollbar */
+  scroll-snap-type: x proximity;
+}
+
+.study-tools-menu > .tool-card {
+  scroll-snap-align: start;
 }
 
 .tool-card {
@@ -68,6 +83,21 @@
   border-color: var(--accent-primary);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
   transform: translateY(-2px);
+}
+
+.tool-card.coming-soon {
+  cursor: default;
+  border-style: dashed;
+}
+
+.tool-card.coming-soon:hover {
+  border-color: var(--border-primary);
+  box-shadow: none;
+  transform: none;
+}
+
+.tool-card.coming-soon .tool-icon svg {
+  color: var(--text-muted);
 }
 
 .tool-icon {
@@ -108,6 +138,12 @@
 
 .tool-button:hover {
   background: var(--accent-primary-hover);
+}
+
+.tool-button:disabled {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  cursor: not-allowed;
 }
 
 /* File Selection */
@@ -477,9 +513,14 @@
   .study-tools-tab {
     padding: 1rem;
   }
-  
+
+  /* On mobile, stack the cards vertically and avoid horizontal scrolling */
   .study-tools-menu {
+    grid-auto-flow: row;
     grid-template-columns: 1fr;
+    grid-auto-columns: auto;
+    overflow-x: visible;
+    overflow-y: visible;
   }
   
   .file-selection {

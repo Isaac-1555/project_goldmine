@@ -978,6 +978,17 @@ export const StudyToolsTab: React.FC = () => {
               <p>Review key concepts with interactive flashcards</p>
               <button className="tool-button">Create Flashcards</button>
             </div>
+
+            <div className="tool-card coming-soon" aria-disabled="true">
+              <div className="tool-icon">
+                <Clock size={24} />
+              </div>
+              <h3>New study tools coming soon</h3>
+              <p>We’re working on additional ways to help you learn faster.</p>
+              <button className="tool-button" disabled>
+                Coming Soon
+              </button>
+            </div>
           </div>
         </div>
       )
