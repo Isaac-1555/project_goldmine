@@ -40,7 +40,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
     setSuccess('')
 
     try {
-      const redirectTo = `${window.location.origin}/reset-password`
+      const appOrigin = (import.meta.env.VITE_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
+      const redirectTo = `${appOrigin}/reset-password`
       await requestPasswordReset(email, redirectTo)
       setSuccess('Check your email for a password reset link.')
     } catch (err: any) {
