@@ -100,16 +100,55 @@ export const Dashboard: React.FC = () => {
     const dismissed = localStorage.getItem('upgrade-banner-dismissed')
     return dismissed === 'true'
   })
-  
-  // Calculate days left for local trial
-  const localTrialDaysLeft = React.useMemo(() => {
-    if (localTrialStatus !== 'active' || !localTrialExpiresAt) return 0;
-    const diff = new Date(localTrialExpiresAt).getTime() - new Date().getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  }, [localTrialStatus, localTrialExpiresAt]);
 
-  // Show Local Trial Banner if active
-  const showLocalTrialBanner = localTrialStatus === 'active';
+  // Track local trial banner dismissal (session-only, per user)
+  const localTrialBannerDismissedKey = React.useMemo(() => {
+    if (!user?.id) return null
+    return `local-trial-banner-dismissed:v1:${user.id}`
+  }, [user?.id])
+
+  const [isLocalTrialBannerDismissed, setIsLocalTrialBannerDismissed] = useState(() => {
+    if (!localTrialBannerDismissedKey) return false
+
+    try {
+      return sessionStorage.getItem(localTrialBannerDismissedKey) === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    if (!localTrialBannerDismissedKey) {
+      setIsLocalTrialBannerDismissed(false)
+      return
+    }
+
+    try {
+      setIsLocalTrialBannerDismissed(
+        sessionStorage.getItem(localTrialBannerDismissedKey) === 'true'
+      )
+    } catch (e) {
+      console.error('Error reading local trial banner dismissed flag', e)
+      setIsLocalTrialBannerDismissed(false)
+    }
+  }, [localTrialBannerDismissedKey])
+
+  // Local trial active only if it hasn't expired yet
+  const isLocalTrialActive = React.useMemo(() => {
+    if (localTrialStatus !== 'active' || !localTrialExpiresAt) return false
+    return new Date(localTrialExpiresAt) > new Date()
+  }, [localTrialStatus, localTrialExpiresAt])
+
+  // Calculate days left for local trial (never negative)
+  const localTrialDaysLeft = React.useMemo(() => {
+    if (!isLocalTrialActive || !localTrialExpiresAt) return 0
+    const diffMs = new Date(localTrialExpiresAt).getTime() - Date.now()
+    if (diffMs <= 0) return 0
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+  }, [isLocalTrialActive, localTrialExpiresAt])
+
+  // Show Local Trial Banner if trial is active and not dismissed for this session
+  const showLocalTrialBanner = isLocalTrialActive && !isLocalTrialBannerDismissed
 
   const handleTrialAcknowledge = () => {
     try {
@@ -131,6 +170,18 @@ export const Dashboard: React.FC = () => {
   const handleDismissBanner = () => {
     setIsBannerDismissed(true)
     localStorage.setItem('upgrade-banner-dismissed', 'true')
+  }
+
+  const handleDismissLocalTrialBanner = () => {
+    setIsLocalTrialBannerDismissed(true)
+
+    if (!localTrialBannerDismissedKey) return
+
+    try {
+      sessionStorage.setItem(localTrialBannerDismissedKey, 'true')
+    } catch (e) {
+      console.error('Error setting local trial banner dismissed flag', e)
+    }
   }
 
   // Prefill/editing state for NotebookTab
@@ -277,6 +328,13 @@ export const Dashboard: React.FC = () => {
           <div className="upgrade-banner-actions">
             <button onClick={() => navigate('/pricing')} className="upgrade-banner-button">
               Add Card for 30 Days Free
+            </button>
+            <button
+              onClick={handleDismissLocalTrialBanner}
+              className="upgrade-banner-close"
+              aria-label="Dismiss trial banner"
+            >
+              <X size={20} />
             </button>
           </div>
         </div>
