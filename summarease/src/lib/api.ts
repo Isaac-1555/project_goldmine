@@ -3,6 +3,21 @@ import { processDocumentClientSide, extractTextOnly } from './documentProcessor'
 import { processAudioTranscript } from './audioProcessor'
 import type { Tag } from './types'
 
+function getDocumentsTableFileType(file: File): string {
+  // `documents.file_type` is VARCHAR(50) and expects short values like "pdf", "docx", etc.
+  // Some MIME types (e.g. DOCX/PPTX) exceed 50 chars and will fail inserts.
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  if (ext && ext.trim()) return ext.trim().slice(0, 50)
+  if (file.type && file.type.trim()) return file.type.trim().slice(0, 50)
+  return 'file'
+}
+
+function getStorageUploadPath(userId: string, fileName: string): string {
+  const safeName = fileName.replace(/\s+/g, '_')
+  const rand = Math.random().toString(36).slice(2, 10)
+  return `${userId}/${Date.now()}_${rand}_${safeName}`
+}
+
 // Re-export Tag for backwards compatibility
 export type { Tag } from './types'
 
@@ -150,6 +165,24 @@ export async function getFileDetails(fileId: string) {
       .eq('file_id', fileId)
       .maybeSingle()
 
+    // Get notes (might not exist)
+    const { data: notes } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('file_id', fileId)
+      .maybeSingle()
+
+    // Get documents (might not exist)
+    const { data: documents, error: documentsError } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('file_id', fileId)
+      .order('created_at', { ascending: false })
+
+    if (documentsError) {
+      console.error('Error fetching documents:', documentsError)
+    }
+
     // Get all summaries with tags (might be 0..n)
     const { data: summariesArr } = await supabase
       .from('summaries')
@@ -174,6 +207,8 @@ export async function getFileDetails(fileId: string) {
     return {
       file,
       transcript: transcript || null,
+      notes: notes || null,
+      documents: documents || [],
       summary: latestSummary || null,
       summaries: summariesArr || [],
       tags: latestTags
@@ -447,32 +482,38 @@ export async function createUnifiedContent(
     if (sources.uploadedFiles && sources.uploadedFiles.length > 0) {
       for (const file of sources.uploadedFiles) {
         try {
-          // Extract text client-side (no API key required)
-          const extractedText = await extractTextOnly(file)
-          if (extractedText) docsExtractedText.push(extractedText)
-          
+          // Extract text best-effort; don't block uploads if extraction fails.
+          let extractedText: string | null = null
+          try {
+            extractedText = await extractTextOnly(file)
+          } catch (e) {
+            console.warn('Failed to extract text from uploaded file (continuing without extracted_text):', file.name, e)
+          }
+
           // Upload file to storage
-          const fileName = `${user.user.id}/${Date.now()}_${file.name}`
+          const filePath = getStorageUploadPath(user.user.id, file.name)
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('files')
-            .upload(fileName, file)
-          
+            .upload(filePath, file)
+
           if (uploadError) throw uploadError
-          
+
           // Save to documents table
           const { error: docInsertError } = await supabase.from('documents').insert([
             {
               file_id: fileData.id,
               original_filename: file.name,
-              file_type: file.type,
+              file_type: getDocumentsTableFileType(file),
               storage_path: uploadData.path,
               extracted_text: extractedText,
               created_at: new Date().toISOString()
             }
           ])
           if (docInsertError) {
-            console.error('Error inserting document row:', docInsertError)
+            throw docInsertError
           }
+
+          if (extractedText) docsExtractedText.push(extractedText)
         } catch (error) {
           console.error('Error processing uploaded file:', file.name, error)
         }
@@ -746,96 +787,128 @@ export async function updateNotebookContent(
         .from('files')
         .update({ folder_id: changes.folderId })
         .eq('id', fileId)
-      
+
       if (folderError) throw folderError
     }
 
     // Update or insert notes
     if (changes.notesHtml || changes.notesText) {
-      const { data: existingNotes } = await supabase
+      const { data: existingNotes, error: notesLookupError } = await supabase
         .from('notes')
         .select('id')
         .eq('file_id', fileId)
         .maybeSingle()
 
+      if (notesLookupError) throw notesLookupError
+
       if (existingNotes?.id) {
-        await supabase
+        const { error: notesUpdateError } = await supabase
           .from('notes')
           .update({
             content: (changes.notesText || '').trim(),
             html_content: changes.notesHtml || '',
           })
           .eq('id', existingNotes.id)
+
+        if (notesUpdateError) throw notesUpdateError
       } else {
-        await supabase
+        const { error: notesInsertError } = await supabase
           .from('notes')
           .insert({
             file_id: fileId,
             content: (changes.notesText || '').trim(),
             html_content: changes.notesHtml || '',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
           })
+
+        if (notesInsertError) throw notesInsertError
       }
     }
 
     // Update or insert transcript
     if (changes.transcriptText && changes.transcriptText.trim()) {
-      const { data: existingTranscript } = await supabase
+      const { data: existingTranscript, error: transcriptLookupError } = await supabase
         .from('transcripts')
         .select('id')
         .eq('file_id', fileId)
         .maybeSingle()
 
+      if (transcriptLookupError) throw transcriptLookupError
+
       if (existingTranscript?.id) {
-        await supabase
+        const { error: transcriptUpdateError } = await supabase
           .from('transcripts')
           .update({
             content: changes.transcriptText,
             duration: changes.recordingDuration || null,
           })
           .eq('id', existingTranscript.id)
+
+        if (transcriptUpdateError) throw transcriptUpdateError
       } else {
-        await supabase
+        const { error: transcriptInsertError } = await supabase
           .from('transcripts')
           .insert({
             file_id: fileId,
             content: changes.transcriptText,
             duration: changes.recordingDuration || null,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
           })
+
+        if (transcriptInsertError) throw transcriptInsertError
       }
     }
 
     // Append any newly uploaded files to documents
     const newDocsExtractedText: string[] = []
+    let insertedDocs = 0
+
     if (changes.newFiles && changes.newFiles.length > 0) {
       const { data: user } = await supabase.auth.getUser()
       if (!user.user) throw new Error('User not authenticated')
 
       for (const file of changes.newFiles) {
         try {
-          const extractedText = await extractTextOnly(file)
-          if (extractedText) newDocsExtractedText.push(extractedText)
-          const fileName = `${user.user.id}/${Date.now()}_${file.name}`
+          // Extract text best-effort; don't block uploads if extraction fails.
+          let extractedText: string | null = null
+          try {
+            extractedText = await extractTextOnly(file)
+          } catch (e) {
+            console.warn(
+              'Failed to extract text from appended document (continuing without extracted_text):',
+              file.name,
+              e
+            )
+          }
+
+          const filePath = getStorageUploadPath(user.user.id, file.name)
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('files')
-            .upload(fileName, file)
+            .upload(filePath, file)
+
           if (uploadError) throw uploadError
 
           const { error: docInsertError } = await supabase.from('documents').insert({
             file_id: fileId,
             original_filename: file.name,
-            file_type: file.type,
+            file_type: getDocumentsTableFileType(file),
             storage_path: uploadData.path,
             extracted_text: extractedText,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
           })
-          if (docInsertError) {
-            console.error('Error inserting document row:', file.name, docInsertError)
-          }
+
+          if (docInsertError) throw docInsertError
+
+          insertedDocs += 1
+          if (extractedText) newDocsExtractedText.push(extractedText)
         } catch (e) {
           console.error('Error appending uploaded file to documents:', file.name, e)
         }
+      }
+
+      // If the caller attempted to add documents but none were actually inserted, treat as failure.
+      if (insertedDocs === 0) {
+        return { success: false }
       }
     }
 
