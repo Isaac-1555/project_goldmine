@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { FileText, Tag, Calendar, Edit3, Trash2, Filter, X, Settings, FolderPlus, Move } from 'lucide-react'
-import { getUserFiles, deleteFile, type FileWithMetadata, getUserFolders, createFolder, updateFolder, deleteFolder, moveFileToFolder, type Folder } from '../../../../lib/api'
+import { FileText, Tag, Calendar, Edit3, Trash2, Filter, X, Settings, Folder, FolderOpen, FolderPlus, Move } from 'lucide-react'
+import { getUserFiles, deleteFile, type FileWithMetadata, getUserFolders, createFolder, updateFolder, deleteFolder, moveFileToFolder, type Folder as FolderType } from '../../../../lib/api'
 import './ListView.css'
 import { sanitizeTagName, isJunkTagName } from '../../../../lib/tagUtils'
 import { useToast } from '../../../../hooks/useToast'
@@ -107,7 +107,7 @@ export const ListView: React.FC<ListViewProps> = ({
   const [internalShowTags, setInternalShowTags] = useState(true)
   
   // Folder management state
-  const [folders, setFolders] = useState<Folder[]>([])
+  const [folders, setFolders] = useState<FolderType[]>([])
   
   // Use external state if available, otherwise use internal state
   const selectedFolderFilter = externalSelectedFolderFilter !== undefined ? externalSelectedFolderFilter : internalSelectedFolderFilter
@@ -402,7 +402,8 @@ export const ListView: React.FC<ListViewProps> = ({
                   className={`filter-btn ${selectedFolderFilter === folder ? 'active' : ''}`}
                   onClick={() => setSelectedFolderFilter(folder)}
                 >
-                  {folder === 'No Folder' ? '📋' : '📁'} {folder} ({count})
+                  {folder === 'No Folder' ? <FolderOpen size={14} /> : <Folder size={14} />}
+                  <span>{folder} ({count})</span>
                 </button>
               )
             })}
@@ -478,7 +479,10 @@ export const ListView: React.FC<ListViewProps> = ({
                   </div>
                 ) : (
                   <div className="folder-display">
-                    <span className="folder-name">📁 {folder.name}</span>
+                    <span className="folder-name">
+                      <Folder size={14} />
+                      {folder.name}
+                    </span>
                     <div className="folder-actions">
                       <button
                         onClick={() => setEditingFolder({ id: folder.id, name: folder.name })}
@@ -563,7 +567,8 @@ export const ListView: React.FC<ListViewProps> = ({
           {Object.entries(groupedFiles).map(([folderName, folderFiles]) => (
             <div key={folderName} className="folder-section">
               <h3 className="folder-title">
-                📁 {folderName} ({folderFiles.length})
+                {folderName === 'No Folder' ? <FolderOpen size={18} /> : <Folder size={18} />}
+                {folderName} ({folderFiles.length})
               </h3>
               <div className="file-list">
                 {folderFiles.map((file, index) => (
@@ -723,7 +728,8 @@ export const ListView: React.FC<ListViewProps> = ({
                       checked={selectedTargetFolder === null}
                       onChange={() => setSelectedTargetFolder(null)}
                     />
-                    📋 No Folder
+                    <FolderOpen size={14} />
+                    No Folder
                   </label>
                   {folders.map(folder => (
                     <label key={folder.id} className="folder-option">
@@ -734,7 +740,8 @@ export const ListView: React.FC<ListViewProps> = ({
                         checked={selectedTargetFolder === folder.id}
                         onChange={() => setSelectedTargetFolder(folder.id)}
                       />
-                      📁 {folder.name}
+                      <Folder size={14} />
+                      {folder.name}
                     </label>
                   ))}
                 </div>

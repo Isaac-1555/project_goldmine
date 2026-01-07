@@ -274,6 +274,9 @@
 }
 
 .folder-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: 500;
   color: var(--text-secondary);
 }
