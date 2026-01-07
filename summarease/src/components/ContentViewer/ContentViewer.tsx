@@ -294,7 +294,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
             content: file.localNotebookData.audioTranscript
           } : null,
           summary: null,
-          tags: [],
+          tags: Array.isArray(file.tags) ? file.tags : [],
           notes: file.localNotebookData.notes && file.localNotebookData.notes.trim() ? {
             id: 'local',
             content: file.localNotebookData.notes,
@@ -309,7 +309,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
     } else {
       setFileDetails(null)
     }
-  }, [file?.id, file?.localNotebookData])
+  }, [file])
 
   const loadFileDetails = async (id: string) => {
     try {
@@ -947,13 +947,19 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
 
         {activeTab === 'tags' && (
           <div className="tags-content">
-                  <TagEditor
-              fileId={fileDetails.file.id}
-              existingTags={fileDetails.tags as any}
-              onTagsAdded={handleTagsAdded as any}
-              disabled={fileDetails.file.status === 'processing'}
-            />
-            
+            {!file.localNotebookData ? (
+              <TagEditor
+                fileId={fileDetails.file.id}
+                existingTags={fileDetails.tags as any}
+                onTagsAdded={handleTagsAdded as any}
+                disabled={fileDetails.file.status === 'processing'}
+              />
+            ) : (
+              <div className="no-content">
+                <p>Local notebooks are saved in your browser. Use the Notebook tab to add/remove tags.</p>
+              </div>
+            )}
+
             {fileDetails.tags.length > 0 ? (
               <div className="tags-section">
                 <h4 className="tags-section-title">Current Tags</h4>
@@ -972,14 +978,16 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                       <div key={tagId} className={`tag-item tag-item-${tagType}`}>
                         <TagIcon className={`tag-icon tag-icon-${tagType}`} />
                         <span className="tag-name" title={`${tagType} tag`}>{tagName}</span>
-                        <button
-                          className="tag-delete-button"
-                          onClick={() => setShowDeleteTagConfirm(tagId)}
-                          title={`Remove "${tagName}" tag`}
-                          aria-label={`Remove ${tagName} tag`}
-                        >
-                          <X className="tag-delete-icon" />
-                        </button>
+                        {!file.localNotebookData && (
+                          <button
+                            className="tag-delete-button"
+                            onClick={() => setShowDeleteTagConfirm(tagId)}
+                            title={`Remove "${tagName}" tag`}
+                            aria-label={`Remove ${tagName} tag`}
+                          >
+                            <X className="tag-delete-icon" />
+                          </button>
+                        )}
                       </div>
                     ))}
                 </div>
@@ -1038,7 +1046,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
       )}
 
       {/* Tag Delete Confirmation Modal */}
-      {showDeleteTagConfirm && (
+      {showDeleteTagConfirm && !file.localNotebookData && (
         <div className="modal-overlay">
           <div className="delete-modal">
             <h3>Remove Tag</h3>

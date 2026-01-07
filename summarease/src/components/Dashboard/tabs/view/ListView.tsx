@@ -232,6 +232,13 @@ export const ListView: React.FC<ListViewProps> = ({
         }))
     }
 
+    const localTags = Array.isArray(localNotebook.customTags)
+      ? localNotebook.customTags
+          .map((t: any) => sanitizeTagName(String(t)))
+          .filter((t: string) => t && !isJunkTagName(t))
+          .map((name: string) => ({ name, type: 'user_added' as const }))
+      : []
+
     // Convert local notebook to FileWithMetadata format with all content
     const mockFile: FileWithMetadata = {
       id: localNotebook.id,
@@ -240,7 +247,7 @@ export const ListView: React.FC<ListViewProps> = ({
       status: 'completed',
       created_at: localNotebook.lastSaved || new Date().toISOString(),
       summary: 'Local notebook (not uploaded)',
-      tags: [],
+      tags: localTags,
       // Add local notebook content
       localNotebookData: {
         notes: (localNotebook.notes ?? '').toString(),

@@ -9,7 +9,6 @@ import { processAudioTranscript } from '../../../lib/audioProcessor'
 import { LiveTranscriber } from '../../../lib/webSpeechTranscription'
 import { transcribeLecture } from '../../../lib/transcriptionService'
 import { useSettingsConfig } from '../../../hooks/useSettingsConfig'
-import { useNotebookState } from '../../../hooks/useNotebookState'
 import { useToast } from '../../../hooks/useToast'
 import {
   clearLocalNotebookCache,
@@ -43,7 +42,7 @@ function formatMB(bytes: number): string {
 }
 
 // Helper function to save summary and tags
-async function saveProcessedContent(fileId: string, summary: string, tags: string[]) {
+async function saveProcessedContent(fileId: string, summary: string, tags: Tag[]) {
   // Save summary
   const { data: summaryData, error: summaryError } = await supabase
     .from('summaries')
@@ -52,67 +51,16 @@ async function saveProcessedContent(fileId: string, summary: string, tags: strin
       summary_text: summary,
       created_at: new Date().toISOString(),
     })
-    .select()
+    .select('id')
     .single()
 
-  if (summaryError) {
+  if (summaryError || !summaryData?.id) {
     throw new Error('Failed to save summary')
   }
 
-  const tagErrors: string[] = []
-
-  // Save tags
-  for (const tagName of tags) {
-    // Check if tag exists, create if not
-    const { data: existingTag, error: tagSelectError } = await supabase
-      .from('tags')
-      .select('id')
-      .eq('name', tagName)
-      .maybeSingle()
-
-    if (tagSelectError) {
-      console.error('Error checking tag:', tagSelectError)
-      tagErrors.push(tagName)
-      continue
-    }
-
-    let tagId: string | null = null
-
-    if (existingTag) {
-      tagId = existingTag.id
-    } else {
-      const { data: newTag, error: tagInsertError } = await supabase
-        .from('tags')
-        .insert({ name: tagName })
-        .select('id')
-        .single()
-
-      if (tagInsertError) {
-        console.error('Error creating tag:', tagInsertError)
-        tagErrors.push(tagName)
-        continue
-      }
-      tagId = newTag.id
-    }
-
-    if (!tagId) {
-      tagErrors.push(tagName)
-      continue
-    }
-
-    // Link tag to summary
-    const { error: linkError } = await supabase
-      .from('summary_tags')
-      .insert({
-        summary_id: summaryData.id,
-        tag_id: tagId,
-      })
-
-    if (linkError) {
-      console.error('Error linking tag to summary:', tagName, linkError)
-      tagErrors.push(tagName)
-      continue
-    }
+  // Save tags (best-effort). Uses the RPC helper so types are supported.
+  if (tags.length > 0) {
+    await addTagsToSummary(summaryData.id, tags)
   }
 
   // Update file status to completed
@@ -123,11 +71,6 @@ async function saveProcessedContent(fileId: string, summary: string, tags: strin
 
   if (statusError) {
     throw new Error('Failed to finalize notebook upload')
-  }
-
-  // Surface tag issues so callers can decide whether to count this as a full success.
-  if (tagErrors.length > 0) {
-    throw new Error(`Failed to save ${tagErrors.length} tag(s)`)
   }
 }
 
@@ -158,8 +101,45 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
 }) => {
   // Hooks
   const { getSummaryConfig } = useSettingsConfig()
-  const [notebookState, notebookActions] = useNotebookState()
   const toast = useToast()
+
+  // Persisted UI state (left panel width)
+  const NOTEBOOK_STATE_STORAGE_KEY = 'sat-brain-notebook-state'
+  const [leftPanelWidth, setLeftPanelWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return 40
+    try {
+      const raw = localStorage.getItem(NOTEBOOK_STATE_STORAGE_KEY)
+      if (!raw) return 40
+      const parsed = JSON.parse(raw)
+      return typeof parsed?.leftPanelWidth === 'number' ? parsed.leftPanelWidth : 40
+    } catch {
+      return 40
+    }
+  })
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const raw = localStorage.getItem(NOTEBOOK_STATE_STORAGE_KEY)
+      const parsed = raw ? JSON.parse(raw) : {}
+      const next = {
+        ...parsed,
+        leftPanelWidth,
+        lastModified: new Date().toISOString(),
+      }
+      localStorage.setItem(NOTEBOOK_STATE_STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      try {
+        localStorage.setItem(
+          NOTEBOOK_STATE_STORAGE_KEY,
+          JSON.stringify({ leftPanelWidth, lastModified: new Date().toISOString() })
+        )
+      } catch {
+        // ignore
+      }
+    }
+  }, [leftPanelWidth])
   
   // State management
   const [title, setTitle] = useState(initialTitle || '')
@@ -940,15 +920,27 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
             }
 
             const MAX_TAGS = 12
-            const finalTags = Array.from(new Set([...(tags || []), ...customTags]
+            const cleanedCustom = customTags
               .map(t => sanitizeTagName(t))
               .filter(t => t && !isJunkTagName(t))
-            )).slice(0, MAX_TAGS)
-            if (summaryId && finalTags.length) {
-              const tagObjects: Tag[] = finalTags.map((name) => ({
-                name,
-                type: 'general',
-              }))
+            const cleanedAuto = (tags || [])
+              .map(t => sanitizeTagName(t))
+              .filter(t => t && !isJunkTagName(t))
+
+            // Ensure custom tags are kept (and typed) first, then fill with auto tags.
+            const tagMap = new Map<string, Tag['type']>()
+            for (const name of cleanedCustom) {
+              if (!tagMap.has(name)) tagMap.set(name, 'user_added')
+            }
+            for (const name of cleanedAuto) {
+              if (!tagMap.has(name)) tagMap.set(name, 'general')
+            }
+
+            const tagObjects: Tag[] = Array.from(tagMap.entries())
+              .slice(0, MAX_TAGS)
+              .map(([name, type]) => ({ name, type }))
+
+            if (summaryId && tagObjects.length) {
               await addTagsToSummary(summaryId, tagObjects)
             }
 
@@ -1001,11 +993,27 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
             const { summary, tags } = await processAudioTranscript(allContent, summaryConfig)
             console.log('📝 Summary generated:', summary.substring(0, 100) + '...')
             const MAX_TAGS = 12
-            const finalTags = Array.from(new Set([...(tags || []), ...customTags]
+            const cleanedCustom = customTags
               .map(t => sanitizeTagName(t))
               .filter(t => t && !isJunkTagName(t))
-            )).slice(0, MAX_TAGS)
-            await saveProcessedContent(fileId, summary, finalTags)
+            const cleanedAuto = (tags || [])
+              .map(t => sanitizeTagName(t))
+              .filter(t => t && !isJunkTagName(t))
+
+            // Ensure custom tags are kept (and typed) first, then fill with auto tags.
+            const tagMap = new Map<string, Tag['type']>()
+            for (const name of cleanedCustom) {
+              if (!tagMap.has(name)) tagMap.set(name, 'user_added')
+            }
+            for (const name of cleanedAuto) {
+              if (!tagMap.has(name)) tagMap.set(name, 'general')
+            }
+
+            const tagObjects: Tag[] = Array.from(tagMap.entries())
+              .slice(0, MAX_TAGS)
+              .map(([name, type]) => ({ name, type }))
+
+            await saveProcessedContent(fileId, summary, tagObjects)
 
             // Count only when the full Done/Update pipeline succeeded.
             if (rateLimitUserId) {
@@ -1306,8 +1314,8 @@ export const NotebookTab: React.FC<NotebookTabProps> = ({
         <ResizableDivider
           leftContent={renderLeftPanel()}
           rightContent={renderRightPanel()}
-          initialLeftWidth={notebookState.leftPanelWidth}
-          onResize={(width) => notebookActions.setLeftPanelWidth(width)}
+          initialLeftWidth={leftPanelWidth}
+          onResize={(width) => setLeftPanelWidth(width)}
           minLeftWidth={30}
           maxLeftWidth={70}
         />
