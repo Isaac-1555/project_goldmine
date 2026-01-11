@@ -1243,6 +1243,9 @@ export async function updateFolder(folderId: string, name: string): Promise<bool
 
 /**
  * Delete a folder (only if it's empty)
+ *
+ * Note: This is a legacy helper used by older UI flows. If you need to delete a folder
+ * that contains files, use `getFolderFileCount` + `deleteFolderKeepFiles` / `deleteFolderAndFiles`.
  */
 export async function deleteFolder(folderId: string): Promise<{ success: boolean; error?: string }> {
   try {
@@ -1275,6 +1278,66 @@ export async function deleteFolder(folderId: string): Promise<{ success: boolean
       success: false,
       error: error.message || 'Failed to delete folder'
     }
+  }
+}
+
+/**
+ * Get a count of files in a folder (RLS-scoped to the current user)
+ */
+export async function getFolderFileCount(folderId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('files')
+    .select('id', { count: 'exact', head: true })
+    .eq('folder_id', folderId)
+
+  if (error) throw error
+  if (typeof count !== 'number') {
+    throw new Error('Failed to determine folder file count')
+  }
+  return count
+}
+
+/**
+ * Delete a folder and keep the files (they will be moved to "No Folder" via FK ON DELETE SET NULL)
+ */
+export async function deleteFolderKeepFiles(folderId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('folders')
+      .delete()
+      .eq('id', folderId)
+
+    if (error) throw error
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error deleting folder (keep files):', error)
+    return { success: false, error: error.message || 'Failed to delete folder' }
+  }
+}
+
+/**
+ * Delete a folder and all files in it
+ */
+export async function deleteFolderAndFiles(folderId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error: deleteFilesError } = await supabase
+      .from('files')
+      .delete()
+      .eq('folder_id', folderId)
+
+    if (deleteFilesError) throw deleteFilesError
+
+    const { error: deleteFolderError } = await supabase
+      .from('folders')
+      .delete()
+      .eq('id', folderId)
+
+    if (deleteFolderError) throw deleteFolderError
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error deleting folder and files:', error)
+    return { success: false, error: error.message || 'Failed to delete folder and files' }
   }
 }
 

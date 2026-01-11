@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { FileText, Tag, Calendar, Edit3, Trash2, Filter, X, Settings, Folder, FolderOpen, FolderPlus, Move } from 'lucide-react'
-import { getUserFiles, deleteFile, type FileWithMetadata, getUserFolders, createFolder, updateFolder, deleteFolder, moveFileToFolder, type Folder as FolderType } from '../../../../lib/api'
+import { getUserFiles, deleteFile, type FileWithMetadata, getUserFolders, createFolder, updateFolder, getFolderFileCount, deleteFolderKeepFiles, deleteFolderAndFiles, moveFileToFolder, type Folder as FolderType } from '../../../../lib/api'
 import './ListView.css'
 import { sanitizeTagName, isJunkTagName } from '../../../../lib/tagUtils'
 import { useToast } from '../../../../hooks/useToast'
@@ -59,6 +59,9 @@ export const ListView: React.FC<ListViewProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showConfirm, setShowConfirm] = useState<{ id: string; title: string; isLocal?: boolean } | null>(null)
+
+  const [folderDeleteConfirm, setFolderDeleteConfirm] = useState<{ id: string; name: string; fileCount: number } | null>(null)
+  const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
 
   // Tag popover state
   const [openTagsFor, setOpenTagsFor] = useState<string | null>(null)
@@ -299,12 +302,60 @@ export const ListView: React.FC<ListViewProps> = ({
     }
   }
   
-  const handleDeleteFolder = async (folderId: string) => {
-    const result = await deleteFolder(folderId)
-    if (result.success) {
+  const handleRequestDeleteFolder = async (folder: FolderType) => {
+    try {
+      const fileCount = await getFolderFileCount(folder.id)
+
+      // Only confirm when the folder actually contains files
+      if (fileCount > 0) {
+        setFolderDeleteConfirm({ id: folder.id, name: folder.name, fileCount })
+        return
+      }
+
+      // Empty folder: delete immediately (no confirmation)
+      const result = await deleteFolderKeepFiles(folder.id)
+      if (result.success) {
+        if (selectedFolderFilter === folder.name) {
+          setSelectedFolderFilter(null)
+        }
+        await loadFolders()
+        await loadFiles()
+      } else {
+        toast.error('Failed to delete folder', result.error || 'Please try again.')
+      }
+    } catch (error: any) {
+      console.error('Error deleting folder:', error)
+      toast.error('Failed to delete folder', error?.message || 'Please try again.')
+    }
+  }
+
+  const handleConfirmDeleteFolder = async (mode: 'keepFiles' | 'deleteFiles') => {
+    if (!folderDeleteConfirm) return
+
+    const { id: folderId, name: folderName } = folderDeleteConfirm
+
+    try {
+      setDeletingFolderId(folderId)
+
+      const result = mode === 'deleteFiles'
+        ? await deleteFolderAndFiles(folderId)
+        : await deleteFolderKeepFiles(folderId)
+
+      if (!result.success) {
+        toast.error('Failed to delete folder', result.error || 'Please try again.')
+        return
+      }
+
+      // If the user was filtering on this folder, keep the view sensible after deletion.
+      if (selectedFolderFilter === folderName) {
+        setSelectedFolderFilter(mode === 'deleteFiles' ? null : 'No Folder')
+      }
+
       await loadFolders()
-    } else {
-      toast.error('Failed to delete folder', result.error || 'Please try again.')
+      await loadFiles()
+      setFolderDeleteConfirm(null)
+    } finally {
+      setDeletingFolderId(null)
     }
   }
   
@@ -492,7 +543,7 @@ export const ListView: React.FC<ListViewProps> = ({
                         <Edit3 size={12} />
                       </button>
                       <button
-                        onClick={() => handleDeleteFolder(folder.id)}
+                        onClick={() => void handleRequestDeleteFolder(folder)}
                         className="btn btn-soft-danger btn-sm"
                         title="Delete folder"
                       >
@@ -788,6 +839,45 @@ export const ListView: React.FC<ListViewProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {folderDeleteConfirm && (
+        <div className="modal-overlay">
+          <div className="delete-modal">
+            <h3>Delete Folder</h3>
+            <p>
+              {`“${folderDeleteConfirm.name}” contains ${folderDeleteConfirm.fileCount} file${folderDeleteConfirm.fileCount === 1 ? '' : 's'}.`}
+            </p>
+            <p>
+              Do you want to delete just the folder (files will be moved to “No Folder”), or delete the folder and all files inside it?
+              This action cannot be undone.
+            </p>
+            <div className="modal-actions">
+              <button
+                className="btn btn-outline"
+                onClick={() => setFolderDeleteConfirm(null)}
+                disabled={!!deletingFolderId}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-warning"
+                onClick={() => void handleConfirmDeleteFolder('keepFiles')}
+                disabled={!!deletingFolderId}
+              >
+                {deletingFolderId ? 'Deleting...' : 'Delete folder'}
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => void handleConfirmDeleteFolder('deleteFiles')}
+                disabled={!!deletingFolderId}
+              >
+                <Trash2 className="icon" />
+                {deletingFolderId ? 'Deleting...' : 'Delete folder & files'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
