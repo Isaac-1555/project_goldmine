@@ -1,10 +1,24 @@
-import React, { useState, useEffect } from 'react'
-import { FileText, Tag, Calendar, Edit3, Trash2, Filter, X, Settings, Folder, FolderOpen, FolderPlus, Move } from 'lucide-react'
-import { getUserFiles, deleteFile, type FileWithMetadata, getUserFolders, createFolder, updateFolder, getFolderFileCount, deleteFolderKeepFiles, deleteFolderAndFiles, moveFileToFolder, type Folder as FolderType } from '../../../../lib/api'
+import React, { useEffect, useRef, useState } from 'react'
+import { Calendar, ChevronLeft, ChevronRight, Edit3, FileText, Folder, FolderOpen, Move, Tag, Trash2 } from 'lucide-react'
+import {
+  createFolder,
+  deleteFile,
+  deleteFolderAndFiles,
+  deleteFolderKeepFiles,
+  getFolderFileCount,
+  getUserFiles,
+  getUserFolders,
+  moveFileToFolder,
+  moveFilesToFolder,
+  type FileWithMetadata,
+  type Folder as FolderType,
+  updateFolder,
+} from '../../../../lib/api'
 import './ListView.css'
 import { sanitizeTagName, isJunkTagName } from '../../../../lib/tagUtils'
 import { useToast } from '../../../../hooks/useToast'
 import { clearLocalNotebookCache, getLatestLocalNotebookDraft } from '../../../../lib/localNotebookDraft'
+import { ListViewSidebar, type FolderFilterOption } from './ListViewSidebar'
 
 interface ListViewProps {
   onFileSelect: (file: FileWithMetadata) => void
@@ -15,8 +29,6 @@ interface ListViewProps {
   // State management props
   selectedFolderFilter?: string | null
   onFolderFilterChange?: (filter: string | null) => void
-  showFolderManagement?: boolean
-  onShowFolderManagementChange?: (show: boolean) => void
   editingFolder?: { id: string; name: string } | null
   onEditingFolderChange?: (folder: { id: string; name: string } | null) => void
   newFolderName?: string
@@ -27,6 +39,22 @@ interface ListViewProps {
   onSelectedTargetFolderChange?: (folderId: string | null) => void
   showTags?: boolean
   onShowTagsChange?: (show: boolean) => void
+
+  // Layout + persistence
+  scrollPosition?: number
+  onScrollPositionChange?: (position: number) => void
+  sidebarCollapsed?: boolean
+  onSidebarCollapsedChange?: (collapsed: boolean) => void
+
+  // Bulk selection + bulk move
+  bulkSelectMode?: boolean
+  onBulkSelectModeChange?: (enabled: boolean) => void
+  bulkSelectedFileIds?: string[]
+  onBulkSelectedFileIdsChange?: (ids: string[]) => void
+  showBulkMoveModal?: boolean
+  onShowBulkMoveModalChange?: (show: boolean) => void
+  bulkSelectedTargetFolder?: string | null
+  onBulkSelectedTargetFolderChange?: (folderId: string | null) => void
 }
 
 export const ListView: React.FC<ListViewProps> = ({ 
@@ -38,8 +66,6 @@ export const ListView: React.FC<ListViewProps> = ({
   // State management props with fallback to internal state for backward compatibility
   selectedFolderFilter: externalSelectedFolderFilter,
   onFolderFilterChange,
-  showFolderManagement: externalShowFolderManagement,
-  onShowFolderManagementChange,
   editingFolder: externalEditingFolder,
   onEditingFolderChange,
   newFolderName: externalNewFolderName,
@@ -49,9 +75,23 @@ export const ListView: React.FC<ListViewProps> = ({
   selectedTargetFolder: externalSelectedTargetFolder,
   onSelectedTargetFolderChange,
   showTags: externalShowTags,
-  onShowTagsChange
+  onShowTagsChange,
+  scrollPosition: externalScrollPosition,
+  onScrollPositionChange,
+  sidebarCollapsed: externalSidebarCollapsed,
+  onSidebarCollapsedChange,
+  bulkSelectMode: externalBulkSelectMode,
+  onBulkSelectModeChange,
+  bulkSelectedFileIds: externalBulkSelectedFileIds,
+  onBulkSelectedFileIdsChange,
+  showBulkMoveModal: externalShowBulkMoveModal,
+  onShowBulkMoveModalChange,
+  bulkSelectedTargetFolder: externalBulkSelectedTargetFolder,
+  onBulkSelectedTargetFolderChange
 }) => {
   const toast = useToast()
+  const mainScrollRef = useRef<HTMLDivElement>(null)
+  const didRestoreScrollRef = useRef(false)
 
   const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [localNotebooks, setLocalNotebooks] = useState<any[]>([])
@@ -62,6 +102,7 @@ export const ListView: React.FC<ListViewProps> = ({
 
   const [folderDeleteConfirm, setFolderDeleteConfirm] = useState<{ id: string; name: string; fileCount: number } | null>(null)
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
 
   // Tag popover state
   const [openTagsFor, setOpenTagsFor] = useState<string | null>(null)
@@ -102,12 +143,17 @@ export const ListView: React.FC<ListViewProps> = ({
   
   // Use external state management if provided, otherwise fall back to internal state
   const [internalSelectedFolderFilter, setInternalSelectedFolderFilter] = useState<string | null>(null)
-  const [internalShowFolderManagement, setInternalShowFolderManagement] = useState(false)
   const [internalEditingFolder, setInternalEditingFolder] = useState<{ id: string; name: string } | null>(null)
   const [internalNewFolderName, setInternalNewFolderName] = useState('')
   const [internalShowMoveModal, setInternalShowMoveModal] = useState<{ fileId: string; fileName: string } | null>(null)
   const [internalSelectedTargetFolder, setInternalSelectedTargetFolder] = useState<string | null>(null)
   const [internalShowTags, setInternalShowTags] = useState(true)
+  const [internalScrollPosition, setInternalScrollPosition] = useState(0)
+  const [internalSidebarCollapsed, setInternalSidebarCollapsed] = useState(false)
+  const [internalBulkSelectMode, setInternalBulkSelectMode] = useState(false)
+  const [internalBulkSelectedFileIds, setInternalBulkSelectedFileIds] = useState<string[]>([])
+  const [internalShowBulkMoveModal, setInternalShowBulkMoveModal] = useState(false)
+  const [internalBulkSelectedTargetFolder, setInternalBulkSelectedTargetFolder] = useState<string | null>(null)
   
   // Folder management state
   const [folders, setFolders] = useState<FolderType[]>([])
@@ -115,8 +161,6 @@ export const ListView: React.FC<ListViewProps> = ({
   // Use external state if available, otherwise use internal state
   const selectedFolderFilter = externalSelectedFolderFilter !== undefined ? externalSelectedFolderFilter : internalSelectedFolderFilter
   const setSelectedFolderFilter = onFolderFilterChange || setInternalSelectedFolderFilter
-  const showFolderManagement = externalShowFolderManagement !== undefined ? externalShowFolderManagement : internalShowFolderManagement
-  const setShowFolderManagement = onShowFolderManagementChange || setInternalShowFolderManagement
   const editingFolder = externalEditingFolder !== undefined ? externalEditingFolder : internalEditingFolder
   const setEditingFolder = onEditingFolderChange || setInternalEditingFolder
   const newFolderName = externalNewFolderName !== undefined ? externalNewFolderName : internalNewFolderName
@@ -127,10 +171,34 @@ export const ListView: React.FC<ListViewProps> = ({
   const setSelectedTargetFolder = onSelectedTargetFolderChange || setInternalSelectedTargetFolder
   const showTags = externalShowTags !== undefined ? externalShowTags : internalShowTags
   const setShowTags = onShowTagsChange || setInternalShowTags
+  const scrollPosition = externalScrollPosition !== undefined ? externalScrollPosition : internalScrollPosition
+  const setScrollPosition = onScrollPositionChange || setInternalScrollPosition
+  const sidebarCollapsed = externalSidebarCollapsed !== undefined ? externalSidebarCollapsed : internalSidebarCollapsed
+  const setSidebarCollapsed = onSidebarCollapsedChange || setInternalSidebarCollapsed
+  const bulkSelectMode = externalBulkSelectMode !== undefined ? externalBulkSelectMode : internalBulkSelectMode
+  const setBulkSelectMode = onBulkSelectModeChange || setInternalBulkSelectMode
+  const bulkSelectedFileIds = externalBulkSelectedFileIds !== undefined ? externalBulkSelectedFileIds : internalBulkSelectedFileIds
+  const setBulkSelectedFileIds = onBulkSelectedFileIdsChange || setInternalBulkSelectedFileIds
+  const showBulkMoveModal = externalShowBulkMoveModal !== undefined ? externalShowBulkMoveModal : internalShowBulkMoveModal
+  const setShowBulkMoveModal = onShowBulkMoveModalChange || setInternalShowBulkMoveModal
+  const bulkSelectedTargetFolder = externalBulkSelectedTargetFolder !== undefined ? externalBulkSelectedTargetFolder : internalBulkSelectedTargetFolder
+  const setBulkSelectedTargetFolder = onBulkSelectedTargetFolderChange || setInternalBulkSelectedTargetFolder
 
   useEffect(() => {
     if (!showTags) setOpenTagsFor(null)
   }, [showTags])
+
+  useEffect(() => {
+    const el = mainScrollRef.current
+    if (!el) return
+    if (didRestoreScrollRef.current) return
+
+    if (typeof scrollPosition === 'number' && scrollPosition > 0) {
+      el.scrollTop = scrollPosition
+    }
+
+    didRestoreScrollRef.current = true
+  }, [scrollPosition])
   
   // Filter files by selected folder and search results
   const filteredFiles = React.useMemo(() => {
@@ -164,15 +232,52 @@ export const ListView: React.FC<ListViewProps> = ({
     
     return groups
   }, [filteredFiles])
+
+  // Keep bulk selection scoped to what's currently visible.
+  useEffect(() => {
+    if (!bulkSelectMode) return
+
+    const visibleIds = new Set(filteredFiles.map((f) => f.id))
+    const pruned = bulkSelectedFileIds.filter((id) => visibleIds.has(id))
+
+    if (pruned.length !== bulkSelectedFileIds.length) {
+      setBulkSelectedFileIds(pruned)
+    }
+
+    // If selection becomes empty, close bulk move modal for safety.
+    if (showBulkMoveModal && pruned.length === 0) {
+      setShowBulkMoveModal(false)
+      setBulkSelectedTargetFolder(null)
+    }
+  }, [
+    bulkSelectMode,
+    filteredFiles,
+    bulkSelectedFileIds,
+    showBulkMoveModal,
+    setBulkSelectedFileIds,
+    setShowBulkMoveModal,
+    setBulkSelectedTargetFolder,
+  ])
   
-  // Get unique folder names for filter options
-  const availableFolders = React.useMemo(() => {
-    const folders = new Set<string>()
-    files.forEach(file => {
-      folders.add(file.folder_name || 'No Folder')
+  const folderFilterOptions: FolderFilterOption[] = React.useMemo(() => {
+    const counts = new Map<string, number>()
+
+    files.forEach((file) => {
+      const folderKey = file.folder_name || 'No Folder'
+      counts.set(folderKey, (counts.get(folderKey) ?? 0) + 1)
     })
-    return Array.from(folders).sort()
-  }, [files])
+
+    const options: FolderFilterOption[] = [
+      ...folders.map((folder) => ({
+        name: folder.name,
+        count: counts.get(folder.name) ?? 0,
+      })),
+      { name: 'No Folder', count: counts.get('No Folder') ?? 0 },
+    ]
+
+    options.sort((a, b) => a.name.localeCompare(b.name))
+    return options
+  }, [folders, files])
 
   useEffect(() => {
     loadFiles()
@@ -281,24 +386,81 @@ export const ListView: React.FC<ListViewProps> = ({
     }
   }
 
+  const isReservedFolderName = (name: string) => {
+    return name === 'No Folder' || name === 'All Folders'
+  }
+
   const handleCreateFolder = async () => {
-    if (!newFolderName.trim()) return
-    
-    const folder = await createFolder(newFolderName.trim())
+    const name = newFolderName
+    if (!name.trim()) {
+      toast.error('Folder name required')
+      return
+    }
+
+    if (isReservedFolderName(name)) {
+      toast.error('Invalid folder name', 'Please choose a different name.')
+      return
+    }
+
+    const dup = folders.some((f) => f.name.toLowerCase() === name.toLowerCase())
+    if (dup) {
+      toast.error('Folder already exists', 'Please choose a different name.')
+      return
+    }
+
+    const folder = await createFolder(name)
     if (folder) {
       await loadFolders()
       setNewFolderName('')
+    } else {
+      toast.error('Failed to create folder', 'Please try again.')
     }
   }
   
   const handleUpdateFolder = async (folderId: string, newName: string) => {
-    if (!newName.trim()) return
-    
-    const success = await updateFolder(folderId, newName.trim())
-    if (success) {
-      await loadFolders()
-      await loadFiles() // Refresh files to get updated folder names
+    const nextName = newName
+    if (!nextName.trim()) {
+      toast.error('Folder name required')
+      return
+    }
+
+    if (isReservedFolderName(nextName)) {
+      toast.error('Invalid folder name', 'Please choose a different name.')
+      return
+    }
+
+    const current = folders.find((f) => f.id === folderId)
+    if (!current) return
+
+    const dup = folders.some((f) => f.id !== folderId && f.name.toLowerCase() === nextName.toLowerCase())
+    if (dup) {
+      toast.error('Folder name already exists', 'Please choose a different name.')
+      return
+    }
+
+    // No-op rename: just close the editor.
+    if (current.name === nextName) {
       setEditingFolder(null)
+      return
+    }
+
+    try {
+      setRenamingFolderId(folderId)
+      const success = await updateFolder(folderId, nextName)
+      if (success) {
+        // If the user is filtering on this folder, keep the view stable.
+        if (selectedFolderFilter === current.name) {
+          setSelectedFolderFilter(nextName)
+        }
+
+        await loadFolders()
+        await loadFiles() // Refresh files to get updated folder names
+        setEditingFolder(null)
+      } else {
+        toast.error('Rename failed', 'Please try again.')
+      }
+    } finally {
+      setRenamingFolderId(null)
     }
   }
   
@@ -367,6 +529,50 @@ export const ListView: React.FC<ListViewProps> = ({
       setSelectedTargetFolder(null)
     }
   }
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed(!sidebarCollapsed)
+  }
+
+  const enterBulkSelect = () => {
+    setBulkSelectMode(true)
+    setBulkSelectedFileIds([])
+    setShowBulkMoveModal(false)
+    setBulkSelectedTargetFolder(null)
+    setShowMoveModal(null)
+    setSelectedTargetFolder(null)
+  }
+
+  const exitBulkSelect = () => {
+    setBulkSelectMode(false)
+    setBulkSelectedFileIds([])
+    setShowBulkMoveModal(false)
+    setBulkSelectedTargetFolder(null)
+  }
+
+  const toggleBulkSelectedFile = (fileId: string) => {
+    const isSelected = bulkSelectedFileIds.includes(fileId)
+    const next = isSelected
+      ? bulkSelectedFileIds.filter((id) => id !== fileId)
+      : [...bulkSelectedFileIds, fileId]
+    setBulkSelectedFileIds(next)
+  }
+
+  const handleBulkMove = async () => {
+    if (bulkSelectedFileIds.length === 0) return
+
+    const ok = await moveFilesToFolder(bulkSelectedFileIds, bulkSelectedTargetFolder)
+    if (!ok) {
+      toast.error('Failed to move files', 'Please try again.')
+      return
+    }
+
+    await loadFiles()
+    setShowBulkMoveModal(false)
+    setBulkSelectedTargetFolder(null)
+    setBulkSelectedFileIds([])
+    setBulkSelectMode(false)
+  }
   
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -408,437 +614,437 @@ export const ListView: React.FC<ListViewProps> = ({
 
   return (
     <div className="list-view">
-      {/* Folder Filter */}
-      {files.length > 0 && (
-        <div className="folder-filter">
-          <div className="filter-header">
-            <Filter className="filter-icon" />
-            <span>Filter by folder:</span>
-
-            <div className="filter-header-actions">
-              <div className="tags-toggle">
-                <span className="tags-toggle-label">Tags</span>
-                <label className="lv-toggle" aria-label="Show tags">
-                  <input
-                    type="checkbox"
-                    checked={showTags}
-                    onChange={(e) => setShowTags(e.target.checked)}
-                  />
-                  <span className="lv-toggle-slider" />
-                </label>
-              </div>
-
-              <button
-                className="manage-folders-btn"
-                onClick={() => setShowFolderManagement(!showFolderManagement)}
-                title="Manage folders"
-              >
-                <Settings size={14} />
-                Manage
-              </button>
-            </div>
-          </div>
-          <div className="filter-options">
-            <button
-              className={`filter-btn ${!selectedFolderFilter ? 'active' : ''}`}
-              onClick={() => setSelectedFolderFilter(null)}
-            >
-              All Folders ({files.length})
-            </button>
-            {availableFolders.map(folder => {
-              const count = files.filter(f => (f.folder_name || 'No Folder') === folder).length
-              return (
-                <button
-                  key={folder}
-                  className={`filter-btn ${selectedFolderFilter === folder ? 'active' : ''}`}
-                  onClick={() => setSelectedFolderFilter(folder)}
-                >
-                  {folder === 'No Folder' ? <FolderOpen size={14} /> : <Folder size={14} />}
-                  <span>{folder} ({count})</span>
-                </button>
-              )
-            })}
-            {selectedFolderFilter && (
-              <button
-                className="filter-btn clear-filter"
-                onClick={() => setSelectedFolderFilter(null)}
-                title="Clear filter"
-              >
-                <X size={14} />
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Folder Management Panel (moved near filter for visibility) */}
-      {showFolderManagement && (
-        <div className="folder-management">
-          <h4>Manage Folders</h4>
-          
-          {/* Create New Folder */}
-          <div className="create-folder">
-            <input
-              type="text"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder="New folder name"
-              className="folder-input"
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+      <div className="list-view-layout">
+        <aside className={`list-view-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+          {!sidebarCollapsed && (
+            <ListViewSidebar
+              showTags={showTags}
+              onShowTagsChange={setShowTags}
+              folders={folders}
+              newFolderName={newFolderName}
+              onNewFolderNameChange={setNewFolderName}
+              onCreateFolder={() => void handleCreateFolder()}
+              editingFolder={editingFolder}
+              renamingFolderId={renamingFolderId}
+              onEditingFolderChange={setEditingFolder}
+              onUpdateFolder={(folderId, name) => void handleUpdateFolder(folderId, name)}
+              onRequestDeleteFolder={(folder) => void handleRequestDeleteFolder(folder)}
+              selectedFolderFilter={selectedFolderFilter}
+              onFolderFilterChange={(filter) => {
+                setSelectedFolderFilter(filter)
+              }}
+              folderFilterOptions={folderFilterOptions}
+              totalFileCount={files.length}
+              bulkSelectMode={bulkSelectMode}
+              selectedBulkCount={bulkSelectedFileIds.length}
+              onEnterBulkSelectMode={enterBulkSelect}
+              onExitBulkSelectMode={exitBulkSelect}
+              onOpenBulkMoveModal={() => setShowBulkMoveModal(true)}
             />
-            <button
-              onClick={handleCreateFolder}
-              disabled={!newFolderName.trim()}
-              className="btn btn-primary btn-sm"
-              title="Create folder"
-              aria-label="Create folder"
-            >
-              <FolderPlus size={14} />
-            </button>
-          </div>
-          
-          {/* Existing Folders */}
-          <div className="folders-list">
-            {folders.map(folder => (
-              <div key={folder.id} className="folder-item">
-                {editingFolder?.id === folder.id ? (
-                  <div className="folder-edit">
-                    <input
-                      type="text"
-                      value={editingFolder.name}
-                      onChange={(e) => setEditingFolder({ ...editingFolder, name: e.target.value })}
-                      className="folder-input"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleUpdateFolder(folder.id, editingFolder.name)
-                        if (e.key === 'Escape') setEditingFolder(null)
-                      }}
-                    />
-                    <button
-                      onClick={() => handleUpdateFolder(folder.id, editingFolder.name)}
-                      className="btn btn-primary btn-sm"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => setEditingFolder(null)}
-                      className="btn btn-gray btn-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <div className="folder-display">
-                    <span className="folder-name">
-                      <Folder size={14} />
-                      {folder.name}
-                    </span>
-                    <div className="folder-actions">
-                      <button
-                        onClick={() => setEditingFolder({ id: folder.id, name: folder.name })}
-                        className="btn btn-soft-primary btn-sm"
-                        title="Rename folder"
-                      >
-                        <Edit3 size={12} />
-                      </button>
-                      <button
-                        onClick={() => void handleRequestDeleteFolder(folder)}
-                        className="btn btn-soft-danger btn-sm"
-                        title="Delete folder"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {localNotebooks.length > 0 && (
-        <div className="local-notebooks-section">
-          <h3 className="section-title">Latest Local Notebook</h3>
-          <div className="file-list">
-            {localNotebooks.map((notebook) => (
-              <div
-                key={notebook.id}
-                className={`file-card local-notebook ${selectedFileId === notebook.id ? 'selected' : ''}`}
-                onClick={(e) => {
-                  // Avoid card click when clicking actions
-                  const target = e.target as HTMLElement
-                  if (target.closest('.file-actions')) return
-                  handleLocalNotebookSelect(notebook)
-                }}
-              >
-                <div className="file-header">
-                  <div className="file-icon">
-                    <FileText />
-                  </div>
-                  <div className="file-info">
-                    <h3 className="file-title">{notebook.title}</h3>
-                    <div className="file-meta">
-                      <span className="file-date">
-                        <Calendar className="meta-icon" />
-                        {formatDate(notebook.lastSaved)}
-                      </span>
-                      <span className="file-status local-status">Local Save</span>
-                    </div>
-                  </div>
-                  <div className="file-actions">
-                    <button
-                      className="action-btn edit"
-                      title="Edit in Notebook"
-                      onClick={() => onEditLocalNotebook?.(notebook)}
-                    >
-                      <Edit3 size={16} />
-                    </button>
-                    <button
-                      className="action-btn delete"
-                      title="Delete"
-                      onClick={() => setShowConfirm({ id: notebook.id, title: notebook.title, isLocal: true })}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+          )}
+        </aside>
+
+        <button
+          type="button"
+          className={`list-view-sidebar-handle ${sidebarCollapsed ? 'collapsed' : ''}`}
+          onClick={toggleSidebarCollapsed}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+
+        <div className="list-view-main">
+          <div
+            ref={mainScrollRef}
+            className="list-view-main-scroll"
+            onScroll={(e) => setScrollPosition(e.currentTarget.scrollTop)}
+          >
+            {bulkSelectMode && (
+              <div className="lv-bulk-bar">
+                <div className="lv-bulk-bar-left">
+                  <Move size={14} />
+                  <span>Selection mode</span>
+                  <span className="lv-bulk-bar-count">{bulkSelectedFileIds.length} selected</span>
+                  {selectedFolderFilter && (
+                    <span className="lv-bulk-bar-scope">(current folder only)</span>
+                  )}
                 </div>
-                <div className="file-summary">
-                  <p>Local notebook - not uploaded to database</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {files.length > 0 && (
-        <div className="uploaded-files-section">
-          {Object.entries(groupedFiles).map(([folderName, folderFiles]) => (
-            <div key={folderName} className="folder-section">
-              <h3 className="folder-title">
-                {folderName === 'No Folder' ? <FolderOpen size={18} /> : <Folder size={18} />}
-                {folderName} ({folderFiles.length})
-              </h3>
-              <div className="file-list">
-                {folderFiles.map((file, index) => (
-                  <div
-                    key={file.id || `file-${index}`}
-                    className={`file-card ${selectedFileId === file.id ? 'selected' : ''}`}
-                    onClick={(e) => {
-                      // Avoid card click when clicking actions
-                      const target = e.target as HTMLElement
-                      if (target.closest('.file-actions')) return
-                      onFileSelect(file)
-                    }}
+                <div className="lv-bulk-bar-actions">
+                  <button className="btn btn-outline btn-sm" onClick={exitBulkSelect}>
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => setShowBulkMoveModal(true)}
+                    disabled={bulkSelectedFileIds.length === 0}
                   >
-                    <div className="file-header">
-                      <div className="file-icon">
-                        <FileText />
-                      </div>
-                      <div className="file-info">
-                        <h3 className="file-title">{file.title || file.filename}</h3>
-                        <div className="file-meta">
-                          <span className="file-date">
-                            <Calendar className="meta-icon" />
-                            {formatDate(file.created_at)}
-                          </span>
-                          <span className={`file-status ${file.status}`}>
-                            {file.status === 'completed' ? 'Processed' : 'Processing...'}
-                          </span>
+                    <Move size={14} />
+                    Move selected
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {localNotebooks.length > 0 && (
+              <div className="local-notebooks-section">
+                <h3 className="section-title">Latest Local Notebook</h3>
+                <div className="file-list">
+                  {localNotebooks.map((notebook) => (
+                    <div
+                      key={notebook.id}
+                      className={`file-card local-notebook ${selectedFileId === notebook.id ? 'selected' : ''}`}
+                      onClick={(e) => {
+                        // Avoid card click when clicking actions
+                        const target = e.target as HTMLElement
+                        if (target.closest('.file-actions')) return
+                        handleLocalNotebookSelect(notebook)
+                      }}
+                    >
+                      <div className="file-header">
+                        <div className="file-icon">
+                          <FileText />
+                        </div>
+                        <div className="file-info">
+                          <h3 className="file-title">{notebook.title}</h3>
+                          <div className="file-meta">
+                            <span className="file-date">
+                              <Calendar className="meta-icon" />
+                              {formatDate(notebook.lastSaved)}
+                            </span>
+                            <span className="file-status local-status">Local Save</span>
+                          </div>
+                        </div>
+                        <div className="file-actions">
+                          <button
+                            className="action-btn edit"
+                            title="Edit in Notebook"
+                            onClick={() => onEditLocalNotebook?.(notebook)}
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button
+                            className="action-btn delete"
+                            title="Delete"
+                            onClick={() => setShowConfirm({ id: notebook.id, title: notebook.title, isLocal: true })}
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </div>
-                      <div className="file-actions">
-                        <button
-                          className="action-btn move"
-                          title="Move to folder"
-                          onClick={() => setShowMoveModal({ fileId: file.id, fileName: file.title || file.filename || 'Untitled' })}
-                        >
-                          <Move size={16} />
-                        </button>
-                        <button
-                          className="action-btn delete"
-                          title="Delete"
-                          onClick={() => setShowConfirm({ id: file.id, title: file.title || file.filename || 'Untitled' })}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                      <div className="file-summary">
+                        <p>Local notebook - not uploaded to database</p>
                       </div>
                     </div>
-                    
-                    {showTags && file.tags && file.tags.length > 0 && (
-                      <div className="file-tags" onClick={(e) => e.stopPropagation()}>
-                        <Tag className="tags-icon" />
-                        {(() => {
-                          const allTags = file.tags
-                            .map((tag) => {
-                              const rawName = typeof tag === 'string' ? tag : tag.name
-                              const tagName = sanitizeTagName(rawName)
-                              const tagType = typeof tag === 'string' ? 'general' : tag.type
-                              return { name: tagName, type: tagType as 'general' | 'specific' | 'user_added' }
-                            })
-                            .filter(({ name }) => name && !isJunkTagName(name))
-                          const visible = allTags.slice(0, maxVisibleTags)
-                          const hidden = allTags.slice(maxVisibleTags)
-                          return (
-                            <div className="tags-list with-more">
-                              {visible.map((t, i) => (
-                                <span key={i} className={`tag tag-${t.type}`}>{t.name}</span>
-                              ))}
-                              {hidden.length > 0 && (
-                                <button
-                                  className="tag tag-more-chip"
-                                  data-file-id={file.id}
-                                  onClick={(e) => { e.stopPropagation(); setOpenTagsFor(file.id); setTagFilter('') }}
-                                  aria-haspopup="dialog"
-                                  aria-expanded={openTagsFor === file.id}
-                                  title={hidden.map(t => t.name).join(', ')}
-                                >
-                                  +{hidden.length} more
-                                </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {files.length > 0 && (
+              <div className="uploaded-files-section">
+                {Object.entries(groupedFiles).map(([folderName, folderFiles]) => (
+                  <div key={folderName} className="folder-section">
+                    <h3 className="folder-title">
+                      {folderName === 'No Folder' ? <FolderOpen size={18} /> : <Folder size={18} />}
+                      {folderName} ({folderFiles.length})
+                    </h3>
+                    <div className="file-list">
+                      {folderFiles.map((file, index) => {
+                        const isBulkSelected = bulkSelectedFileIds.includes(file.id)
+                        return (
+                          <div
+                            key={file.id || `file-${index}`}
+                            className={`file-card ${selectedFileId === file.id ? 'selected' : ''} ${isBulkSelected ? 'bulk-selected' : ''}`}
+                            onClick={(e) => {
+                              const target = e.target as HTMLElement
+                              if (target.closest('.file-actions')) return
+                              if (target.closest('.file-select-checkbox')) return
+
+                              if (bulkSelectMode) {
+                                toggleBulkSelectedFile(file.id)
+                                return
+                              }
+
+                              onFileSelect(file)
+                            }}
+                          >
+                            <div className="file-header">
+                              {bulkSelectMode && (
+                                <div className="file-select-checkbox" onClick={(e) => e.stopPropagation()}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isBulkSelected}
+                                    onChange={() => toggleBulkSelectedFile(file.id)}
+                                    aria-label={`Select ${file.title || file.filename || 'file'}`}
+                                  />
+                                </div>
                               )}
-                              {/* Popover */}
-                              {openTagsFor === file.id && (
-                                <div className="tags-popover" data-file-id={file.id} role="dialog" aria-label="All tags" onClick={(e) => e.stopPropagation()}>
-                                  <div className="tags-popover-header">
-                                    <input
-                                      className="tags-popover-search"
-                                      placeholder="Filter tags..."
-                                      value={tagFilter}
-                                      onChange={(e) => setTagFilter(e.target.value)}
-                                      autoFocus
-                                    />
-                                    <button className="tags-popover-close" aria-label="Close" onClick={() => setOpenTagsFor(null)}>×</button>
-                                  </div>
-                                  {(() => {
-                                    const list = tagFilter ? allTags.filter(t => t.name.includes(tagFilter.toLowerCase())) : allTags
-                                    const general = list.filter(t => t.type === 'general')
-                                    const specific = list.filter(t => t.type === 'specific')
-                                    const userAdded = list.filter(t => t.type === 'user_added')
-                                    return (
-                                      <div className="tags-popover-list">
-                                        {general.length > 0 && (
-                                          <div className="tags-section">
-                                            <div className="tags-section-title">General ({general.length})</div>
-                                            <div className="tags-section-grid">
-                                              {general.map((t, i) => <span key={`g-${i}`} className={`tag tag-${t.type}`}>{t.name}</span>)}
-                                            </div>
-                                          </div>
-                                        )}
-                                        {specific.length > 0 && (
-                                          <div className="tags-section">
-                                            <div className="tags-section-title">Specific ({specific.length})</div>
-                                            <div className="tags-section-grid">
-                                              {specific.map((t, i) => <span key={`s-${i}`} className={`tag tag-${t.type}`}>{t.name}</span>)}
-                                            </div>
-                                          </div>
-                                        )}
-                                        {userAdded.length > 0 && (
-                                          <div className="tags-section">
-                                            <div className="tags-section-title">Custom ({userAdded.length})</div>
-                                            <div className="tags-section-grid">
-                                              {userAdded.map((t, i) => <span key={`u-${i}`} className={`tag tag-${t.type}`}>{t.name}</span>)}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )
-                                  })()}
+
+                              <div className="file-icon">
+                                <FileText />
+                              </div>
+                              <div className="file-info">
+                                <h3 className="file-title">{file.title || file.filename}</h3>
+                                <div className="file-meta">
+                                  <span className="file-date">
+                                    <Calendar className="meta-icon" />
+                                    {formatDate(file.created_at)}
+                                  </span>
+                                  <span className={`file-status ${file.status}`}>
+                                    {file.status === 'completed' ? 'Processed' : 'Processing...'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {!bulkSelectMode && (
+                                <div className="file-actions">
+                                  <button
+                                    className="action-btn move"
+                                    title="Move to folder"
+                                    onClick={() => setShowMoveModal({ fileId: file.id, fileName: file.title || file.filename || 'Untitled' })}
+                                  >
+                                    <Move size={16} />
+                                  </button>
+                                  <button
+                                    className="action-btn delete"
+                                    title="Delete"
+                                    onClick={() => setShowConfirm({ id: file.id, title: file.title || file.filename || 'Untitled' })}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
                                 </div>
                               )}
                             </div>
-                          )
-                        })()}
-                      </div>
-                    )}
-                    
-                    {file.summary && (
-                      <div className="file-summary">
-                        <p>{file.summary.substring(0, 150)}...</p>
-                      </div>
-                    )}
+
+                            {showTags && file.tags && file.tags.length > 0 && (
+                              <div className="file-tags" onClick={(e) => e.stopPropagation()}>
+                                <Tag className="tags-icon" />
+                                {(() => {
+                                  const allTags = file.tags
+                                    .map((tag) => {
+                                      const rawName = typeof tag === 'string' ? tag : tag.name
+                                      const tagName = sanitizeTagName(rawName)
+                                      const tagType = typeof tag === 'string' ? 'general' : tag.type
+                                      return { name: tagName, type: tagType as 'general' | 'specific' | 'user_added' }
+                                    })
+                                    .filter(({ name }) => name && !isJunkTagName(name))
+                                  const visible = allTags.slice(0, maxVisibleTags)
+                                  const hidden = allTags.slice(maxVisibleTags)
+                                  return (
+                                    <div className="tags-list with-more">
+                                      {visible.map((t, i) => (
+                                        <span key={i} className={`tag tag-${t.type}`}>{t.name}</span>
+                                      ))}
+                                      {hidden.length > 0 && (
+                                        <button
+                                          className="tag tag-more-chip"
+                                          data-file-id={file.id}
+                                          onClick={(e) => { e.stopPropagation(); setOpenTagsFor(file.id); setTagFilter('') }}
+                                          aria-haspopup="dialog"
+                                          aria-expanded={openTagsFor === file.id}
+                                          title={hidden.map(t => t.name).join(', ')}
+                                        >
+                                          +{hidden.length} more
+                                        </button>
+                                      )}
+                                      {/* Popover */}
+                                      {openTagsFor === file.id && (
+                                        <div className="tags-popover" data-file-id={file.id} role="dialog" aria-label="All tags" onClick={(e) => e.stopPropagation()}>
+                                          <div className="tags-popover-header">
+                                            <input
+                                              className="tags-popover-search"
+                                              placeholder="Filter tags..."
+                                              value={tagFilter}
+                                              onChange={(e) => setTagFilter(e.target.value)}
+                                              autoFocus
+                                            />
+                                            <button className="tags-popover-close" aria-label="Close" onClick={() => setOpenTagsFor(null)}>×</button>
+                                          </div>
+                                          {(() => {
+                                            const list = tagFilter ? allTags.filter(t => t.name.includes(tagFilter.toLowerCase())) : allTags
+                                            const general = list.filter(t => t.type === 'general')
+                                            const specific = list.filter(t => t.type === 'specific')
+                                            const userAdded = list.filter(t => t.type === 'user_added')
+                                            return (
+                                              <div className="tags-popover-list">
+                                                {general.length > 0 && (
+                                                  <div className="tags-section">
+                                                    <div className="tags-section-title">General ({general.length})</div>
+                                                    <div className="tags-section-grid">
+                                                      {general.map((t, i) => <span key={`g-${i}`} className={`tag tag-${t.type}`}>{t.name}</span>)}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                                {specific.length > 0 && (
+                                                  <div className="tags-section">
+                                                    <div className="tags-section-title">Specific ({specific.length})</div>
+                                                    <div className="tags-section-grid">
+                                                      {specific.map((t, i) => <span key={`s-${i}`} className={`tag tag-${t.type}`}>{t.name}</span>)}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                                {userAdded.length > 0 && (
+                                                  <div className="tags-section">
+                                                    <div className="tags-section-title">Custom ({userAdded.length})</div>
+                                                    <div className="tags-section-grid">
+                                                      {userAdded.map((t, i) => <span key={`u-${i}`} className={`tag tag-${t.type}`}>{t.name}</span>)}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            )
+                                          })()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })()}
+                              </div>
+                            )}
+
+                            {file.summary && (
+                              <div className="file-summary">
+                                <p>{file.summary.substring(0, 150)}...</p>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          ))}
+            )}
+          </div>
+        </div>
+      </div>
 
-          {/* Move File Modal */}
-          {showMoveModal && (
-            <div className="modal-overlay">
-              <div className="move-modal">
-                <h3>Move File</h3>
-                <p>Move "{showMoveModal.fileName}" to:</p>
-                <div className="folder-options">
-                  <label className="folder-option">
-                    <input
-                      type="radio"
-                      name="targetFolder"
-                      value=""
-                      checked={selectedTargetFolder === null}
-                      onChange={() => setSelectedTargetFolder(null)}
-                    />
-                    <FolderOpen size={14} />
-                    No Folder
-                  </label>
-                  {folders.map(folder => (
-                    <label key={folder.id} className="folder-option">
-                      <input
-                        type="radio"
-                        name="targetFolder"
-                        value={folder.id}
-                        checked={selectedTargetFolder === folder.id}
-                        onChange={() => setSelectedTargetFolder(folder.id)}
-                      />
-                      <Folder size={14} />
-                      {folder.name}
-                    </label>
-                  ))}
-                </div>
-                <div className="modal-actions">
-                  <button
-                    className="btn btn-outline"
-                    onClick={() => {
-                      setShowMoveModal(null)
-                      setSelectedTargetFolder(null)
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => handleMoveFile(showMoveModal.fileId, selectedTargetFolder)}
-                  >
-                    <Move className="icon" />
-                    Move
-                  </button>
-                </div>
-              </div>
+      {/* Bulk Move Modal */}
+      {showBulkMoveModal && (
+        <div className="modal-overlay">
+          <div className="move-modal">
+            <h3>Move Files</h3>
+            <p>
+              Move {bulkSelectedFileIds.length} file{bulkSelectedFileIds.length === 1 ? '' : 's'} to:
+            </p>
+            <div className="folder-options">
+              <label className="folder-option">
+                <input
+                  type="radio"
+                  name="bulkTargetFolder"
+                  value=""
+                  checked={bulkSelectedTargetFolder === null}
+                  onChange={() => setBulkSelectedTargetFolder(null)}
+                />
+                <FolderOpen size={14} />
+                No Folder
+              </label>
+              {folders.map((folder) => (
+                <label key={folder.id} className="folder-option">
+                  <input
+                    type="radio"
+                    name="bulkTargetFolder"
+                    value={folder.id}
+                    checked={bulkSelectedTargetFolder === folder.id}
+                    onChange={() => setBulkSelectedTargetFolder(folder.id)}
+                  />
+                  <Folder size={14} />
+                  {folder.name}
+                </label>
+              ))}
             </div>
-          )}
+            <div className="modal-actions">
+              <button
+                className="btn btn-outline"
+                onClick={() => {
+                  setShowBulkMoveModal(false)
+                  setBulkSelectedTargetFolder(null)
+                }}
+              >
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleBulkMove} disabled={bulkSelectedFileIds.length === 0}>
+                <Move className="icon" />
+                Move
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-          {showConfirm && (
-            <div className="modal-overlay">
-              <div className="delete-modal">
-                <h3>Delete Item</h3>
-                <p>{`Are you sure you want to delete "${showConfirm.title}"? This action cannot be undone.`}</p>
-                <div className="modal-actions">
-                  <button className="btn btn-outline" onClick={() => setShowConfirm(null)} disabled={!!deletingId}>
-                    Cancel
-                  </button>
-                  <button
-                    className="btn btn-danger"
-                    onClick={() => handleConfirmDelete(showConfirm.id, showConfirm.isLocal)}
-                    disabled={!!deletingId}
-                  >
-                    <Trash2 className="icon" />
-                    {deletingId ? 'Deleting...' : 'Delete'}
-                  </button>
-                </div>
-              </div>
+      {/* Move File Modal */}
+      {showMoveModal && (
+        <div className="modal-overlay">
+          <div className="move-modal">
+            <h3>Move File</h3>
+            <p>Move "{showMoveModal.fileName}" to:</p>
+            <div className="folder-options">
+              <label className="folder-option">
+                <input
+                  type="radio"
+                  name="targetFolder"
+                  value=""
+                  checked={selectedTargetFolder === null}
+                  onChange={() => setSelectedTargetFolder(null)}
+                />
+                <FolderOpen size={14} />
+                No Folder
+              </label>
+              {folders.map(folder => (
+                <label key={folder.id} className="folder-option">
+                  <input
+                    type="radio"
+                    name="targetFolder"
+                    value={folder.id}
+                    checked={selectedTargetFolder === folder.id}
+                    onChange={() => setSelectedTargetFolder(folder.id)}
+                  />
+                  <Folder size={14} />
+                  {folder.name}
+                </label>
+              ))}
             </div>
-          )}
+            <div className="modal-actions">
+              <button
+                className="btn btn-outline"
+                onClick={() => {
+                  setShowMoveModal(null)
+                  setSelectedTargetFolder(null)
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => handleMoveFile(showMoveModal.fileId, selectedTargetFolder)}
+              >
+                <Move className="icon" />
+                Move
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConfirm && (
+        <div className="modal-overlay">
+          <div className="delete-modal">
+            <h3>Delete Item</h3>
+            <p>{`Are you sure you want to delete "${showConfirm.title}"? This action cannot be undone.`}</p>
+            <div className="modal-actions">
+              <button className="btn btn-outline" onClick={() => setShowConfirm(null)} disabled={!!deletingId}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => handleConfirmDelete(showConfirm.id, showConfirm.isLocal)}
+                disabled={!!deletingId}
+              >
+                <Trash2 className="icon" />
+                {deletingId ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

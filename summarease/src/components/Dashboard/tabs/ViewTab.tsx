@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect } from 'react'
 import { List, Network } from 'lucide-react'
 import { ListView } from './view/ListView'
 import { GraphView } from './view/GraphView'
@@ -16,7 +16,6 @@ interface ViewTabProps {
 export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, onEditLocalNotebook }) => {
   // Use the new useViewState hook instead of individual useState calls
   const [viewState, viewActions] = useViewState()
-  const listViewRef = useRef<HTMLDivElement>(null)
   
   // Get current state values from the centralized state
   const {
@@ -34,7 +33,6 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, 
     setSearchResults,
     setIsSearching,
     setSearchedTags,
-    updateScrollPosition
   } = viewActions
   
   // Initialize with last active tab from preferences if available
@@ -43,34 +41,6 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, 
       setActiveSubTab(viewState.preferences.lastActiveSubTab)
     }
   }, [])
-  
-  // Save scroll position when ListView is unmounted
-  useEffect(() => {
-    if (activeSubTab !== 'list') return
-    
-    const handleScroll = () => {
-      if (listViewRef.current) {
-        updateScrollPosition(listViewRef.current.scrollTop)
-      }
-    }
-    
-    const listViewElement = listViewRef.current
-    if (listViewElement) {
-      listViewElement.addEventListener('scroll', handleScroll)
-      
-      // Restore scroll position
-      if (listView.scrollPosition > 0) {
-        listViewElement.scrollTop = listView.scrollPosition
-      }
-    }
-    
-    return () => {
-      if (listViewElement) {
-        listViewElement.removeEventListener('scroll', handleScroll)
-      }
-    }
-  }, [activeSubTab, listView.scrollPosition, updateScrollPosition])
-  
   const handleSearchResults = (results: FileWithMetadata[]) => {
     setSearchResults(results)
   }
@@ -118,30 +88,38 @@ export const ViewTab: React.FC<ViewTabProps> = ({ onFileSelect, selectedFileId, 
 
       <div className="view-content">
         {activeSubTab === 'list' ? (
-          <div ref={listViewRef} style={{ height: '100%', overflow: 'auto' }}>
-            <ListView 
-              onFileSelect={onFileSelect} 
-              selectedFileId={selectedFileId} 
-              onEditLocalNotebook={onEditLocalNotebook}
-              searchResults={isSearching ? searchResults : undefined}
-              isSearching={isSearching}
-              // Pass list view state from our centralized state
-              selectedFolderFilter={listView.selectedFolderFilter}
-              onFolderFilterChange={viewActions.setSelectedFolderFilter}
-              showFolderManagement={listView.showFolderManagement}
-              onShowFolderManagementChange={viewActions.setShowFolderManagement}
-              editingFolder={listView.editingFolder}
-              onEditingFolderChange={viewActions.setEditingFolder}
-              newFolderName={listView.newFolderName}
-              onNewFolderNameChange={viewActions.setNewFolderName}
-              showMoveModal={listView.showMoveModal}
-              onShowMoveModalChange={viewActions.setShowMoveModal}
-              selectedTargetFolder={listView.selectedTargetFolder}
-              onSelectedTargetFolderChange={viewActions.setSelectedTargetFolder}
-              showTags={listView.showTags}
-              onShowTagsChange={viewActions.setShowTags}
-            />
-          </div>
+          <ListView 
+            onFileSelect={onFileSelect} 
+            selectedFileId={selectedFileId} 
+            onEditLocalNotebook={onEditLocalNotebook}
+            searchResults={isSearching ? searchResults : undefined}
+            isSearching={isSearching}
+            // Pass list view state from our centralized state
+            selectedFolderFilter={listView.selectedFolderFilter}
+            onFolderFilterChange={viewActions.setSelectedFolderFilter}
+            editingFolder={listView.editingFolder}
+            onEditingFolderChange={viewActions.setEditingFolder}
+            newFolderName={listView.newFolderName}
+            onNewFolderNameChange={viewActions.setNewFolderName}
+            showMoveModal={listView.showMoveModal}
+            onShowMoveModalChange={viewActions.setShowMoveModal}
+            selectedTargetFolder={listView.selectedTargetFolder}
+            onSelectedTargetFolderChange={viewActions.setSelectedTargetFolder}
+            showTags={listView.showTags}
+            onShowTagsChange={viewActions.setShowTags}
+            scrollPosition={listView.scrollPosition}
+            onScrollPositionChange={viewActions.updateScrollPosition}
+            sidebarCollapsed={listView.sidebarCollapsed}
+            onSidebarCollapsedChange={viewActions.setSidebarCollapsed}
+            bulkSelectMode={listView.bulkSelectMode}
+            onBulkSelectModeChange={viewActions.setBulkSelectMode}
+            bulkSelectedFileIds={listView.bulkSelectedFileIds}
+            onBulkSelectedFileIdsChange={viewActions.setBulkSelectedFileIds}
+            showBulkMoveModal={listView.showBulkMoveModal}
+            onShowBulkMoveModalChange={viewActions.setShowBulkMoveModal}
+            bulkSelectedTargetFolder={listView.bulkSelectedTargetFolder}
+            onBulkSelectedTargetFolderChange={viewActions.setBulkSelectedTargetFolder}
+          />
         ) : (
           <GraphView 
             onFileSelect={onFileSelect} 

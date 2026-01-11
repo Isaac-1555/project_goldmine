@@ -1194,8 +1194,8 @@ export async function createFolder(name: string): Promise<Folder | null> {
       throw new Error('User not authenticated')
     }
 
-    const folderName = name.trim()
-    if (!folderName) {
+    // Preserve the user's whitespace as typed, but prevent blank/whitespace-only names.
+    if (!name.trim()) {
       throw new Error('Folder name cannot be empty')
     }
 
@@ -1204,7 +1204,7 @@ export async function createFolder(name: string): Promise<Folder | null> {
       .insert([
         {
           user_id: user.user.id,
-          name: folderName
+          name
         }
       ])
       .select()
@@ -1223,14 +1223,14 @@ export async function createFolder(name: string): Promise<Folder | null> {
  */
 export async function updateFolder(folderId: string, name: string): Promise<boolean> {
   try {
-    const folderName = name.trim()
-    if (!folderName) {
+    // Preserve the user's whitespace as typed, but prevent blank/whitespace-only names.
+    if (!name.trim()) {
       throw new Error('Folder name cannot be empty')
     }
 
     const { error } = await supabase
       .from('folders')
-      .update({ name: folderName })
+      .update({ name })
       .eq('id', folderId)
 
     if (error) throw error
@@ -1355,6 +1355,32 @@ export async function moveFileToFolder(fileId: string, folderId: string | null):
     return true
   } catch (error: any) {
     console.error('Error moving file to folder:', error)
+    return false
+  }
+}
+
+/**
+ * Move many files to a folder (or remove from folder if folderId is null)
+ */
+export async function moveFilesToFolder(fileIds: string[], folderId: string | null): Promise<boolean> {
+  try {
+    if (!Array.isArray(fileIds) || fileIds.length === 0) return true
+
+    // Avoid overly large IN filters (Supabase/Postgres limits can vary)
+    const chunkSize = 100
+    for (let i = 0; i < fileIds.length; i += chunkSize) {
+      const chunk = fileIds.slice(i, i + chunkSize)
+      const { error } = await supabase
+        .from('files')
+        .update({ folder_id: folderId })
+        .in('id', chunk)
+
+      if (error) throw error
+    }
+
+    return true
+  } catch (error: any) {
+    console.error('Error moving files to folder:', error)
     return false
   }
 }

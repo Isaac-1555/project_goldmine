@@ -23,6 +23,13 @@ export interface ViewTabState {
     sortBy: 'date' | 'title' | 'folder'
     sortOrder: 'asc' | 'desc'
     showTags: boolean
+
+    // ListView sidebar + bulk actions
+    sidebarCollapsed: boolean
+    bulkSelectMode: boolean
+    bulkSelectedFileIds: string[]
+    showBulkMoveModal: boolean
+    bulkSelectedTargetFolder: string | null
   }
   
   // GraphView specific state
@@ -73,6 +80,11 @@ export interface ViewTabActions {
   setSortBy: (sortBy: 'date' | 'title' | 'folder') => void
   setSortOrder: (order: 'asc' | 'desc') => void
   setShowTags: (show: boolean) => void
+  setSidebarCollapsed: (collapsed: boolean) => void
+  setBulkSelectMode: (enabled: boolean) => void
+  setBulkSelectedFileIds: (ids: string[]) => void
+  setShowBulkMoveModal: (show: boolean) => void
+  setBulkSelectedTargetFolder: (folderId: string | null) => void
   
   // GraphView actions
   setZoomLevel: (zoom: number) => void
@@ -113,7 +125,13 @@ const getDefaultState = (): ViewTabState => ({
     scrollPosition: 0,
     sortBy: 'date',
     sortOrder: 'desc',
-    showTags: true
+    showTags: true,
+
+    sidebarCollapsed: false,
+    bulkSelectMode: false,
+    bulkSelectedFileIds: [],
+    showBulkMoveModal: false,
+    bulkSelectedTargetFolder: null
   },
   
   graphView: {
@@ -335,6 +353,48 @@ export const useViewState = (): [ViewTabState, ViewTabActions] => {
       updateState(prev => ({
         ...prev,
         listView: { ...prev.listView, showTags: show }
+      }))
+    }, [updateState]),
+
+    setSidebarCollapsed: useCallback((collapsed: boolean) => {
+      updateState(prev => ({
+        ...prev,
+        listView: { ...prev.listView, sidebarCollapsed: collapsed }
+      }))
+    }, [updateState]),
+
+    setBulkSelectMode: useCallback((enabled: boolean) => {
+      updateState(prev => ({
+        ...prev,
+        listView: {
+          ...prev.listView,
+          bulkSelectMode: enabled,
+          // When leaving bulk select mode, clear selection + modal state for safety
+          bulkSelectedFileIds: enabled ? prev.listView.bulkSelectedFileIds : [],
+          showBulkMoveModal: enabled ? prev.listView.showBulkMoveModal : false,
+          bulkSelectedTargetFolder: enabled ? prev.listView.bulkSelectedTargetFolder : null,
+        }
+      }))
+    }, [updateState]),
+
+    setBulkSelectedFileIds: useCallback((ids: string[]) => {
+      updateState(prev => ({
+        ...prev,
+        listView: { ...prev.listView, bulkSelectedFileIds: ids }
+      }))
+    }, [updateState]),
+
+    setShowBulkMoveModal: useCallback((show: boolean) => {
+      updateState(prev => ({
+        ...prev,
+        listView: { ...prev.listView, showBulkMoveModal: show }
+      }))
+    }, [updateState]),
+
+    setBulkSelectedTargetFolder: useCallback((folderId: string | null) => {
+      updateState(prev => ({
+        ...prev,
+        listView: { ...prev.listView, bulkSelectedTargetFolder: folderId }
       }))
     }, [updateState]),
     

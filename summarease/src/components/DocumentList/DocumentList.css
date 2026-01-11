@@ -135,7 +135,7 @@
 }
 
 /* Buttons in document actions now use global .btn styles */
-.btn.btn-sm { width: 55px; height: 32px; padding: 0; }
+.btn.btn-sm { width: 150px; height: 32px; padding: 0; }
 .btn.btn-sm svg { width: 16px; height: 16px; }
 
 /* Scrollbar styling */
