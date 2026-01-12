@@ -268,14 +268,12 @@ export const ListViewSidebar: React.FC<ListViewSidebarProps> = ({
       {/* Bulk actions */}
       <div className="lv-sidebar-section">
         <div className="lv-sidebar-section-header">
-          <Move size={14} />
           <span>Bulk actions</span>
         </div>
 
         {!bulkSelectMode ? (
-          <button className="btn btn-primary btn-sm" onClick={onEnterBulkSelectMode}>
-            <Move size={14} />
-            Bulk move files
+          <button className="filter-btn lv-sidebar-filter-btn active" onClick={onEnterBulkSelectMode}>
+            Move files
           </button>
         ) : (
           <div className="lv-bulk-actions">
