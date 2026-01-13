@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Edit3, Pencil, Sparkles, Save, X, FileText, MessageSquare, Tag as TagIcon, Clock, ArrowLeft, Trash2, File as FileIcon, Eye, Plus } from 'lucide-react'
 import { StatusIndicator } from '../FileStatus/StatusIndicator'
-import { getFileDetails, updateSummary, deleteFile, regenerateSummary, removeTagFromFile, updateNotebookContent, type FileWithMetadata, type Tag as TagType } from '../../lib/api'
+import { getFileDetails, updateSummary, deleteFile, regenerateSummary, removeTagFromFile, updateNotebookContent, deleteDocument, type FileWithMetadata, type Tag as TagType } from '../../lib/api'
 import { useSettingsConfig } from '../../hooks/useSettingsConfig'
 import { supabase } from '../../lib/supabase'
 import { CodeBlockRenderer } from '../ContentBlocks/CodeBlockRenderer'
@@ -271,6 +271,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
   const [addingDoc, setAddingDoc] = useState(false)
   const [showRegenPrompt, setShowRegenPrompt] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
   const [deletingTag, setDeletingTag] = useState<string | null>(null)
   const [showDeleteTagConfirm, setShowDeleteTagConfirm] = useState<string | null>(null)
 
@@ -427,6 +428,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
     if (!filesToAdd.length) return
 
     try {
+      toast.info('Adding...')
       setAddingDoc(true)
       const res = await updateNotebookContent(fileDetails.file.id, { newFiles: filesToAdd })
       if (res.success) {
@@ -441,6 +443,58 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
       console.error('Failed to add document:', e)
     } finally {
       setAddingDoc(false)
+    }
+  }
+
+  const handleDeleteDoc = async (doc: any) => {
+    if (!fileDetails?.file.id) return
+    if (file.localNotebookData) return
+
+    const docId = doc?.id ? String(doc.id) : ''
+    if (!docId) return
+
+    const name =
+      doc.name ||
+      doc.original_filename ||
+      (doc.storage_path ? String(doc.storage_path).split('/').pop() : 'this document')
+
+    const ok = await toast.confirm({
+      title: 'Delete document?',
+      description: `This will remove "${name}" from this entry. This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      durationMs: 30000,
+    })
+
+    if (!ok) return
+
+    try {
+      setDeletingDocId(docId)
+      const res = await deleteDocument(docId, doc.storage_path)
+
+      if (!res.success) {
+        toast.error('Failed to delete document', res.error || 'Please try again.')
+        return
+      }
+
+      // Optimistically update docs list without reloading the entire viewer.
+      setFileDetails((prev) => {
+        if (!prev) return prev
+        const nextDocs = (prev.documents || []).filter((d: any) => String(d?.id || '') !== docId)
+        return { ...prev, documents: nextDocs }
+      })
+
+      setShowRegenPrompt(true)
+      toast.success('Document deleted')
+
+      if (res.storageError) {
+        toast.warning('Document deleted, but storage cleanup failed', res.storageError)
+      }
+    } catch (e: any) {
+      toast.error('Failed to delete document', e?.message || 'Please try again.')
+      console.error('Failed to delete document:', e)
+    } finally {
+      setDeletingDocId(null)
     }
   }
 
@@ -851,7 +905,7 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
 
             {showRegenPrompt && !file.localNotebookData && (
               <div className="regen-prompt">
-                <span>Document added. Regenerate summary?</span>
+                <span>Documents updated. Regenerate summary?</span>
                 <button
                   className="btn btn-outline btn-sm"
                   onClick={async () => {
@@ -862,7 +916,6 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                   title="Regenerate summary"
                 >
                   <Sparkles className="icon" />
-                  Regenerate
                 </button>
                 <button
                   className="btn btn-gray btn-sm"
@@ -936,6 +989,17 @@ export const ContentViewer: React.FC<ContentViewerProps> = ({ file, onBack, onDe
                           <Eye size={16} />
                           <span>View</span>
                         </button>
+                        {!file.localNotebookData && doc.id ? (
+                          <button
+                            className="doc-delete"
+                            onClick={(e) => { e.stopPropagation(); void handleDeleteDoc(doc) }}
+                            title="Delete document"
+                            disabled={deletingDocId === String(doc.id)}
+                          >
+                            <Trash2 size={16} />
+                            <span>{deletingDocId === String(doc.id) ? 'Deleting...' : 'Delete'}</span>
+                          </button>
+                        ) : null}
                       </div>
                     </li>
                   )

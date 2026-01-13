@@ -1,5 +1,5 @@
 import React from 'react'
-import { Folder, FolderOpen, Filter, Move, Plus, Settings, Trash2 } from 'lucide-react'
+import { Folder, FolderOpen, Filter, Plus, Settings, Trash2 } from 'lucide-react'
 import type { Folder as FolderType } from '../../../../lib/api'
 
 export interface FolderFilterOption {

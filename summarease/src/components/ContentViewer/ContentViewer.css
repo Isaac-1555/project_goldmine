@@ -578,6 +578,10 @@
  .doc-size { color: var(--text-secondary); font-size: 0.875rem; margin-left: 1rem; }
  .doc-view { display: inline-flex; align-items: center; gap: 0.35rem; margin-left: 1rem; background: none; border: 1px solid var(--border-color); padding: 0.25rem 0.5rem; border-radius: 6px; color: var(--text-secondary); cursor: pointer; }
  .doc-view:hover { border-color: var(--accent-color); color: var(--accent-color); }
+
+ .doc-delete { display: inline-flex; align-items: center; gap: 0.35rem; margin-left: 0.5rem; background: none; border: 1px solid #dc2626; padding: 0.25rem 0.5rem; border-radius: 6px; color: #dc2626; cursor: pointer; }
+ .doc-delete:hover:not(:disabled) { border-color: #b91c1c; color: #b91c1c; }
+ .doc-delete:disabled { opacity: 0.6; cursor: not-allowed; }
  
  /* Summary history list */
  .summary-history { margin-top: 1.5rem; }

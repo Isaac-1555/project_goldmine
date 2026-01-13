@@ -919,6 +919,42 @@ export async function updateNotebookContent(
   }
 }
 
+export async function deleteDocument(
+  documentId: string,
+  storagePath?: string
+): Promise<{ success: boolean; error?: string; storageError?: string }> {
+  try {
+    if (!documentId) {
+      return { success: false, error: 'Missing document id' }
+    }
+
+    // Delete DB row first to avoid broken references if storage deletion fails.
+    const { error: deleteError } = await supabase
+      .from('documents')
+      .delete()
+      .eq('id', documentId)
+
+    if (deleteError) throw deleteError
+
+    let storageErrorMessage: string | undefined
+    if (storagePath) {
+      const { error: storageError } = await supabase.storage
+        .from('files')
+        .remove([String(storagePath)])
+
+      if (storageError) {
+        storageErrorMessage = storageError.message
+        console.error('Error deleting document from storage:', storageError)
+      }
+    }
+
+    return { success: true, storageError: storageErrorMessage }
+  } catch (error: any) {
+    console.error('Error deleting document:', error)
+    return { success: false, error: error.message || 'Failed to delete document' }
+  }
+}
+
 /**
  * Delete a file and all its associated data
  */
