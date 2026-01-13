@@ -1156,6 +1156,44 @@ export async function deleteFile(fileId: string): Promise<boolean> {
   }
 }
 
+export async function deleteFiles(fileIds: string[]): Promise<{ deleted: number; failed: number }> {
+  let deleted = 0
+  let failed = 0
+
+  try {
+    if (!Array.isArray(fileIds) || fileIds.length === 0) {
+      return { deleted: 0, failed: 0 }
+    }
+
+    // Avoid overly large IN filters (Supabase/Postgres limits can vary)
+    const chunkSize = 100
+    for (let i = 0; i < fileIds.length; i += chunkSize) {
+      const chunk = fileIds.slice(i, i + chunkSize)
+
+      const { data, error } = await supabase
+        .from('files')
+        .delete()
+        .in('id', chunk)
+        .select('id')
+
+      if (error) {
+        console.error('Error deleting file chunk:', error)
+        failed += chunk.length
+        continue
+      }
+
+      const deletedInChunk = Array.isArray(data) ? data.length : 0
+      deleted += deletedInChunk
+      failed += Math.max(0, chunk.length - deletedInChunk)
+    }
+
+    return { deleted, failed }
+  } catch (error: any) {
+    console.error('Error deleting files:', error)
+    return { deleted, failed: failed + (fileIds.length - deleted - failed) }
+  }
+}
+
 // =============================================================================
 // FOLDER MANAGEMENT FUNCTIONS
 // =============================================================================

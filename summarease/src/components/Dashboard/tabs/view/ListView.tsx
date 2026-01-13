@@ -3,6 +3,7 @@ import { Calendar, ChevronLeft, ChevronRight, Edit3, FileText, Folder, FolderOpe
 import {
   createFolder,
   deleteFile,
+  deleteFiles,
   deleteFolderAndFiles,
   deleteFolderKeepFiles,
   getFolderFileCount,
@@ -154,6 +155,11 @@ export const ListView: React.FC<ListViewProps> = ({
   const [internalBulkSelectedFileIds, setInternalBulkSelectedFileIds] = useState<string[]>([])
   const [internalShowBulkMoveModal, setInternalShowBulkMoveModal] = useState(false)
   const [internalBulkSelectedTargetFolder, setInternalBulkSelectedTargetFolder] = useState<string | null>(null)
+
+  // Local-only bulk UI state
+  const [bulkActionType, setBulkActionType] = useState<'move' | 'delete'>('move')
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
+  const [bulkDeleteInProgress, setBulkDeleteInProgress] = useState(false)
   
   // Folder management state
   const [folders, setFolders] = useState<FolderType[]>([])
@@ -244,16 +250,21 @@ export const ListView: React.FC<ListViewProps> = ({
       setBulkSelectedFileIds(pruned)
     }
 
-    // If selection becomes empty, close bulk move modal for safety.
+    // If selection becomes empty, close bulk modals for safety.
     if (showBulkMoveModal && pruned.length === 0) {
       setShowBulkMoveModal(false)
       setBulkSelectedTargetFolder(null)
+    }
+
+    if (showBulkDeleteConfirm && pruned.length === 0) {
+      setShowBulkDeleteConfirm(false)
     }
   }, [
     bulkSelectMode,
     filteredFiles,
     bulkSelectedFileIds,
     showBulkMoveModal,
+    showBulkDeleteConfirm,
     setBulkSelectedFileIds,
     setShowBulkMoveModal,
     setBulkSelectedTargetFolder,
@@ -534,11 +545,13 @@ export const ListView: React.FC<ListViewProps> = ({
     setSidebarCollapsed(!sidebarCollapsed)
   }
 
-  const enterBulkSelect = () => {
+  const enterBulkSelect = (action: 'move' | 'delete') => {
+    setBulkActionType(action)
     setBulkSelectMode(true)
     setBulkSelectedFileIds([])
     setShowBulkMoveModal(false)
     setBulkSelectedTargetFolder(null)
+    setShowBulkDeleteConfirm(false)
     setShowMoveModal(null)
     setSelectedTargetFolder(null)
   }
@@ -548,6 +561,8 @@ export const ListView: React.FC<ListViewProps> = ({
     setBulkSelectedFileIds([])
     setShowBulkMoveModal(false)
     setBulkSelectedTargetFolder(null)
+    setShowBulkDeleteConfirm(false)
+    setBulkActionType('move')
   }
 
   const toggleBulkSelectedFile = (fileId: string) => {
@@ -568,10 +583,41 @@ export const ListView: React.FC<ListViewProps> = ({
     }
 
     await loadFiles()
-    setShowBulkMoveModal(false)
-    setBulkSelectedTargetFolder(null)
-    setBulkSelectedFileIds([])
-    setBulkSelectMode(false)
+    exitBulkSelect()
+  }
+
+  const handleBulkDelete = async () => {
+    if (bulkSelectedFileIds.length === 0) return
+
+    try {
+      setBulkDeleteInProgress(true)
+      const { deleted, failed } = await deleteFiles(bulkSelectedFileIds)
+
+      if (deleted > 0) {
+        toast.success(
+          'Files deleted',
+          `Deleted ${deleted} file${deleted === 1 ? '' : 's'}${failed ? ` • ${failed} failed` : ''}.`
+        )
+      }
+
+      if (failed > 0 && deleted === 0) {
+        toast.error(
+          'Delete failed',
+          `${failed} file${failed === 1 ? '' : 's'} could not be deleted. Please try again.`
+        )
+      } else if (failed > 0) {
+        toast.error(
+          'Some files could not be deleted',
+          `${failed} file${failed === 1 ? '' : 's'} could not be deleted. Please try again.`
+        )
+      }
+
+      await loadFiles()
+    } finally {
+      setBulkDeleteInProgress(false)
+      setShowBulkDeleteConfirm(false)
+      exitBulkSelect()
+    }
   }
   
   const formatDate = (dateString: string) => {
@@ -636,10 +682,8 @@ export const ListView: React.FC<ListViewProps> = ({
               folderFilterOptions={folderFilterOptions}
               totalFileCount={files.length}
               bulkSelectMode={bulkSelectMode}
-              selectedBulkCount={bulkSelectedFileIds.length}
-              onEnterBulkSelectMode={enterBulkSelect}
-              onExitBulkSelectMode={exitBulkSelect}
-              onOpenBulkMoveModal={() => setShowBulkMoveModal(true)}
+              onEnterBulkMoveSelectMode={() => enterBulkSelect('move')}
+              onEnterBulkDeleteSelectMode={() => enterBulkSelect('delete')}
             />
           )}
         </aside>
@@ -662,7 +706,7 @@ export const ListView: React.FC<ListViewProps> = ({
             {bulkSelectMode && (
               <div className="lv-bulk-bar">
                 <div className="lv-bulk-bar-left">
-                  <Move size={14} />
+                  {bulkActionType === 'delete' ? <Trash2 size={14} /> : <Move size={14} />}
                   <span>Selection mode</span>
                   <span className="lv-bulk-bar-count">{bulkSelectedFileIds.length} selected</span>
                   {selectedFolderFilter && (
@@ -673,14 +717,23 @@ export const ListView: React.FC<ListViewProps> = ({
                   <button className="btn btn-outline btn-sm" onClick={exitBulkSelect}>
                     Cancel
                   </button>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => setShowBulkMoveModal(true)}
-                    disabled={bulkSelectedFileIds.length === 0}
-                  >
-                    <Move size={14} />
-                    Move selected
-                  </button>
+                  {bulkActionType === 'delete' ? (
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => setShowBulkDeleteConfirm(true)}
+                      disabled={bulkSelectedFileIds.length === 0}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  ) : (
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => setShowBulkMoveModal(true)}
+                      disabled={bulkSelectedFileIds.length === 0}
+                    >
+                      <Move size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -966,6 +1019,35 @@ export const ListView: React.FC<ListViewProps> = ({
               <button className="btn btn-primary" onClick={handleBulkMove} disabled={bulkSelectedFileIds.length === 0}>
                 <Move className="icon" />
                 Move
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Modal */}
+      {showBulkDeleteConfirm && (
+        <div className="modal-overlay">
+          <div className="delete-modal">
+            <h3>Delete Files</h3>
+            <p>
+              {`Are you sure you want to delete ${bulkSelectedFileIds.length} file${bulkSelectedFileIds.length === 1 ? '' : 's'}? This action cannot be undone.`}
+            </p>
+            <div className="modal-actions">
+              <button
+                className="btn btn-outline"
+                onClick={() => setShowBulkDeleteConfirm(false)}
+                disabled={bulkDeleteInProgress}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => void handleBulkDelete()}
+                disabled={bulkDeleteInProgress || bulkSelectedFileIds.length === 0}
+              >
+                <Trash2 className="icon" />
+                {bulkDeleteInProgress ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

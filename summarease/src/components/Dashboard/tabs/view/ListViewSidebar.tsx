@@ -31,10 +31,8 @@ interface ListViewSidebarProps {
 
   // Bulk actions
   bulkSelectMode: boolean
-  selectedBulkCount: number
-  onEnterBulkSelectMode: () => void
-  onExitBulkSelectMode: () => void
-  onOpenBulkMoveModal: () => void
+  onEnterBulkMoveSelectMode: () => void
+  onEnterBulkDeleteSelectMode: () => void
 }
 
 export const ListViewSidebar: React.FC<ListViewSidebarProps> = ({
@@ -54,10 +52,8 @@ export const ListViewSidebar: React.FC<ListViewSidebarProps> = ({
   folderFilterOptions,
   totalFileCount,
   bulkSelectMode,
-  selectedBulkCount,
-  onEnterBulkSelectMode,
-  onExitBulkSelectMode,
-  onOpenBulkMoveModal,
+  onEnterBulkMoveSelectMode,
+  onEnterBulkDeleteSelectMode,
 }) => {
   const [folderEditMode, setFolderEditMode] = React.useState(false)
   const [showCreateFolderInput, setShowCreateFolderInput] = React.useState(false)
@@ -266,35 +262,22 @@ export const ListViewSidebar: React.FC<ListViewSidebarProps> = ({
       </div>
 
       {/* Bulk actions */}
-      <div className="lv-sidebar-section">
-        <div className="lv-sidebar-section-header">
-          <span>Bulk actions</span>
-        </div>
-
-        {!bulkSelectMode ? (
-          <button className="filter-btn lv-sidebar-filter-btn active" onClick={onEnterBulkSelectMode}>
-            Move files
-          </button>
-        ) : (
-          <div className="lv-bulk-actions">
-            <div className="lv-bulk-actions-meta">
-              {selectedBulkCount} selected
-            </div>
-            <div className="lv-bulk-actions-buttons">
-              <button className="btn btn-outline btn-sm" onClick={onExitBulkSelectMode}>
-                Cancel
-              </button>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={onOpenBulkMoveModal}
-                disabled={selectedBulkCount === 0}
-              >
-                Move selected
-              </button>
-            </div>
+      {!bulkSelectMode && (
+        <div className="lv-sidebar-section">
+          <div className="lv-sidebar-section-header">
+            <span>Bulk actions</span>
           </div>
-        )}
-      </div>
+
+          <div className="lv-bulk-actions">
+            <button className="filter-btn lv-sidebar-filter-btn active" onClick={onEnterBulkMoveSelectMode}>
+              Move files
+            </button>
+            <button className="filter-btn lv-sidebar-filter-btn clear-filter" onClick={onEnterBulkDeleteSelectMode}>
+              Delete files
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
