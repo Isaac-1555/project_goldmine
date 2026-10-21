@@ -9,3 +9,6 @@
 
 # Supabase local temp
 **/supabase/.temp/
+
+# Desktop rework repo (separate git repository)
+/satbrain-desktop/

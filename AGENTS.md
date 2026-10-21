@@ -2,6 +2,22 @@
 
 This file provides guidance to WARP (warp.dev) when working with code in this repository.
 
+## Repository Scope (READ FIRST)
+
+This repository is the **legacy React web app** and must remain deployable.
+
+The Rust + Tauri desktop rework lives in the separate private repo
+[`Isaac-1555/satbrain-desktop`](https://github.com/Isaac-1555/satbrain-desktop).
+Do not implement desktop rework here.
+
+When working on desktop work, read and update `PLAN.md` in that repo. The root
+`PLAN.md` in this repo is only a pointer/status snapshot.
+
+## Project Status
+
+The web app is unchanged and remains the production reference while the desktop
+app is developed separately.
+
 ## Project Overview
 
 **SummarEase** (internal name: `sat-brain`) is a React SPA that helps students capture information through audio recording, note-taking, and document uploads, then uses Google Gemini to generate summaries, flashcards, quizzes, and auto-suggested charts.
@@ -34,7 +50,7 @@ supabase db push                  # Apply migrations
 
 ### Monorepo Layout
 
-The actual application lives entirely inside `summarease/`. The root only contains `docs/`, `.github/`, and this file. Vercel and CI are configured with `summarease/` as the root directory.
+The actual application lives entirely inside `summarease/`. The root contains `docs/`, `.github/`, `README.md`, `AGENTS.md`, and `PLAN.md`. Vercel and CI are configured with `summarease/` as the root directory (legacy web setup; desktop build rework is tracked in `PLAN.md`).
 
 ### Frontend (React + TypeScript + Vite)
 
